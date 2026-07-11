@@ -1,0 +1,9 @@
+{
+  "name": "MATT Token",
+  "short_name": "MATT",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07111f",
+  "theme_color": "#0ea5e9",
+  "icons": [{"src":"/assets/matt-logo-512.png","sizes":"512x512","type":"image/png"}]
+}

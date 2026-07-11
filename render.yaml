@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: matt-token
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run site
+    healthCheckPath: /health
+    autoDeploy: true

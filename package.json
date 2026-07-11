@@ -1,0 +1,30 @@
+{
+  "name": "matt-token",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Official open-source contract and website for MATT on Ronin.",
+  "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "deploy:saigon": "hardhat deploy --network saigon --tags MattToken",
+    "deploy:ronin": "hardhat deploy --network ronin --tags MattToken",
+    "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
+    "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
+    "site": "node website/server.js",
+    "inspect:saigon": "hardhat run scripts/inspect-deployment.js --network saigon",
+    "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.26.3",
+    "hardhat-deploy": "^0.12.4",
+    "solc": "^0.8.28"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

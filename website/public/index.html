@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MATT Token | Built by Matt. Backed by Matt.</title>
+  <meta name="description" content="MATT is a verified, fixed-supply community token trading on Ronin through Katana.">
+  <meta property="og:title" content="MATT Token on Ronin">
+  <meta property="og:description" content="Built by Matt. Backed by Matt.">
+  <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="#top">MATT</a>
+    <nav><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#buy">Buy</a><a href="#contract">Contract</a></nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">LIVE ON RONIN</p>
+        <h1>Built by Matt.<br>Backed by Matt.</h1>
+        <p class="lead">A community token supporting the awesomeness of simply being a Matt.</p>
+        <div class="actions">
+          <a class="button primary" href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Buy on Katana</a>
+          <a class="button" href="https://app.roninchain.com/explorer/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener">Verified contract</a>
+        </div>
+        <p class="status">Verified contract · Live liquidity · Successful swaps</p>
+      </div>
+      <img src="/assets/matt-logo.gif" alt="Pixel-art MATT mascot">
+    </section>
+
+    <section id="about">
+      <p class="eyebrow">WHAT IS MATT?</p>
+      <h2>Simple on purpose.</h2>
+      <p>MATT is a community token built on Ronin. Its contract has a fixed supply, no taxes, no blacklist, no transfer limits, and no owner controls. Holders may burn their own tokens, and ERC-2612 Permit support provides modern approval compatibility.</p>
+    </section>
+
+    <section id="tokenomics">
+      <p class="eyebrow">TOKENOMICS</p>
+      <h2>Ten billion. Never more.</h2>
+      <div class="grid">
+        <article><b>10,000,000,000</b><span>Fixed total supply</span></article>
+        <article><b>8,000,000,000</b><span>Initial liquidity allocation</span></article>
+        <article><b>2,000,000,000</b><span>Remaining treasury allocation</span></article>
+        <article><b>0%</b><span>Buy and sell tax</span></article>
+      </div>
+      <p class="warning">MATT launched with shallow RON-side liquidity. Trades can cause major price movement, slippage, and loss. Always verify the contract address and review the swap before confirming.</p>
+    </section>
+
+    <section id="buy">
+      <p class="eyebrow">HOW TO BUY</p>
+      <h2>Import the verified contract.</h2>
+      <ol>
+        <li>Open Katana through the official Ronin app and connect Ronin Wallet.</li>
+        <li>Import MATT using the verified contract address below.</li>
+        <li>Confirm the token name, symbol, and seed-token warning.</li>
+        <li>Enter the RON amount, review price impact and slippage, then approve the swap.</li>
+      </ol>
+    </section>
+
+    <section id="contract" class="contract-card">
+      <p class="eyebrow">OFFICIAL CONTRACT</p>
+      <h2>Verify before every swap.</h2>
+      <code id="contract-address">0xa5450417BDCa0BDfB058ffE41205400FfDA1174d</code>
+      <button id="copy-contract" type="button">Copy address</button>
+      <p id="copy-status" aria-live="polite"></p>
+    </section>
+
+    <section id="roadmap">
+      <p class="eyebrow">NEXT</p>
+      <h2>Community first.</h2>
+      <div class="steps">
+        <article><b>01</b><h3>Visibility</h3><p>Publish the site, logo, metadata, GitHub source, and verified links.</p></article>
+        <article><b>02</b><h3>Community</h3><p>Giveaways, memes, transparent updates, and community-led activities.</p></article>
+        <article><b>03</b><h3>Growth</h3><p>Explore responsible Ronin ecosystem integrations without promising financial returns.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer><img src="/assets/matt-logo-512.png" alt=""><div><b>MATT</b><span>Built by Matt. Backed by Matt.</span></div><a href="https://x.com/Crafting_skill" target="_blank" rel="noopener">@Crafting_skill</a></footer>
+
+  <script>
+    const address = document.getElementById('contract-address').textContent;
+    document.getElementById('copy-contract').addEventListener('click', async () => {
+      const status = document.getElementById('copy-status');
+      try {
+        await navigator.clipboard.writeText(address);
+        status.textContent = 'Contract address copied.';
+      } catch {
+        status.textContent = 'Copy failed. Select the address manually.';
+      }
+    });
+  </script>
+</body>
+</html>
