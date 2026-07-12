@@ -3,6 +3,7 @@ const RONIN_CHAIN_ID = 2020;
 const RONIN_RPC_URL = 'https://api.roninchain.com/rpc';
 const WALLETCONNECT_PROJECT_ID = '10907bb3eaa077bbb82e0559005400d7';
 const WALLETCONNECT_MODULE_URL = 'https://esm.sh/@walletconnect/ethereum-provider@2?bundle';
+const DAILY_MISSIONS = ['connect', 'flip', 'verify'];
 
 const connectButton = document.getElementById('connect-wallet');
 const walletStatus = document.getElementById('wallet-status');
@@ -10,6 +11,13 @@ const walletAddress = document.getElementById('wallet-address');
 const mattBalance = document.getElementById('matt-balance');
 const ronBalance = document.getElementById('ron-balance');
 const holderLevel = document.getElementById('holder-level');
+const missionProgress = document.getElementById('mission-progress');
+const missionMeterFill = document.getElementById('mission-meter-fill');
+const missionReset = document.getElementById('mission-reset');
+const missionCards = [...document.querySelectorAll('.mission-card')];
+const missionConnectButton = document.getElementById('mission-connect-button');
+const missionFlipButton = document.getElementById('mission-flip-button');
+const missionVerifyLink = document.getElementById('mission-verify-link');
 
 let walletConnectProvider = null;
 let currentAccount = null;
@@ -40,6 +48,94 @@ function getLevel(balanceHex) {
   if (tokens >= 100000n) return 'Big Matt';
   if (rawBalance > 0n) return 'MATT Holder';
   return 'Future Matt';
+}
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function emptyMissionState() {
+  return {
+    connect: false,
+    flip: false,
+    verify: false
+  };
+}
+
+function missionStorageKey(account = currentAccount) {
+  if (!account) return null;
+  return `mattHubMissions:${localDateKey()}:${account.toLowerCase()}`;
+}
+
+function loadMissionState() {
+  const key = missionStorageKey();
+  if (!key) return emptyMissionState();
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) || '{}');
+    return {
+      connect: stored.connect === true,
+      flip: stored.flip === true,
+      verify: stored.verify === true
+    };
+  } catch {
+    return emptyMissionState();
+  }
+}
+
+function saveMissionState(state) {
+  const key = missionStorageKey();
+  if (!key) return;
+  localStorage.setItem(key, JSON.stringify(state));
+}
+
+function renderMissions() {
+  const connected = Boolean(currentAccount);
+  const state = connected ? loadMissionState() : emptyMissionState();
+
+  if (connected && !state.connect) {
+    state.connect = true;
+    saveMissionState(state);
+  }
+
+  const completedCount = DAILY_MISSIONS.filter(mission => state[mission]).length;
+  missionProgress.textContent = `${completedCount} / ${DAILY_MISSIONS.length} COMPLETE`;
+  missionMeterFill.style.width = `${(completedCount / DAILY_MISSIONS.length) * 100}%`;
+  missionReset.textContent = connected
+    ? `Progress for ${shortAddress(currentAccount)} · Resets at midnight on this device.`
+    : 'Connect with WalletConnect to begin today’s missions.';
+
+  for (const card of missionCards) {
+    const mission = card.dataset.mission;
+    const complete = Boolean(state[mission]);
+    const status = card.querySelector('.mission-status');
+
+    card.classList.toggle('completed', complete);
+    card.classList.toggle('locked', !connected);
+    status.textContent = complete ? 'COMPLETE' : connected ? 'OPEN' : 'LOCKED';
+  }
+
+  missionConnectButton.textContent = connected ? 'CONNECTED' : 'CONNECT';
+  missionConnectButton.disabled = connected;
+
+  missionFlipButton.textContent = state.flip ? 'FLIP AGAIN' : 'GO TO COIN';
+  missionVerifyLink.textContent = state.verify ? 'VERIFIED' : 'VERIFY CONTRACT';
+}
+
+function markDailyMission(mission) {
+  if (!currentAccount || !DAILY_MISSIONS.includes(mission)) return false;
+  const state = loadMissionState();
+
+  if (!state[mission]) {
+    state[mission] = true;
+    saveMissionState(state);
+  }
+
+  renderMissions();
+  return true;
 }
 
 async function roninRpc(method, params) {
@@ -87,6 +183,7 @@ function resetWalletDisplay(message = 'Wallet not connected.') {
   walletStatus.textContent = message;
   connectButton.textContent = 'Connect with WalletConnect';
   connectButton.disabled = false;
+  renderMissions();
 }
 
 async function showConnectedAccount(account) {
@@ -96,6 +193,7 @@ async function showConnectedAccount(account) {
   walletStatus.textContent = 'WalletConnect connected to Ronin Mainnet.';
   connectButton.textContent = 'Disconnect WalletConnect';
   connectButton.disabled = false;
+  markDailyMission('connect');
   await loadBalances(account);
 }
 
@@ -231,6 +329,20 @@ connectButton.addEventListener('click', () => {
   else connectWallet();
 });
 
+missionConnectButton.addEventListener('click', () => {
+  if (!currentAccount) connectWallet();
+});
+
+missionFlipButton.addEventListener('click', () => {
+  document.getElementById('coin-flip').scrollIntoView({ behavior: 'smooth' });
+});
+
+missionVerifyLink.addEventListener('click', () => {
+  if (!markDailyMission('verify')) {
+    missionReset.textContent = 'Connect with WalletConnect before completing daily missions.';
+  }
+});
+
 let choice = 'heads';
 let flips = Number(localStorage.getItem('mattHubFlips') || 0);
 let wins = Number(localStorage.getItem('mattHubWins') || 0);
@@ -287,9 +399,11 @@ flipButton.addEventListener('click', () => {
     }
     coin.querySelector('.coin-face').textContent = outcome === 'heads' ? 'M' : 'T';
     updateStats();
+    markDailyMission('flip');
     flipButton.disabled = false;
   }, 850);
 });
 
 updateStats();
+renderMissions();
 initializeWalletConnect();
