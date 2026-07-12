@@ -261,10 +261,10 @@ async function resolveDeploymentBlock(latestBlock) {
   if (holderIndex?.deploymentBlock != null) return holderIndex.deploymentBlock;
 
   try {
-    return await findDeploymentBlockByCode(latestBlock);
+    return await findDeploymentBlockByMintLog(latestBlock);
   } catch (error) {
-    console.warn("Historical eth_getCode lookup failed; falling back to Transfer-log discovery:", error.message);
-    return findDeploymentBlockByMintLog(latestBlock);
+    console.warn("Transfer-log deployment discovery failed; falling back to historical contract-code lookup:", error.message);
+    return findDeploymentBlockByCode(latestBlock);
   }
 }
 
