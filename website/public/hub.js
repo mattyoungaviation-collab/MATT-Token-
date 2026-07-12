@@ -6,6 +6,7 @@ const WALLETCONNECT_PROJECT_ID = '10907bb3eaa077bbb82e0559005400d7';
 const WALLETCONNECT_MODULE_URL = 'https://esm.sh/@walletconnect/ethereum-provider@2?bundle';
 const DAILY_MISSIONS = ['connect', 'flip', 'verify'];
 const HOLDER_PAGE_SIZE = 50;
+const HOLDER_RETRY_MS = 3000;
 
 const connectButton = document.getElementById('connect-wallet');
 const walletStatus = document.getElementById('wallet-status');
@@ -52,6 +53,8 @@ let holderReturned = 0;
 let holderMatchingCount = 0;
 let holderAbortController = null;
 let holderSearchTimer = null;
+let holderRetryTimer = null;
+let holderIndexing = false;
 
 function formatUnits(rawValue, decimals = 18, precision = 4) {
   const value = BigInt(rawValue);
@@ -111,7 +114,6 @@ function missionStorageKey(account = currentAccount) {
 function loadMissionState() {
   const key = missionStorageKey();
   if (!key) return emptyMissionState();
-
   try {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     return {
@@ -132,7 +134,6 @@ function saveMissionState(state) {
 function renderMissions() {
   const connected = Boolean(currentAccount);
   const state = connected ? loadMissionState() : emptyMissionState();
-
   if (connected && !state.connect) {
     state.connect = true;
     saveMissionState(state);
@@ -186,7 +187,6 @@ async function roninRpc(method, params) {
 async function loadBalances(account) {
   refreshWalletButton.disabled = true;
   walletUpdated.textContent = 'Refreshing public wallet balances…';
-
   try {
     const [ronHex, mattHex] = await Promise.all([
       roninRpc('eth_getBalance', [account, 'latest']),
@@ -329,7 +329,6 @@ async function initializeWalletConnect() {
     });
 
     bindWalletConnectEvents();
-
     if (walletConnectProvider.session) {
       const account = await findConnectedAccount();
       if (account) {
@@ -337,13 +336,12 @@ async function initializeWalletConnect() {
         return;
       }
     }
-
     resetWalletDisplay();
   } catch (error) {
     walletConnectProvider = null;
     resetWalletDisplay(`WalletConnect failed to load: ${error?.message || 'unknown error'}`);
-    walletStatus.classList.add('error');
     connectButton.textContent = 'Retry WalletConnect';
+    walletStatus.classList.add('error');
   }
 }
 
@@ -371,14 +369,12 @@ async function connectWallet() {
 
 async function disconnectWallet() {
   connectButton.disabled = true;
-  connectButton.setAttribute('aria-busy', 'true');
   connectButton.textContent = 'Disconnecting…';
   try {
     await walletConnectProvider?.disconnect();
     resetWalletDisplay('WalletConnect disconnected.');
   } catch (error) {
     connectButton.disabled = false;
-    connectButton.removeAttribute('aria-busy');
     connectButton.textContent = 'Disconnect';
     walletStatus.textContent = error?.message || 'WalletConnect could not disconnect.';
     walletStatus.classList.add('error');
@@ -422,9 +418,10 @@ function renderHolderRow(holder) {
 
   const label = document.createElement('span');
   label.className = 'holder-label';
-  label.textContent = holder.label || (currentAccount && holder.address.toLowerCase() === currentAccount.toLowerCase() ? 'Your connected wallet' : 'Public Ronin address');
+  label.textContent = holder.label || (currentAccount && holder.address.toLowerCase() === currentAccount.toLowerCase()
+    ? 'Your connected wallet'
+    : 'Public Ronin address');
   identity.append(label);
-
   addressLink.append(avatar, identity);
   holderCell.append(addressLink);
 
@@ -444,11 +441,39 @@ function renderHolderRow(holder) {
   return row;
 }
 
+function clearHolderRetry() {
+  if (holderRetryTimer) clearTimeout(holderRetryTimer);
+  holderRetryTimer = null;
+}
+
+function scheduleHolderRetry() {
+  clearHolderRetry();
+  holderRetryTimer = setTimeout(() => loadHolders({ reset: true, automatic: true }), HOLDER_RETRY_MS);
+}
+
+function showIndexingState(payload) {
+  holderIndexing = true;
+  holderCount.textContent = 'Indexing…';
+  holderTransferCount.textContent = Number(payload?.summary?.transferCount || 0).toLocaleString();
+  holderIndexedBlock.textContent = payload?.summary?.indexedBlock == null
+    ? 'Starting…'
+    : Number(payload.summary.indexedBlock).toLocaleString();
+  holderStatus.textContent = payload?.message || 'Building the public MATT holder directory…';
+  holderStatus.classList.remove('error');
+  holderPageSummary.textContent = 'The directory will appear automatically when indexing finishes.';
+  holderEmpty.hidden = true;
+  loadMoreHoldersButton.hidden = true;
+  refreshHoldersButton.textContent = 'Indexing…';
+  scheduleHolderRetry();
+}
+
 function updateHolderSummary(payload) {
+  holderIndexing = false;
   holderCount.textContent = Number(payload.summary.holderCount).toLocaleString();
   holderTransferCount.textContent = Number(payload.summary.transferCount).toLocaleString();
   holderIndexedBlock.textContent = Number(payload.summary.indexedBlock).toLocaleString();
   holderMatchingCount = Number(payload.summary.matchingCount);
+  refreshHoldersButton.textContent = 'Refresh directory';
 }
 
 function updateHolderPagination() {
@@ -460,9 +485,10 @@ function updateHolderPagination() {
   loadMoreHoldersButton.disabled = false;
 }
 
-async function loadHolders({ reset = true } = {}) {
+async function loadHolders({ reset = true, automatic = false } = {}) {
   if (holderAbortController) holderAbortController.abort();
   holderAbortController = new AbortController();
+  if (!automatic) clearHolderRetry();
 
   if (reset) {
     holderOffset = 0;
@@ -475,7 +501,7 @@ async function loadHolders({ reset = true } = {}) {
   holderEmpty.hidden = true;
   holderStatus.classList.remove('error');
   holderStatus.textContent = reset
-    ? 'Loading the public holder directory. The first index after a deployment may take a moment.'
+    ? 'Loading the public holder directory…'
     : 'Loading more holders…';
 
   try {
@@ -490,19 +516,27 @@ async function loadHolders({ reset = true } = {}) {
       signal: holderAbortController.signal
     });
     const payload = await response.json().catch(() => ({}));
+
+    if (response.status === 202 || payload.status === 'INDEXING') {
+      showIndexingState(payload);
+      return;
+    }
     if (!response.ok) throw new Error(payload.message || `Holder API returned ${response.status}`);
 
+    clearHolderRetry();
     updateHolderSummary(payload);
     for (const holder of payload.holders) holderTableBody.append(renderHolderRow(holder));
-
     holderReturned += payload.holders.length;
     holderOffset += payload.holders.length;
     holderHasMore = Boolean(payload.pagination.hasMore);
     holderEmpty.hidden = holderReturned !== 0;
     holderStatus.textContent = `Directory updated ${new Date(payload.summary.updatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} through Ronin block ${Number(payload.summary.indexedBlock).toLocaleString()}.`;
     updateHolderPagination();
+    highlightConnectedHolderRows();
   } catch (error) {
     if (error?.name === 'AbortError') return;
+    holderIndexing = false;
+    refreshHoldersButton.textContent = 'Refresh directory';
     holderStatus.textContent = `${error?.message || 'The holder directory could not load.'} Try again shortly.`;
     holderStatus.classList.add('error');
     if (holderReturned === 0) holderEmpty.hidden = false;
@@ -525,6 +559,15 @@ async function loadConnectedHolderRank(account) {
     const params = new URLSearchParams({ limit: '10', offset: '0', q: expectedAccount });
     const response = await fetch(`/api/holders?${params}`, { cache: 'no-store' });
     const payload = await response.json().catch(() => ({}));
+    if (response.status === 202 || payload.status === 'INDEXING') {
+      holderRank.textContent = 'Indexing…';
+      connectedHolderTitle.textContent = 'Your rank is being indexed';
+      connectedHolderDetail.textContent = payload.message || 'The public holder directory is still building. Your rank will appear automatically.';
+      setTimeout(() => {
+        if (currentAccount?.toLowerCase() === expectedAccount) loadConnectedHolderRank(expectedAccount);
+      }, HOLDER_RETRY_MS);
+      return;
+    }
     if (!response.ok) throw new Error(payload.message || 'Rank lookup failed');
     if (currentAccount?.toLowerCase() !== expectedAccount) return;
 
@@ -571,25 +614,27 @@ missionFlipButton.addEventListener('click', () => {
 });
 
 missionVerifyLink.addEventListener('click', () => {
-  if (!markDailyMission('verify')) missionReset.textContent = 'Connect with WalletConnect before completing daily missions.';
+  if (!markDailyMission('verify')) {
+    missionReset.textContent = 'Connect with WalletConnect before completing daily missions.';
+  }
 });
 
 refreshHoldersButton.addEventListener('click', () => loadHolders({ reset: true }));
 loadMoreHoldersButton.addEventListener('click', () => loadHolders({ reset: false }));
-
-holderSearchInput.addEventListener('input', () => {
-  holderQuery = holderSearchInput.value.trim();
-  holderClearSearch.hidden = !holderQuery;
-  clearTimeout(holderSearchTimer);
-  holderSearchTimer = setTimeout(() => loadHolders({ reset: true }), 350);
-});
-
 holderClearSearch.addEventListener('click', () => {
   holderSearchInput.value = '';
   holderQuery = '';
   holderClearSearch.hidden = true;
-  holderSearchInput.focus();
   loadHolders({ reset: true });
+});
+
+holderSearchInput.addEventListener('input', () => {
+  holderClearSearch.hidden = holderSearchInput.value.length === 0;
+  if (holderSearchTimer) clearTimeout(holderSearchTimer);
+  holderSearchTimer = setTimeout(() => {
+    holderQuery = holderSearchInput.value.trim().toLowerCase();
+    loadHolders({ reset: true });
+  }, 300);
 });
 
 let choice = 'heads';
@@ -618,10 +663,11 @@ function updateStats() {
 for (const button of document.querySelectorAll('.choice')) {
   button.addEventListener('click', () => {
     document.querySelectorAll('.choice').forEach(item => {
-      const active = item === button;
-      item.classList.toggle('active', active);
-      item.setAttribute('aria-pressed', String(active));
+      item.classList.remove('active');
+      item.setAttribute('aria-pressed', 'false');
     });
+    button.classList.add('active');
+    button.setAttribute('aria-pressed', 'true');
     choice = button.dataset.choice;
   });
 }
@@ -663,6 +709,11 @@ setInterval(() => {
     renderMissions();
   }
 }, 60_000);
+
+window.addEventListener('beforeunload', () => {
+  clearHolderRetry();
+  if (holderAbortController) holderAbortController.abort();
+});
 
 updateStats();
 renderMissions();
