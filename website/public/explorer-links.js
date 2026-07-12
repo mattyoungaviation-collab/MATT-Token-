@@ -37,22 +37,31 @@ explorerLinkObserver.observe(document.documentElement, {
   attributeFilter: ['href']
 });
 
-function loadMattCoinFlip() {
+function loadScript(source) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = source;
+    script.addEventListener('load', resolve, { once: true });
+    script.addEventListener('error', () => reject(new Error(`Could not load ${source}`)), { once: true });
+    document.body.append(script);
+  });
+}
+
+async function loadMattCoinFlip() {
   if (!document.getElementById('coin-flip')) return;
 
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
-  stylesheet.href = '/coin-game.css?v=1';
+  stylesheet.href = '/coin-game.css?v=2';
   document.head.append(stylesheet);
 
-  const configScript = document.createElement('script');
-  configScript.src = '/coin-game-config.js?v=1';
-  configScript.addEventListener('load', () => {
-    const gameScript = document.createElement('script');
-    gameScript.src = '/coin-game.js?v=1';
-    document.body.append(gameScript);
-  });
-  document.body.append(configScript);
+  try {
+    await loadScript('/walletconnect-game-fix.js?v=2');
+    await loadScript('/coin-game-config.js?v=2');
+    await loadScript('/coin-game.js?v=2');
+  } catch (error) {
+    console.error('MATT coin flip failed to load:', error);
+  }
 }
 
 loadMattCoinFlip();
