@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>MATT Hub | Built by Matt. Backed by Matt.</title>
-  <meta name="description" content="Connect your Ronin wallet, view your MATT balance, and flip the MATT coin.">
+  <meta name="description" content="Connect with WalletConnect, view your MATT balance, flip the MATT coin, and complete daily missions.">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/hub.css">
 </head>
@@ -23,7 +23,7 @@
       <div>
         <p class="eyebrow">WELCOME TO</p>
         <h1>MATT HUB</h1>
-        <p class="lead">The home of MATT utility on Ronin. Connect your wallet, check your status, and flip the coin.</p>
+        <p class="lead">The home of MATT utility on Ronin. Connect your wallet, check your status, flip the coin, and complete daily missions.</p>
         <p class="wallet-status" id="wallet-status">Wallet not connected.</p>
       </div>
       <img src="/assets/matt-logo.gif" alt="Pixel-art MATT mascot">
@@ -48,7 +48,7 @@
       </article>
     </section>
 
-    <section class="flip-section">
+    <section class="flip-section" id="coin-flip">
       <div class="section-heading">
         <p class="eyebrow">MATT UTILITY #1</p>
         <h2>Flip the Coin</h2>
@@ -74,6 +74,59 @@
           <div><span>Best streak</span><strong id="best-streak">0</strong></div>
         </div>
       </div>
+    </section>
+
+    <section class="missions-section" id="daily-missions">
+      <div class="section-heading">
+        <p class="eyebrow">MATT UTILITY #2</p>
+        <h2>Daily Missions</h2>
+        <p>Complete all three missions once per day. Progress is tied to the connected wallet and saved on this browser.</p>
+      </div>
+
+      <div class="mission-summary">
+        <div class="mission-summary-row">
+          <span>Today's progress</span>
+          <strong id="mission-progress">0 / 3 COMPLETE</strong>
+        </div>
+        <div class="mission-meter" aria-hidden="true">
+          <span id="mission-meter-fill"></span>
+        </div>
+        <p id="mission-reset">Connect with WalletConnect to begin today’s missions.</p>
+      </div>
+
+      <div class="mission-list">
+        <article class="mission-card" data-mission="connect">
+          <span class="mission-number">01</span>
+          <div>
+            <h3>Connect Wallet</h3>
+            <p>Connect a Ronin account through WalletConnect.</p>
+          </div>
+          <strong class="mission-status">LOCKED</strong>
+          <button class="mission-action" id="mission-connect-button" type="button">CONNECT</button>
+        </article>
+
+        <article class="mission-card" data-mission="flip">
+          <span class="mission-number">02</span>
+          <div>
+            <h3>Flip the MATT Coin</h3>
+            <p>Complete at least one coin flip today.</p>
+          </div>
+          <strong class="mission-status">LOCKED</strong>
+          <button class="mission-action" id="mission-flip-button" type="button">GO TO COIN</button>
+        </article>
+
+        <article class="mission-card" data-mission="verify">
+          <span class="mission-number">03</span>
+          <div>
+            <h3>Verify the Contract</h3>
+            <p>Open the official Ronin Explorer contract page.</p>
+          </div>
+          <strong class="mission-status">LOCKED</strong>
+          <a class="mission-action" id="mission-verify-link" href="https://app.roninchain.com/explorer/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener">VERIFY CONTRACT</a>
+        </article>
+      </div>
+
+      <p class="mission-notice">Mission progress is currently device-based. These missions do not distribute tokens and never request an approval or transaction signature.</p>
     </section>
 
     <section class="official-links">
