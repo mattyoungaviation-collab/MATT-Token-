@@ -52,13 +52,13 @@ async function loadMattCoinFlip() {
 
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
-  stylesheet.href = '/coin-game.css?v=2';
+  stylesheet.href = '/coin-game.css?v=3';
   document.head.append(stylesheet);
 
   try {
-    await loadScript('/walletconnect-game-fix.js?v=2');
-    await loadScript('/coin-game-config.js?v=2');
-    await loadScript('/coin-game.js?v=2');
+    await loadScript('/walletconnect-game-fix.js?v=3');
+    await loadScript('/coin-game-config.js?v=3');
+    await loadScript('/coin-game.js?v=3');
   } catch (error) {
     console.error('MATT coin flip failed to load:', error);
   }
