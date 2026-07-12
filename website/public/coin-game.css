@@ -1,0 +1,319 @@
+.onchain-game-card {
+  max-width: 760px;
+}
+
+.onchain-bet-panel {
+  display: grid;
+  gap: 16px;
+  margin: 28px 0 20px;
+  text-align: left;
+}
+
+.coin-contract-strip,
+.coin-game-info-grid,
+.coin-game-flow,
+.coin-game-warning {
+  background: #0c111c;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.coin-contract-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 15px;
+}
+
+.coin-contract-strip span {
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.coin-contract-strip a,
+.coin-contract-strip strong {
+  color: var(--gold);
+  font-size: .86rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.coin-contract-strip a:hover {
+  text-decoration: underline;
+}
+
+.coin-amount-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.coin-amount-field {
+  display: grid;
+  gap: 7px;
+}
+
+.coin-amount-field > span {
+  color: var(--muted);
+  font-size: .84rem;
+  font-weight: 800;
+}
+
+.coin-amount-input-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  background: #080c15;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.coin-amount-input-wrap:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px #f5bd3620;
+}
+
+.coin-amount-input-wrap input {
+  min-width: 0;
+  width: 100%;
+  padding: 14px 15px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.08rem;
+  font-weight: 850;
+}
+
+.coin-amount-input-wrap span {
+  padding-right: 15px;
+  color: var(--gold);
+  font-size: .82rem;
+  font-weight: 950;
+}
+
+.coin-max-button,
+.coin-quick-button,
+.coin-secondary-action {
+  cursor: pointer;
+  background: #202a3c;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 900;
+}
+
+.coin-max-button {
+  align-self: end;
+  padding: 14px 17px;
+}
+
+.coin-max-button:hover,
+.coin-quick-button:hover,
+.coin-secondary-action:hover {
+  border-color: var(--gold);
+}
+
+.coin-quick-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.coin-quick-button {
+  padding: 10px 8px;
+  font-size: .78rem;
+}
+
+.coin-game-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  overflow: hidden;
+}
+
+.coin-game-info-grid > div {
+  min-width: 0;
+  padding: 13px 14px;
+}
+
+.coin-game-info-grid > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.coin-game-info-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.coin-game-info-grid strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: .9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coin-game-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  overflow: hidden;
+}
+
+.coin-game-step {
+  position: relative;
+  min-height: 88px;
+  padding: 14px;
+  opacity: .55;
+}
+
+.coin-game-step + .coin-game-step {
+  border-left: 1px solid var(--line);
+}
+
+.coin-game-step.active,
+.coin-game-step.complete {
+  opacity: 1;
+}
+
+.coin-game-step.active {
+  background: #2e7cff16;
+}
+
+.coin-game-step.complete {
+  background: #65e89a12;
+}
+
+.coin-game-step b {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--gold);
+  font-size: .75rem;
+  letter-spacing: .1em;
+}
+
+.coin-game-step span {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.coin-game-warning {
+  padding: 14px 15px;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.coin-game-warning strong {
+  color: var(--text);
+}
+
+.coin-legal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.coin-legal-check input {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  accent-color: var(--gold);
+}
+
+.coin-secondary-action {
+  width: min(100%, 390px);
+  margin: 0 auto;
+  padding: 12px 18px;
+}
+
+.coin-secondary-action[hidden] {
+  display: none;
+}
+
+.coin-game-progress {
+  min-height: 24px;
+  margin: 0;
+  color: var(--muted);
+  font-size: .84rem;
+  text-align: center;
+}
+
+.coin-game-progress.error {
+  color: #ff8d8d;
+}
+
+.coin-game-progress.good {
+  color: var(--good);
+}
+
+.coin-secret-alert {
+  border-color: #8f6d24;
+  background: #f5bd360d;
+}
+
+.coin-game-disabled {
+  opacity: .65;
+}
+
+@media (max-width: 650px) {
+  .coin-quick-row,
+  .coin-game-info-grid,
+  .coin-game-flow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .coin-game-info-grid > div + div,
+  .coin-game-step + .coin-game-step {
+    border-left: 0;
+  }
+
+  .coin-game-info-grid > div:nth-child(even),
+  .coin-game-step:nth-child(even) {
+    border-left: 1px solid var(--line);
+  }
+
+  .coin-game-info-grid > div:nth-child(n + 3),
+  .coin-game-step:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+
+  .coin-game-step:last-child {
+    grid-column: 1 / -1;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .coin-amount-row,
+  .coin-quick-row,
+  .coin-game-info-grid,
+  .coin-game-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .coin-max-button {
+    width: 100%;
+  }
+
+  .coin-game-info-grid > div + div,
+  .coin-game-info-grid > div:nth-child(even),
+  .coin-game-step + .coin-game-step,
+  .coin-game-step:nth-child(even) {
+    border-left: 0;
+  }
+
+  .coin-game-info-grid > div:nth-child(n + 2),
+  .coin-game-step:nth-child(n + 2) {
+    border-top: 1px solid var(--line);
+  }
+}
