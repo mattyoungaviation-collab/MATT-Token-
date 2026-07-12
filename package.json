@@ -2,7 +2,7 @@
   "name": "matt-token",
   "version": "1.0.0",
   "private": true,
-  "description": "Official open-source contract and website for MATT on Ronin.",
+  "description": "Official open-source contracts and website for MATT on Ronin.",
   "license": "MIT",
   "scripts": {
     "compile": "hardhat compile",
@@ -10,11 +10,15 @@
     "coverage": "hardhat coverage",
     "deploy:saigon": "hardhat deploy --network saigon --tags MattToken",
     "deploy:ronin": "hardhat deploy --network ronin --tags MattToken",
+    "deploy:coinflip:saigon": "hardhat deploy --network saigon --tags MattCoinFlip",
+    "deploy:coinflip:ronin": "hardhat deploy --network ronin --tags MattCoinFlip",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
     "site": "node website/server.js",
     "inspect:saigon": "hardhat run scripts/inspect-deployment.js --network saigon",
-    "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin"
+    "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin",
+    "inspect:coinflip:saigon": "hardhat run scripts/inspect-coin-flip.js --network saigon",
+    "inspect:coinflip:ronin": "hardhat run scripts/inspect-coin-flip.js --network ronin"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
