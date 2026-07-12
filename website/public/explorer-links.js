@@ -36,3 +36,23 @@ explorerLinkObserver.observe(document.documentElement, {
   attributes: true,
   attributeFilter: ['href']
 });
+
+function loadMattCoinFlip() {
+  if (!document.getElementById('coin-flip')) return;
+
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.href = '/coin-game.css?v=1';
+  document.head.append(stylesheet);
+
+  const configScript = document.createElement('script');
+  configScript.src = '/coin-game-config.js?v=1';
+  configScript.addEventListener('load', () => {
+    const gameScript = document.createElement('script');
+    gameScript.src = '/coin-game.js?v=1';
+    document.body.append(gameScript);
+  });
+  document.body.append(configScript);
+}
+
+loadMattCoinFlip();
