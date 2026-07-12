@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MATT Hub | Built by Matt. Backed by Matt.</title>
+  <meta name="description" content="Connect your Ronin wallet, view your MATT balance, and flip the MATT coin.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/hub.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">MATT</a>
+    <nav>
+      <a href="/">Home</a>
+      <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Buy MATT</a>
+      <button id="connect-wallet" type="button">Connect Ronin Wallet</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">WELCOME TO</p>
+        <h1>MATT HUB</h1>
+        <p class="lead">The home of MATT utility on Ronin. Connect your wallet, check your status, and flip the coin.</p>
+        <p class="wallet-status" id="wallet-status">Wallet not connected.</p>
+      </div>
+      <img src="/assets/matt-logo.gif" alt="Pixel-art MATT mascot">
+    </section>
+
+    <section class="dashboard">
+      <article class="stat-card">
+        <span>Connected wallet</span>
+        <strong id="wallet-address">Not connected</strong>
+      </article>
+      <article class="stat-card">
+        <span>MATT balance</span>
+        <strong id="matt-balance">—</strong>
+      </article>
+      <article class="stat-card">
+        <span>RON balance</span>
+        <strong id="ron-balance">—</strong>
+      </article>
+      <article class="stat-card">
+        <span>MATT level</span>
+        <strong id="holder-level">Connect wallet</strong>
+      </article>
+    </section>
+
+    <section class="flip-section">
+      <div class="section-heading">
+        <p class="eyebrow">MATT UTILITY #1</p>
+        <h2>Flip the Coin</h2>
+        <p>This first version is free to play. It does not request token approval and cannot move your MATT.</p>
+      </div>
+
+      <div class="game-card">
+        <div class="coin" id="coin" aria-label="MATT coin">
+          <div class="coin-face">M</div>
+        </div>
+
+        <div class="choice-row" role="group" aria-label="Choose heads or tails">
+          <button class="choice active" data-choice="heads" type="button">Heads</button>
+          <button class="choice" data-choice="tails" type="button">Tails</button>
+        </div>
+
+        <button class="flip-button" id="flip-button" type="button">FLIP THE MATT COIN</button>
+        <p class="result" id="flip-result" aria-live="polite">Choose a side and flip.</p>
+
+        <div class="game-stats">
+          <div><span>Flips</span><strong id="flip-count">0</strong></div>
+          <div><span>Wins</span><strong id="win-count">0</strong></div>
+          <div><span>Best streak</span><strong id="best-streak">0</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="official-links">
+      <p class="eyebrow">OFFICIAL LINKS</p>
+      <h2>Verify everything.</h2>
+      <div class="link-grid">
+        <a href="https://app.roninchain.com/explorer/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener">Verified Contract</a>
+        <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Katana Swap</a>
+        <a href="https://www.geckoterminal.com/ronin/pools/0xa517e05e96728e80284f2ae157ddf309449d7ce8" target="_blank" rel="noopener">GeckoTerminal</a>
+        <a href="https://github.com/mattyoungaviation-collab/MATT-Token-" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <a href="/">← Back to MATT Token</a>
+    <span>Built by Matt. Backed by Matt.</span>
+  </footer>
+
+  <script src="/hub.js"></script>
+</body>
+</html>
