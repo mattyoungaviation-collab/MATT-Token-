@@ -11,12 +11,17 @@
   const GAME_ABI = [
     'function bets(uint256) view returns (address player,uint128 amount,uint64 entropyBlock,uint64 revealDeadlineBlock,uint8 choice,uint8 state,bytes32 commitment)'
   ];
+  const SPIN_DURATION_MS = 3200;
+  const REDUCED_MOTION_DURATION_MS = 1400;
+  const LAND_DURATION_MS = 520;
 
   let ethers;
   let game;
   let rpcId = 0;
   let animatingBetId = null;
   let lastAnimatedBetId = null;
+
+  const sleep = milliseconds => new Promise(resolve => window.setTimeout(resolve, milliseconds));
 
   async function rpc(method, params = []) {
     const response = await fetch('/api/rpc', {
@@ -44,15 +49,53 @@
     return `${BigInt(whole).toLocaleString()}${shortFraction ? `.${shortFraction}` : ''} MATT`;
   }
 
-  function triggerCoinAnimation(outcome) {
-    coin.classList.remove('flipping');
-    void coin.offsetWidth;
-    coin.classList.add('flipping');
+  async function triggerCoinAnimation(outcome, betId) {
+    const face = coin.querySelector('.coin-face');
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? REDUCED_MOTION_DURATION_MS
+      : SPIN_DURATION_MS;
 
-    window.setTimeout(() => {
-      const face = coin.querySelector('.coin-face');
-      if (face) face.textContent = outcome === 0 ? 'M' : 'T';
-    }, 420);
+    coin.getAnimations().forEach(animation => animation.cancel());
+    coin.classList.remove('flipping');
+    coin.style.transform = 'translateY(0) rotateX(0deg) rotateY(0deg) scale(1)';
+    coin.setAttribute('aria-label', 'MATT coin spinning');
+    if (face) face.textContent = '?';
+
+    result.className = 'result';
+    result.textContent = 'RONIN RESULT LOCKED — THE MATT COIN IS SPINNING…';
+    progress.textContent = `Bet #${betId} settled on Ronin. The result is locked — watch the coin land.`;
+
+    const spin = coin.animate([
+      { transform: 'translateY(0) rotateX(0deg) rotateY(0deg) scale(1)', filter: 'brightness(1)', offset: 0 },
+      { transform: 'translateY(-28px) rotateX(120deg) rotateY(540deg) scale(1.05)', filter: 'brightness(1.15)', offset: 0.16 },
+      { transform: 'translateY(-92px) rotateX(420deg) rotateY(1620deg) scale(1.14)', filter: 'brightness(1.35)', offset: 0.44 },
+      { transform: 'translateY(-58px) rotateX(650deg) rotateY(2520deg) scale(1.1)', filter: 'brightness(1.2)', offset: 0.68 },
+      { transform: 'translateY(-12px) rotateX(710deg) rotateY(3240deg) scale(1.03)', filter: 'brightness(1.08)', offset: 0.88 },
+      { transform: 'translateY(0) rotateX(720deg) rotateY(3600deg) scale(1)', filter: 'brightness(1)', offset: 1 }
+    ], {
+      duration,
+      easing: 'cubic-bezier(.12,.72,.18,1)',
+      fill: 'forwards'
+    });
+
+    await spin.finished;
+    if (face) face.textContent = outcome === 0 ? 'M' : 'T';
+    coin.setAttribute('aria-label', outcome === 0 ? 'MATT coin landed on heads' : 'MATT coin landed on tails');
+    spin.cancel();
+    coin.style.transform = 'translateY(0) rotateX(0deg) rotateY(0deg) scale(1)';
+
+    const landing = coin.animate([
+      { transform: 'translateY(-8px) scale(1.04)', offset: 0 },
+      { transform: 'translateY(6px) scale(.96)', offset: 0.42 },
+      { transform: 'translateY(-3px) scale(1.015)', offset: 0.7 },
+      { transform: 'translateY(0) scale(1)', offset: 1 }
+    ], {
+      duration: LAND_DURATION_MS,
+      easing: 'cubic-bezier(.2,.9,.3,1.25)'
+    });
+
+    await landing.finished;
+    await sleep(180);
   }
 
   async function animateSettledBet(betId) {
@@ -74,12 +117,13 @@
 
       const won = state === 2;
       const outcome = won ? choice : (choice === 0 ? 1 : 0);
-      triggerCoinAnimation(outcome);
+      await triggerCoinAnimation(outcome, normalizedId);
 
       result.className = won ? 'result win' : 'result';
       result.textContent = won
         ? `${outcome === 0 ? 'HEADS' : 'TAILS'} — YOU WON ${formatMatt(amount * 2n)}.`
         : `${outcome === 0 ? 'HEADS' : 'TAILS'} — ${formatMatt(amount)} SENT TO TREASURY.`;
+      progress.textContent = `Bet #${normalizedId} settled on Ronin. The coin landed on ${outcome === 0 ? 'HEADS' : 'TAILS'}.`;
 
       lastAnimatedBetId = normalizedId;
     } catch (error) {
