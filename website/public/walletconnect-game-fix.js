@@ -1,19 +1,17 @@
 (() => {
   'use strict';
 
-  const PERMISSIONS_VERSION = 3;
+  const PERMISSIONS_VERSION = 4;
   const REQUIRED_TRANSACTION_METHOD = 'eth_sendTransaction';
-  const SIGNING_METHODS = [
-    'eth_signTypedData_v4',
+  const DISABLED_PERMIT_METHODS = new Set([
+    'eth_signTypedData',
     'eth_signTypedData_v3',
-    'eth_signTypedData'
-  ];
+    'eth_signTypedData_v4'
+  ]);
   const RONIN_BETTING_METHODS = [
     'eth_accounts',
     'eth_requestAccounts',
     REQUIRED_TRANSACTION_METHOD,
-    ...SIGNING_METHODS,
-    'personal_sign',
     'wallet_switchEthereumChain'
   ];
   const RONIN_BETTING_EVENTS = [
@@ -34,14 +32,16 @@
     return !provider?.session || approvedMethods(provider).has(REQUIRED_TRANSACTION_METHOD);
   }
 
-  function sessionCanSignPermit(provider = walletConnectProvider) {
-    if (!provider?.session) return true;
-    const methods = approvedMethods(provider);
-    return SIGNING_METHODS.some(method => methods.has(method));
-  }
-
-  function sessionCanBet(provider = walletConnectProvider) {
-    return sessionCanSendTransactions(provider) && sessionCanSignPermit(provider);
+  function disablePermitSigning(provider) {
+    if (!provider?.request || provider.__mattPermitDisabled) return;
+    const originalRequest = provider.request.bind(provider);
+    provider.request = async request => {
+      if (DISABLED_PERMIT_METHODS.has(request?.method)) {
+        throw new Error('ERC-2612 permit is disabled for Ronin Wallet. Continue with the MATT approval transaction.');
+      }
+      return originalRequest(request);
+    };
+    provider.__mattPermitDisabled = true;
   }
 
   async function closeOldSession(provider) {
@@ -82,12 +82,13 @@
       });
 
       walletConnectProvider.__mattPermissionsVersion = PERMISSIONS_VERSION;
+      disablePermitSigning(walletConnectProvider);
       bindWalletConnectEvents();
 
       if (walletConnectProvider.session) {
-        if (!sessionCanBet(walletConnectProvider)) {
+        if (!sessionCanSendTransactions(walletConnectProvider)) {
           await closeOldSession(walletConnectProvider);
-          resetWalletDisplay('WalletConnect permissions were narrowed for Ronin Wallet. Connect again and approve the new betting permissions.');
+          resetWalletDisplay('WalletConnect permissions were updated. Connect again and approve transaction access.');
           connectButton.textContent = 'Reconnect WalletConnect';
           return;
         }
@@ -112,7 +113,7 @@
     const providerNeedsUpgrade =
       !walletConnectProvider ||
       walletConnectProvider.__mattPermissionsVersion !== PERMISSIONS_VERSION ||
-      !sessionCanBet(walletConnectProvider);
+      !sessionCanSendTransactions(walletConnectProvider);
 
     if (providerNeedsUpgrade) {
       await closeOldSession(walletConnectProvider);
@@ -121,6 +122,8 @@
       await initializeWalletConnectForBetting();
       if (!walletConnectProvider) return;
     }
+
+    disablePermitSigning(walletConnectProvider);
 
     if (walletConnectProvider.session) {
       const account = await findConnectedAccount();
@@ -133,16 +136,17 @@
     connectButton.disabled = true;
     connectButton.setAttribute('aria-busy', 'true');
     connectButton.textContent = 'Opening WalletConnect…';
-    walletStatus.textContent = 'Choose Ronin Wallet or scan the WalletConnect QR code, then approve transaction and typed-data signing permissions.';
+    walletStatus.textContent = 'Choose Ronin Wallet or scan the WalletConnect QR code, then approve transaction access.';
     walletStatus.classList.remove('error');
 
     try {
       await walletConnectProvider.connect();
-      if (!sessionCanBet(walletConnectProvider)) {
+      if (!sessionCanSendTransactions(walletConnectProvider)) {
         await closeOldSession(walletConnectProvider);
-        throw new Error('Ronin Wallet did not approve both transaction and permit-signature requests. Reconnect and approve the requested permissions.');
+        throw new Error('Ronin Wallet did not approve transaction requests. Reconnect and approve the requested access.');
       }
 
+      disablePermitSigning(walletConnectProvider);
       const account = await findConnectedAccount();
       if (!account) throw new Error('The wallet did not approve a Ronin Mainnet account');
       await showConnectedAccount(account);
@@ -160,7 +164,10 @@
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    if (!walletConnectProvider || walletConnectProvider.__mattPermissionsVersion === PERMISSIONS_VERSION) return;
+    if (!walletConnectProvider || walletConnectProvider.__mattPermissionsVersion === PERMISSIONS_VERSION) {
+      disablePermitSigning(walletConnectProvider);
+      return;
+    }
 
     const hadSession = Boolean(walletConnectProvider.session);
     await closeOldSession(walletConnectProvider);
@@ -168,7 +175,7 @@
     currentAccount = null;
     resetWalletDisplay(
       hadSession
-        ? 'WalletConnect permissions were updated for Ronin Wallet. Reconnect to enable betting transactions.'
+        ? 'WalletConnect was updated to use normal MATT approval transactions. Reconnect to continue.'
         : 'WalletConnect is ready. Connect your wallet to enable betting transactions.'
     );
     connectButton.textContent = hadSession ? 'Reconnect WalletConnect' : 'Connect WalletConnect';
