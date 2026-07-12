@@ -1,12 +1,30 @@
 (() => {
   'use strict';
 
-  const PERMISSIONS_VERSION = 4;
+  const PERMISSIONS_VERSION = 5;
   const REQUIRED_TRANSACTION_METHOD = 'eth_sendTransaction';
   const DISABLED_PERMIT_METHODS = new Set([
     'eth_signTypedData',
     'eth_signTypedData_v3',
     'eth_signTypedData_v4'
+  ]);
+  const PUBLIC_RPC_METHODS = new Set([
+    'eth_blockNumber',
+    'eth_call',
+    'eth_chainId',
+    'eth_estimateGas',
+    'eth_feeHistory',
+    'eth_gasPrice',
+    'eth_getBalance',
+    'eth_getBlockByHash',
+    'eth_getBlockByNumber',
+    'eth_getCode',
+    'eth_getLogs',
+    'eth_getTransactionByHash',
+    'eth_getTransactionCount',
+    'eth_getTransactionReceipt',
+    'eth_maxPriorityFeePerGas',
+    'net_version'
   ]);
   const RONIN_BETTING_METHODS = [
     'eth_accounts',
@@ -21,6 +39,8 @@
     'connect'
   ];
 
+  let publicRpcRequestId = 0;
+
   function approvedMethods(provider = walletConnectProvider) {
     const namespaces = provider?.session?.namespaces || {};
     return new Set(
@@ -32,16 +52,54 @@
     return !provider?.session || approvedMethods(provider).has(REQUIRED_TRANSACTION_METHOD);
   }
 
-  function disablePermitSigning(provider) {
-    if (!provider?.request || provider.__mattPermitDisabled) return;
+  async function requestPublicRoninRpc(request) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+
+    try {
+      const response = await fetch(RONIN_RPC_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: ++publicRpcRequestId,
+          method: request.method,
+          params: request.params || []
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) throw new Error(`Ronin RPC returned HTTP ${response.status}`);
+      const payload = await response.json();
+      if (payload.error) throw new Error(payload.error.message || `Ronin RPC failed during ${request.method}`);
+      return payload.result;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw new Error(`Ronin RPC timed out during ${request.method}`);
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function patchProviderRequests(provider) {
+    if (!provider?.request || provider.__mattRequestPatched) return;
     const originalRequest = provider.request.bind(provider);
+
     provider.request = async request => {
-      if (DISABLED_PERMIT_METHODS.has(request?.method)) {
+      const method = request?.method;
+
+      if (DISABLED_PERMIT_METHODS.has(method)) {
         throw new Error('ERC-2612 permit is disabled for Ronin Wallet. Continue with the MATT approval transaction.');
       }
+
+      if (PUBLIC_RPC_METHODS.has(method)) {
+        return requestPublicRoninRpc(request);
+      }
+
       return originalRequest(request);
     };
-    provider.__mattPermitDisabled = true;
+
+    provider.__mattRequestPatched = true;
   }
 
   async function closeOldSession(provider) {
@@ -82,7 +140,7 @@
       });
 
       walletConnectProvider.__mattPermissionsVersion = PERMISSIONS_VERSION;
-      disablePermitSigning(walletConnectProvider);
+      patchProviderRequests(walletConnectProvider);
       bindWalletConnectEvents();
 
       if (walletConnectProvider.session) {
@@ -123,7 +181,7 @@
       if (!walletConnectProvider) return;
     }
 
-    disablePermitSigning(walletConnectProvider);
+    patchProviderRequests(walletConnectProvider);
 
     if (walletConnectProvider.session) {
       const account = await findConnectedAccount();
@@ -146,7 +204,7 @@
         throw new Error('Ronin Wallet did not approve transaction requests. Reconnect and approve the requested access.');
       }
 
-      disablePermitSigning(walletConnectProvider);
+      patchProviderRequests(walletConnectProvider);
       const account = await findConnectedAccount();
       if (!account) throw new Error('The wallet did not approve a Ronin Mainnet account');
       await showConnectedAccount(account);
@@ -165,7 +223,7 @@
     }
 
     if (!walletConnectProvider || walletConnectProvider.__mattPermissionsVersion === PERMISSIONS_VERSION) {
-      disablePermitSigning(walletConnectProvider);
+      patchProviderRequests(walletConnectProvider);
       return;
     }
 
@@ -175,7 +233,7 @@
     currentAccount = null;
     resetWalletDisplay(
       hadSession
-        ? 'WalletConnect was updated to use normal MATT approval transactions. Reconnect to continue.'
+        ? 'WalletConnect transaction tracking was upgraded. Reconnect to continue.'
         : 'WalletConnect is ready. Connect your wallet to enable betting transactions.'
     );
     connectButton.textContent = hadSession ? 'Reconnect WalletConnect' : 'Connect WalletConnect';
