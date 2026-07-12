@@ -14,7 +14,7 @@
     "deploy:coinflip:ronin": "hardhat deploy --network ronin --tags MattCoinFlip",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
-    "site": "node website/server.js",
+    "site": "node website/server-proxy.js",
     "inspect:saigon": "hardhat run scripts/inspect-deployment.js --network saigon",
     "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin",
     "inspect:coinflip:saigon": "hardhat run scripts/inspect-coin-flip.js --network saigon",
