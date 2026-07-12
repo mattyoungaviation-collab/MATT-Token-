@@ -2,7 +2,7 @@
 
 **Built by Matt. Backed by Matt.**
 
-MATT is a fixed-supply community ERC-20 for Ronin. The contract is deliberately minimal and has no administrator or owner controls.
+MATT is a fixed-supply community ERC-20 for Ronin. The token contract is deliberately minimal and has no administrator or owner controls.
 
 ## Final specification
 
@@ -15,11 +15,27 @@ MATT is a fixed-supply community ERC-20 for Ronin. The contract is deliberately 
 - Taxes, blacklist, pause, wallet limit, external minting, upgrades: **none**
 - License: MIT
 
-There is no ownership to renounce because the contract never inherits `Ownable` and exposes no privileged administrative function.
+There is no ownership to renounce because the token contract never inherits `Ownable` and exposes no privileged administrative function.
+
+## MATT Coin Flip
+
+`MattCoinFlip` is a separate optional wagering contract. It does not modify or upgrade MATT.
+
+- Bet range: `1` to `1,000,000 MATT`
+- Correct call: contract pays `2 × stake`
+- Wrong call: stake is transferred to the immutable treasury
+- Randomness design: browser secret commitment plus a future Ronin block hash
+- Settlement: second signed reveal transaction
+- Unrevealed timeout: stake expires to treasury after 200 blocks
+- Solvency: all pending maximum payouts are reserved from owner withdrawals
+
+See [`docs/COIN-FLIP-LAUNCH.md`](docs/COIN-FLIP-LAUNCH.md) before deploying or funding the game.
 
 ## Safety boundary
 
-The repository contains no real private key. Keep the deployment key only in a local `.env` file. Never send a private key or recovery phrase to anyone.
+The repository contains no real private key. Keep deployment keys only in local environment variables. Never send a private key or recovery phrase to anyone.
+
+The coin flip is unaudited wagering software. Test on Saigon, obtain an independent security review, and obtain jurisdiction-specific legal advice before enabling mainnet bets.
 
 ## Local validation
 
@@ -34,19 +50,23 @@ Windows users should follow [`docs/WINDOWS-SAIGON-DEPLOY.md`](docs/WINDOWS-SAIGO
 
 ## Saigon deployment first
 
+Token:
+
 ```bash
 npm run deploy:saigon
 npm run inspect:saigon
 npm run verify:saigon
 ```
 
-Only after the test deployment is verified and fully tested:
+Coin flip:
 
 ```bash
-npm run deploy:ronin
-npm run inspect:ronin
-npm run verify:ronin
+npm run deploy:coinflip:saigon
+npm run inspect:coinflip:saigon
+npm run verify:saigon
 ```
+
+Only after the test deployments are verified and fully tested should the corresponding Ronin commands be used.
 
 ## Website
 
@@ -54,17 +74,17 @@ npm run verify:ronin
 npm run site
 ```
 
-The included `render.yaml` creates a Render service named `matt-token`. After mainnet deployment, replace every `DEPLOYED_CONTRACT_ADDRESS` placeholder before publishing.
+The included `render.yaml` creates a Render service named `matt-token`. The on-chain game remains disabled until its deployed address is entered in `website/public/coin-game-config.js`.
 
 ## Liquidity warning
 
-The current plan is 5,000,000,000 MATT paired with 1 RON. This is an extremely shallow pool. Small trades may create severe price movement, slippage, and misleading percentage gains. Test the exact setup before mainnet.
+MATT launched with shallow RON-side liquidity. Small trades may create severe price movement, slippage, and misleading percentage gains. Review every swap carefully.
 
 ## Visibility
 
 Contract verification, public metadata, a project website, project registration, and active liquidity support legitimate discoverability. They do not guarantee that every Ronin interface will index MATT for name-only search. Until indexed, users may need the verified contract address.
 
-See [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) for the full sequence.
+See [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) for the original token launch sequence.
 
 ## Live Ronin deployment
 
@@ -74,4 +94,4 @@ See [`docs/LAUNCH-CHECKLIST.md`](docs/LAUNCH-CHECKLIST.md) for the full sequence
 - Compiler: Solidity 0.8.28, Cancun, optimizer enabled with 200 runs
 - Initial liquidity allocation: 8,000,000,000 MATT
 - Official X: https://x.com/Crafting_skill
-- Planned website: https://matt-token.onrender.com
+- Website: https://matt-token.onrender.com
