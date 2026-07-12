@@ -3,56 +3,88 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080b12">
   <title>MATT Hub | Built by Matt. Backed by Matt.</title>
-  <meta name="description" content="Connect with WalletConnect, view your MATT balance, flip the MATT coin, and complete daily missions.">
+  <meta name="description" content="Connect with WalletConnect, view your MATT balance and rank, flip the MATT coin, complete daily missions, and explore MATT holders on Ronin.">
+  <meta property="og:title" content="MATT Hub on Ronin">
+  <meta property="og:description" content="Wallet status, daily missions, coin flip, and the live MATT holder directory.">
+  <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/hub.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
   <header class="topbar">
-    <a class="brand" href="/">MATT</a>
-    <nav>
-      <a href="/">Home</a>
-      <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Buy MATT</a>
-      <button id="connect-wallet" type="button">Connect with WalletConnect</button>
+    <a class="brand" href="/" aria-label="MATT Token home">MATT</a>
+    <nav class="desktop-nav" aria-label="MATT Hub sections">
+      <a href="#wallet">Wallet</a>
+      <a href="#coin-flip">Coin Flip</a>
+      <a href="#daily-missions">Missions</a>
+      <a href="#holders">Holders</a>
     </nav>
+    <div class="topbar-actions">
+      <a class="buy-link" href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Buy MATT</a>
+      <button id="connect-wallet" type="button">Connect WalletConnect</button>
+    </div>
   </header>
 
-  <main>
-    <section class="hero">
-      <div>
-        <p class="eyebrow">WELCOME TO</p>
-        <h1>MATT HUB</h1>
-        <p class="lead">The home of MATT utility on Ronin. Connect your wallet, check your status, flip the coin, and complete daily missions.</p>
-        <p class="wallet-status" id="wallet-status">Wallet not connected.</p>
+  <main id="main-content">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">LIVE ON RONIN</p>
+        <h1>MATT<br>HUB</h1>
+        <p class="lead">Your home for MATT utility. Connect through WalletConnect, check your status, complete daily missions, flip the coin, and meet the holders building MATT together.</p>
+        <div class="hero-badges" aria-label="Hub safety details">
+          <span>WalletConnect only</span>
+          <span>Ronin Mainnet</span>
+          <span>Read-only wallet tools</span>
+        </div>
+        <p class="wallet-status" id="wallet-status" role="status" aria-live="polite">Preparing WalletConnect.</p>
       </div>
       <img src="/assets/matt-logo.gif" alt="Pixel-art MATT mascot">
     </section>
 
-    <section class="dashboard">
-      <article class="stat-card">
-        <span>Connected wallet</span>
-        <strong id="wallet-address">Not connected</strong>
-      </article>
-      <article class="stat-card">
-        <span>MATT balance</span>
-        <strong id="matt-balance">—</strong>
-      </article>
-      <article class="stat-card">
-        <span>RON balance</span>
-        <strong id="ron-balance">—</strong>
-      </article>
-      <article class="stat-card">
-        <span>MATT level</span>
-        <strong id="holder-level">Connect wallet</strong>
-      </article>
+    <section class="wallet-section" id="wallet">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">YOUR MATT STATUS</p>
+          <h2>Wallet Dashboard</h2>
+          <p>Public balances are read from Ronin Mainnet. The Hub never requests a token approval or transaction signature.</p>
+        </div>
+        <button class="secondary-button" id="refresh-wallet" type="button" disabled>Refresh balances</button>
+      </div>
+
+      <div class="dashboard">
+        <article class="stat-card">
+          <span>Connected wallet</span>
+          <strong id="wallet-address">Not connected</strong>
+        </article>
+        <article class="stat-card">
+          <span>MATT balance</span>
+          <strong id="matt-balance">—</strong>
+        </article>
+        <article class="stat-card">
+          <span>RON balance</span>
+          <strong id="ron-balance">—</strong>
+        </article>
+        <article class="stat-card">
+          <span>MATT level</span>
+          <strong id="holder-level">Connect wallet</strong>
+        </article>
+        <article class="stat-card accent-card">
+          <span>Holder rank</span>
+          <strong id="holder-rank">Connect wallet</strong>
+        </article>
+      </div>
+      <p class="dashboard-updated" id="wallet-updated" aria-live="polite">Connect to load wallet data.</p>
     </section>
 
     <section class="flip-section" id="coin-flip">
       <div class="section-heading">
         <p class="eyebrow">MATT UTILITY #1</p>
         <h2>Flip the Coin</h2>
-        <p>This first version is free to play. It does not request token approval and cannot move your MATT.</p>
+        <p>Call heads or tails and let the MATT coin decide. This game is free, local-only, and cannot move your tokens.</p>
       </div>
 
       <div class="game-card">
@@ -61,8 +93,8 @@
         </div>
 
         <div class="choice-row" role="group" aria-label="Choose heads or tails">
-          <button class="choice active" data-choice="heads" type="button">Heads</button>
-          <button class="choice" data-choice="tails" type="button">Tails</button>
+          <button class="choice active" data-choice="heads" type="button" aria-pressed="true">Heads</button>
+          <button class="choice" data-choice="tails" type="button" aria-pressed="false">Tails</button>
         </div>
 
         <button class="flip-button" id="flip-button" type="button">FLIP THE MATT COIN</button>
@@ -95,7 +127,7 @@
       </div>
 
       <div class="mission-list">
-        <article class="mission-card" data-mission="connect">
+        <article class="mission-card locked" data-mission="connect">
           <span class="mission-number">01</span>
           <div>
             <h3>Connect Wallet</h3>
@@ -105,7 +137,7 @@
           <button class="mission-action" id="mission-connect-button" type="button">CONNECT</button>
         </article>
 
-        <article class="mission-card" data-mission="flip">
+        <article class="mission-card locked" data-mission="flip">
           <span class="mission-number">02</span>
           <div>
             <h3>Flip the MATT Coin</h3>
@@ -115,7 +147,7 @@
           <button class="mission-action" id="mission-flip-button" type="button">GO TO COIN</button>
         </article>
 
-        <article class="mission-card" data-mission="verify">
+        <article class="mission-card locked" data-mission="verify">
           <span class="mission-number">03</span>
           <div>
             <h3>Verify the Contract</h3>
@@ -126,17 +158,85 @@
         </article>
       </div>
 
-      <p class="mission-notice">Mission progress is currently device-based. These missions do not distribute tokens and never request an approval or transaction signature.</p>
+      <p class="mission-notice">Mission progress is device-based. Missions do not distribute tokens and never request an approval or transaction signature.</p>
     </section>
 
-    <section class="official-links">
+    <section class="holders-section" id="holders">
+      <div class="section-heading">
+        <p class="eyebrow">MATT UTILITY #3</p>
+        <h2>Meet the MATTs</h2>
+        <p>Explore positive MATT balances indexed from public Transfer events on Ronin. Wallets, contracts, the treasury, and the liquidity pool may all appear.</p>
+      </div>
+
+      <div class="holder-summary-grid">
+        <article class="holder-summary-card">
+          <span>Positive balances</span>
+          <strong id="holder-count">—</strong>
+        </article>
+        <article class="holder-summary-card">
+          <span>Indexed transfers</span>
+          <strong id="holder-transfer-count">—</strong>
+        </article>
+        <article class="holder-summary-card">
+          <span>Indexed through block</span>
+          <strong id="holder-indexed-block">—</strong>
+        </article>
+      </div>
+
+      <article class="connected-holder-card" id="connected-holder-card" hidden>
+        <div>
+          <p class="eyebrow">YOU IN THE DIRECTORY</p>
+          <h3 id="connected-holder-title">Your holder position</h3>
+          <p id="connected-holder-detail">Loading your public rank.</p>
+        </div>
+        <a id="connected-holder-explorer" href="#" target="_blank" rel="noopener">View wallet on Ronin Explorer</a>
+      </article>
+
+      <div class="holder-toolbar">
+        <label class="holder-search">
+          <span class="sr-only">Search holders</span>
+          <input id="holder-search-input" type="search" inputmode="search" autocomplete="off" placeholder="Search wallet, level, treasury, or pool">
+        </label>
+        <button class="secondary-button" id="holder-clear-search" type="button" hidden>Clear</button>
+        <button class="secondary-button" id="refresh-holders" type="button">Refresh directory</button>
+      </div>
+
+      <p class="holder-status" id="holder-status" role="status" aria-live="polite">Loading the public holder directory. The first index after a deployment may take a moment.</p>
+
+      <div class="holder-table-wrap">
+        <table class="holder-table">
+          <thead>
+            <tr>
+              <th scope="col">Rank</th>
+              <th scope="col">Holder</th>
+              <th scope="col">Level</th>
+              <th scope="col" class="numeric">Balance</th>
+              <th scope="col" class="numeric">Supply</th>
+            </tr>
+          </thead>
+          <tbody id="holder-table-body"></tbody>
+        </table>
+        <div class="holder-empty" id="holder-empty" hidden>
+          <strong>No matching MATT holders found.</strong>
+          <span>Try a complete or partial Ronin address.</span>
+        </div>
+      </div>
+
+      <div class="holder-pagination">
+        <span id="holder-page-summary">—</span>
+        <button class="secondary-button" id="load-more-holders" type="button" hidden>Load more holders</button>
+      </div>
+      <p class="holder-disclaimer">This directory displays public blockchain data, not identities. A listed address is not an endorsement, and balances can change at any time.</p>
+    </section>
+
+    <section class="official-links" id="official-links">
       <p class="eyebrow">OFFICIAL LINKS</p>
       <h2>Verify everything.</h2>
       <div class="link-grid">
-        <a href="https://app.roninchain.com/explorer/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener">Verified Contract</a>
-        <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Katana Swap</a>
-        <a href="https://www.geckoterminal.com/ronin/pools/0xa517e05e96728e80284f2ae157ddf309449d7ce8" target="_blank" rel="noopener">GeckoTerminal</a>
-        <a href="https://github.com/mattyoungaviation-collab/MATT-Token-" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://app.roninchain.com/explorer/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener"><span>Contract</span><strong>Verified source</strong></a>
+        <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener"><span>Katana</span><strong>Swap MATT</strong></a>
+        <a href="https://www.geckoterminal.com/ronin/pools/0xa517e05e96728e80284f2ae157ddf309449d7ce8" target="_blank" rel="noopener"><span>GeckoTerminal</span><strong>Live pool data</strong></a>
+        <a href="https://github.com/mattyoungaviation-collab/MATT-Token-" target="_blank" rel="noopener"><span>GitHub</span><strong>Open source</strong></a>
       </div>
     </section>
   </main>
@@ -144,6 +244,7 @@
   <footer>
     <a href="/">← Back to MATT Token</a>
     <span>Built by Matt. Backed by Matt.</span>
+    <a href="#top">Back to top ↑</a>
   </footer>
 
   <script src="/hub.js"></script>
