@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const { fork } = require("child_process");
-const { installXFollowVerifier } = require("./x-follow-verifier");
+const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
