@@ -47,25 +47,32 @@ function loadScript(source) {
   });
 }
 
-async function loadMattCoinFlip() {
-  if (!document.getElementById('coin-flip')) return;
-
+function loadStylesheet(source) {
   const stylesheet = document.createElement('link');
   stylesheet.rel = 'stylesheet';
-  stylesheet.href = '/coin-game.css?v=12';
+  stylesheet.href = source;
   document.head.append(stylesheet);
+}
+
+async function loadMattHubApps() {
+  if (!document.getElementById('coin-flip')) return;
+
+  loadStylesheet('/coin-game.css?v=13');
+  loadStylesheet('/daily-rewards.css?v=13');
 
   try {
-    await loadScript('/rpc-proxy.js?v=12');
-    await loadScript('/ronin-connect-copy.js?v=12');
-    await loadScript('/walletconnect-game-fix.js?v=12');
-    await loadScript('/coin-game-config.js?v=12');
-    await loadScript('/coin-game.js?v=12');
-    await loadScript('/coin-game-direct-fix.js?v=12');
-    await loadScript('/coin-settlement-animation.js?v=12');
+    await loadScript('/rpc-proxy.js?v=13');
+    await loadScript('/ronin-connect-copy.js?v=13');
+    await loadScript('/walletconnect-game-fix.js?v=13');
+    await loadScript('/coin-game-config.js?v=13');
+    await loadScript('/daily-rewards-config.js?v=13');
+    await loadScript('/coin-game.js?v=13');
+    await loadScript('/coin-game-direct-fix.js?v=13');
+    await loadScript('/coin-settlement-animation.js?v=13');
+    await loadScript('/daily-rewards.js?v=13');
   } catch (error) {
-    console.error('MATT coin flip failed to load:', error);
+    console.error('MATT Hub apps failed to load:', error);
   }
 }
 
-loadMattCoinFlip();
+loadMattHubApps();
