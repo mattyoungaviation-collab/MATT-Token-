@@ -10,32 +10,17 @@ function updateRoninExplorerLink(link) {
 
 function updateRoninExplorerLinks(root = document) {
   if (root instanceof HTMLAnchorElement) updateRoninExplorerLink(root);
-  if (root.querySelectorAll) {
-    root.querySelectorAll('a[href]').forEach(updateRoninExplorerLink);
-  }
+  if (root.querySelectorAll) root.querySelectorAll('a[href]').forEach(updateRoninExplorerLink);
 }
 
 updateRoninExplorerLinks();
-
 const explorerLinkObserver = new MutationObserver(mutations => {
   for (const mutation of mutations) {
-    if (mutation.type === 'attributes') {
-      updateRoninExplorerLink(mutation.target);
-      continue;
-    }
-
-    for (const node of mutation.addedNodes) {
-      if (node instanceof Element) updateRoninExplorerLinks(node);
-    }
+    if (mutation.type === 'attributes') updateRoninExplorerLink(mutation.target);
+    else for (const node of mutation.addedNodes) if (node instanceof Element) updateRoninExplorerLinks(node);
   }
 });
-
-explorerLinkObserver.observe(document.documentElement, {
-  subtree: true,
-  childList: true,
-  attributes: true,
-  attributeFilter: ['href']
-});
+explorerLinkObserver.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['href'] });
 
 function loadScript(source) {
   return new Promise((resolve, reject) => {
@@ -56,17 +41,18 @@ function loadStylesheet(source) {
 
 async function loadMattHubApps() {
   if (!document.getElementById('coin-flip')) return;
-
-  loadStylesheet('/coin-game.css?v=16');
-
+  loadStylesheet('/coin-game.css?v=17');
+  loadStylesheet('/daily-rewards.css?v=17');
   try {
-    await loadScript('/rpc-proxy.js?v=16');
-    await loadScript('/ronin-connect-copy.js?v=16');
-    await loadScript('/walletconnect-game-fix.js?v=16');
-    await loadScript('/coin-game-config.js?v=16');
-    await loadScript('/coin-game.js?v=16');
-    await loadScript('/coin-game-controller-v2.js?v=16');
-    await loadScript('/coin-settlement-animation.js?v=16');
+    await loadScript('/rpc-proxy.js?v=17');
+    await loadScript('/ronin-connect-copy.js?v=17');
+    await loadScript('/walletconnect-game-fix.js?v=17');
+    await loadScript('/coin-game-config.js?v=17');
+    await loadScript('/daily-rewards-v2-config.js?v=17');
+    await loadScript('/coin-game.js?v=17');
+    await loadScript('/coin-game-controller-v2.js?v=17');
+    await loadScript('/coin-settlement-animation.js?v=17');
+    await loadScript('/daily-rewards-v2.js?v=17');
   } catch (error) {
     console.error('MATT Hub apps failed to load:', error);
   }
