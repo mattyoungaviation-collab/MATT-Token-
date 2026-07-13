@@ -18,7 +18,7 @@
     "deploy:rewards-v2:ronin": "hardhat deploy --network ronin --tags MattDailyRewardsV2",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
-    "site": "node website/server-proxy.js",
+    "site": "node website/server-combined.js",
     "inspect:saigon": "hardhat run scripts/inspect-deployment.js --network saigon",
     "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin",
     "inspect:coinflip:saigon": "hardhat run scripts/inspect-coin-flip.js --network saigon",
