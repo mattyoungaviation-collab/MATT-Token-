@@ -27,6 +27,7 @@ const allowedRpcMethods = new Set([
   "eth_getBlockByHash",
   "eth_getBlockByNumber",
   "eth_getCode",
+  "eth_getLogs",
   "eth_getTransactionByHash",
   "eth_getTransactionCount",
   "eth_getTransactionReceipt",
