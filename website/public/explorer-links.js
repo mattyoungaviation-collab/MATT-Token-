@@ -57,19 +57,19 @@ function loadStylesheet(source) {
 async function loadMattHubApps() {
   if (!document.getElementById('coin-flip')) return;
 
-  loadStylesheet('/coin-game.css?v=13');
-  loadStylesheet('/daily-rewards.css?v=13');
+  loadStylesheet('/coin-game.css?v=14');
+  loadStylesheet('/daily-rewards.css?v=14');
 
   try {
-    await loadScript('/rpc-proxy.js?v=13');
-    await loadScript('/ronin-connect-copy.js?v=13');
-    await loadScript('/walletconnect-game-fix.js?v=13');
-    await loadScript('/coin-game-config.js?v=13');
-    await loadScript('/daily-rewards-config.js?v=13');
-    await loadScript('/coin-game.js?v=13');
-    await loadScript('/coin-game-direct-fix.js?v=13');
-    await loadScript('/coin-settlement-animation.js?v=13');
-    await loadScript('/daily-rewards.js?v=13');
+    await loadScript('/rpc-proxy.js?v=14');
+    await loadScript('/ronin-connect-copy.js?v=14');
+    await loadScript('/walletconnect-game-fix.js?v=14');
+    await loadScript('/coin-game-config.js?v=14');
+    await loadScript('/daily-rewards-config.js?v=14');
+    await loadScript('/coin-game.js?v=14');
+    await loadScript('/coin-game-direct-fix.js?v=14');
+    await loadScript('/coin-settlement-animation.js?v=14');
+    await loadScript('/daily-rewards.js?v=14');
   } catch (error) {
     console.error('MATT Hub apps failed to load:', error);
   }
