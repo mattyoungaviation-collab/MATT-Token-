@@ -1,0 +1,19 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies and generated build output
+node_modules/
+artifacts/
+cache/
+coverage/
+
+# Runtime caches
+website/.holder-index-cache.json
+
+# Local editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
