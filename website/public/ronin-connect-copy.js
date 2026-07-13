@@ -11,6 +11,31 @@
   const walletDescription = document.querySelector('#wallet .section-heading p:last-child');
   const metaDescription = document.querySelector('meta[name="description"]');
 
+  function roninWording(text) {
+    return String(text || '')
+      .replace(/CONNECT WALLETCONNECT/g, 'CONNECT RONIN')
+      .replace(/Reconnect WalletConnect/g, 'Reconnect Ronin')
+      .replace(/Connect WalletConnect/g, 'Connect Ronin')
+      .replace(/Opening WalletConnect/g, 'Opening Ronin Connect')
+      .replace(/Preparing WalletConnect/g, 'Preparing Ronin Connect')
+      .replace(/WalletConnect/g, 'Ronin Connect');
+  }
+
+  function updateDynamicLabels() {
+    const dynamicElements = [
+      document.getElementById('connect-wallet'),
+      document.getElementById('wallet-status'),
+      document.getElementById('mission-reset'),
+      document.getElementById('flip-button'),
+      document.getElementById('coin-game-progress')
+    ].filter(Boolean);
+
+    for (const element of dynamicElements) {
+      const updated = roninWording(element.textContent);
+      if (updated !== element.textContent) element.textContent = updated;
+    }
+  }
+
   if (connectButton && !connectButton.textContent.includes('Disconnect')) {
     connectButton.textContent = 'Connect Ronin';
   }
@@ -35,4 +60,11 @@
   if (metaDescription) {
     metaDescription.content = 'Sign in with Ronin Wallet, view your MATT balance and rank, place on-chain coin flips, complete daily missions, and explore MATT holders.';
   }
+
+  updateDynamicLabels();
+  new MutationObserver(updateDynamicLabels).observe(document.body, {
+    childList: true,
+    characterData: true,
+    subtree: true
+  });
 })();
