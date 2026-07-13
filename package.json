@@ -14,6 +14,8 @@
     "deploy:coinflip:ronin": "hardhat deploy --network ronin --tags MattCoinFlip",
     "deploy:rewards:saigon": "hardhat deploy --network saigon --tags MattDailyRewards",
     "deploy:rewards:ronin": "hardhat deploy --network ronin --tags MattDailyRewards",
+    "deploy:rewards-v2:saigon": "hardhat deploy --network saigon --tags MattDailyRewardsV2",
+    "deploy:rewards-v2:ronin": "hardhat deploy --network ronin --tags MattDailyRewardsV2",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
     "site": "node website/server-proxy.js",
@@ -22,7 +24,9 @@
     "inspect:coinflip:saigon": "hardhat run scripts/inspect-coin-flip.js --network saigon",
     "inspect:coinflip:ronin": "hardhat run scripts/inspect-coin-flip.js --network ronin",
     "inspect:rewards:saigon": "hardhat run scripts/inspect-daily-rewards.js --network saigon",
-    "inspect:rewards:ronin": "hardhat run scripts/inspect-daily-rewards.js --network ronin"
+    "inspect:rewards:ronin": "hardhat run scripts/inspect-daily-rewards.js --network ronin",
+    "inspect:rewards-v2:saigon": "hardhat run scripts/inspect-daily-rewards-v2.js --network saigon",
+    "inspect:rewards-v2:ronin": "hardhat run scripts/inspect-daily-rewards-v2.js --network ronin"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
