@@ -5,8 +5,10 @@ async function main() {
   const rewards = await hre.ethers.getContractAt("MattDailyRewards", deployment.address);
   const tokenAddress = await rewards.matt();
   const token = await hre.ethers.getContractAt("IERC20", tokenAddress);
+  const deploymentBlock = deployment.receipt?.blockNumber ?? deployment.blockNumber ?? "unknown";
 
   console.log(`MattDailyRewards: ${deployment.address}`);
+  console.log(`Deployment block: ${deploymentBlock}`);
   console.log(`Owner: ${await rewards.owner()}`);
   console.log(`MATT: ${tokenAddress}`);
   console.log(`Coin flip: ${await rewards.coinFlip()}`);
