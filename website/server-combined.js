@@ -1,4 +1,5 @@
 const express = require("express");
+const fs = require("fs");
 const http = require("http");
 const path = require("path");
 const { fork } = require("child_process");
@@ -7,6 +8,13 @@ const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
 const proxyPort = Number.parseInt(process.env.INTERNAL_PROXY_PORT || String(publicPort + 1), 10);
+const configuredDiskPath = String(
+  process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || ""
+).trim();
+const persistentDiskPath = configuredDiskPath || (fs.existsSync("/var/data") ? "/var/data" : "");
+const holderStateFile = process.env.HOLDER_STATE_FILE || (
+  persistentDiskPath ? path.join(persistentDiskPath, "matt-holder-index.json") : ""
+);
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
@@ -41,12 +49,16 @@ const child = fork(path.join(__dirname, "server-proxy.js"), [], {
     PORT: String(proxyPort),
     INTERNAL_SITE_PORT: String(proxyPort + 1),
     COIN_RPC_MIN_INTERVAL_MS: process.env.COIN_RPC_MIN_INTERVAL_MS || "100",
+    HOLDER_STATE_FILE: holderStateFile,
   },
   stdio: "inherit",
 });
 
 const server = app.listen(publicPort, () => {
   console.log(`MATT combined server listening on ${publicPort}; RPC/site proxy on ${proxyPort}.`);
+  console.log(holderStateFile
+    ? `Persistent holder checkpoint: ${holderStateFile}`
+    : "Persistent holder checkpoint: no Render disk detected; using ephemeral storage.");
 });
 
 function shutdown(signal) {
