@@ -41,19 +41,19 @@ function loadStylesheet(source) {
 
 async function loadMattHubApps() {
   if (!document.getElementById('coin-flip')) return;
-  loadStylesheet('/coin-game.css?v=18');
-  loadStylesheet('/daily-rewards.css?v=18');
+  loadStylesheet('/coin-game.css?v=19');
+  loadStylesheet('/daily-rewards.css?v=19');
   try {
-    await loadScript('/rpc-proxy.js?v=18');
-    await loadScript('/ronin-connect-copy.js?v=18');
-    await loadScript('/walletconnect-game-fix.js?v=18');
-    await loadScript('/coin-game-config.js?v=18');
-    await loadScript('/daily-rewards-v2-config.js?v=18');
-    await loadScript('/coin-game.js?v=18');
-    await loadScript('/coin-game-controller-v2.js?v=18');
-    await loadScript('/coin-settlement-animation.js?v=18');
-    await loadScript('/daily-rewards-v2.js?v=18');
-    await loadScript('/daily-rewards-v2-claim-fix.js?v=18');
+    await loadScript('/rpc-proxy.js?v=19');
+    await loadScript('/ronin-connect-copy.js?v=19');
+    await loadScript('/walletconnect-game-fix.js?v=19');
+    await loadScript('/coin-game-config.js?v=19');
+    await loadScript('/daily-rewards-v2-config.js?v=19');
+    await loadScript('/coin-game.js?v=19');
+    await loadScript('/coin-game-controller-v2.js?v=19');
+    await loadScript('/coin-settlement-animation.js?v=19');
+    await loadScript('/daily-rewards-v2.js?v=19');
+    await loadScript('/daily-rewards-v2-claim-fix.js?v=19');
   } catch (error) {
     console.error('MATT Hub apps failed to load:', error);
   }
