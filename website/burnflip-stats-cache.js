@@ -34,6 +34,7 @@ function installBurnFlipStatsCache(app, options) {
 
   const stateFile = String(options?.stateFile || process.env.BURNFLIP_STATS_FILE || "").trim();
   const cacheTtlMs = positiveInteger(process.env.BURNFLIP_STATS_CACHE_TTL_MS, 15_000);
+  const firstLoadWaitMs = positiveInteger(process.env.BURNFLIP_STATS_FIRST_LOAD_WAIT_MS, 10_000);
   const logChunkSize = positiveInteger(process.env.BURNFLIP_STATS_LOG_CHUNK_SIZE, 5_000);
   const maxSplitDepth = positiveInteger(process.env.BURNFLIP_STATS_MAX_SPLIT_DEPTH, 20);
   let state = loadState(stateFile);
@@ -164,7 +165,12 @@ function installBurnFlipStatsCache(app, options) {
     const stale = !snapshot || Date.now() - Number(snapshot.generatedAt || 0) >= cacheTtlMs;
     if (force || stale) {
       const work = refresh();
-      if (!snapshot) await Promise.race([work, new Promise(resolve => setTimeout(resolve, 1_500))]);
+      if (!snapshot) {
+        await Promise.race([
+          work,
+          new Promise(resolve => setTimeout(resolve, firstLoadWaitMs))
+        ]);
+      }
     }
 
     if (!snapshot) {
@@ -172,7 +178,9 @@ function installBurnFlipStatsCache(app, options) {
       res.set("Retry-After", "2");
       return res.status(202).json({
         status: "WARMING",
-        message: lastError ? safeMessage(lastError) : "BurnFlip statistics are warming up."
+        message: lastError
+          ? safeMessage(lastError)
+          : `BurnFlip statistics are still warming after ${Math.round(firstLoadWaitMs / 1000)} seconds.`
       });
     }
 
@@ -185,8 +193,8 @@ function installBurnFlipStatsCache(app, options) {
     });
   });
 
-  const warmup = setTimeout(() => refresh(), 750);
-  warmup.unref?.();
+  // Start immediately so the cache is usually ready before the first visitor arrives.
+  refresh();
 
   return {
     getStatus: () => ({
