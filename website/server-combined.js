@@ -39,6 +39,13 @@ async function reserveStatsRpcSlot() {
   return queued;
 }
 
+function isRetryableStatsRpcError(error) {
+  const status = Number(error?.status || 0);
+  const message = String(error?.message || "").toLowerCase();
+  return status === 408 || status === 425 || status === 429 || status >= 500 ||
+    error?.name === "AbortError" || /timeout|timed out|fetch failed|econnreset|socket hang up|temporarily unavailable/.test(message);
+}
+
 async function statsRpcRequest(method, params = []) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await reserveStatsRpcSlot();
@@ -51,12 +58,21 @@ async function statsRpcRequest(method, params = []) {
         body: JSON.stringify({ jsonrpc: "2.0", id: ++statsRpcId, method, params }),
         signal: controller.signal
       });
-      if (!response.ok) throw new Error(`Ronin RPC returned HTTP ${response.status}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        const error = new Error(`Ronin RPC returned HTTP ${response.status}${body ? `: ${body.slice(0, 180)}` : ""}`);
+        error.status = response.status;
+        throw error;
+      }
       const payload = await response.json();
-      if (payload.error) throw new Error(payload.error.message || "Ronin RPC request failed");
+      if (payload.error) {
+        const error = new Error(payload.error.message || "Ronin RPC request failed");
+        error.code = payload.error.code;
+        throw error;
+      }
       return payload.result;
     } catch (error) {
-      if (attempt >= 3) throw error;
+      if (attempt >= 3 || !isRetryableStatsRpcError(error)) throw error;
       await delay(500 * (2 ** attempt));
     } finally {
       clearTimeout(timeout);
