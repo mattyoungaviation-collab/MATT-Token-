@@ -9,7 +9,7 @@
 
   const ETHERS_URL = 'https://esm.sh/ethers@6.13.5?bundle';
   const GAME_ABI = [
-    'function bets(uint256) view returns (address player,uint128 amount,uint64 entropyBlock,uint64 revealDeadlineBlock,uint8 choice,uint8 state,bytes32 commitment)'
+    'function bets(uint256) view returns (address player,uint256 amount,uint64 entropyBlock,uint64 revealDeadlineBlock,uint8 choice,uint8 state,bytes32 commitment)'
   ];
   const SPIN_DURATION_MS = 3200;
   const REDUCED_MOTION_DURATION_MS = 1400;
@@ -119,15 +119,18 @@
       const outcome = won ? choice : (choice === 0 ? 1 : 0);
       await triggerCoinAnimation(outcome, normalizedId);
 
-      result.className = won ? 'result win' : 'result';
+      result.className = won ? 'result win' : 'result burn-result';
       result.textContent = won
         ? `${outcome === 0 ? 'HEADS' : 'TAILS'} — YOU WON ${formatMatt(amount * 2n)}.`
-        : `${outcome === 0 ? 'HEADS' : 'TAILS'} — ${formatMatt(amount)} SENT TO TREASURY.`;
-      progress.textContent = `Bet #${normalizedId} settled on Ronin. The coin landed on ${outcome === 0 ? 'HEADS' : 'TAILS'}.`;
+        : `${outcome === 0 ? 'HEADS' : 'TAILS'} — ${formatMatt(amount)} PERMANENTLY BURNED.`;
+      progress.textContent = won
+        ? `Bet #${normalizedId} settled on Ronin and paid automatically.`
+        : `Bet #${normalizedId} settled on Ronin. 100% of the losing stake was permanently burned.`;
 
+      if (!won) window.dispatchEvent(new CustomEvent('matt:burnflip-updated'));
       lastAnimatedBetId = normalizedId;
     } catch (error) {
-      console.error('Could not animate settled MATT coin flip:', error);
+      console.error('Could not animate settled MATT BurnFlip:', error);
     } finally {
       animatingBetId = null;
     }
