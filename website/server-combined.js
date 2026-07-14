@@ -40,6 +40,7 @@ const child = fork(path.join(__dirname, "server-proxy.js"), [], {
     ...process.env,
     PORT: String(proxyPort),
     INTERNAL_SITE_PORT: String(proxyPort + 1),
+    COIN_RPC_MIN_INTERVAL_MS: process.env.COIN_RPC_MIN_INTERVAL_MS || "100",
   },
   stdio: "inherit",
 });
