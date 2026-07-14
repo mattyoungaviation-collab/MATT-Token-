@@ -34,7 +34,8 @@ function installBurnFlipStatsCache(app, options) {
 
   const stateFile = String(options?.stateFile || process.env.BURNFLIP_STATS_FILE || "").trim();
   const cacheTtlMs = positiveInteger(process.env.BURNFLIP_STATS_CACHE_TTL_MS, 15_000);
-  const logChunkSize = positiveInteger(process.env.BURNFLIP_STATS_LOG_CHUNK_SIZE, 20_000);
+  const logChunkSize = positiveInteger(process.env.BURNFLIP_STATS_LOG_CHUNK_SIZE, 5_000);
+  const maxSplitDepth = positiveInteger(process.env.BURNFLIP_STATS_MAX_SPLIT_DEPTH, 20);
   let state = loadState(stateFile);
   let snapshot = state?.snapshot || null;
   let refreshPromise = null;
@@ -46,18 +47,33 @@ function installBurnFlipStatsCache(app, options) {
     return decodeCall(name, raw);
   }
 
+  async function fetchSettlementLogs(fromBlock, toBlock, depth = 0) {
+    if (fromBlock > toBlock) return [];
+    try {
+      const logs = await rpcRequest("eth_getLogs", [{
+        address: BURNFLIP_ADDRESS,
+        fromBlock: hexBlock(fromBlock),
+        toBlock: hexBlock(toBlock),
+        topics: [settledTopic]
+      }]);
+      if (!Array.isArray(logs)) throw new Error("Ronin returned invalid BurnFlip log data");
+      return logs;
+    } catch (error) {
+      if (fromBlock >= toBlock || depth >= maxSplitDepth) throw error;
+      const middle = Math.floor((fromBlock + toBlock) / 2);
+      const left = await fetchSettlementLogs(fromBlock, middle, depth + 1);
+      const right = await fetchSettlementLogs(middle + 1, toBlock, depth + 1);
+      return left.concat(right);
+    }
+  }
+
   async function scanSettlements(fromBlock, toBlock, currentTotalWon) {
     let totalWon = currentTotalWon;
     let cursor = fromBlock;
     while (cursor <= toBlock) {
       const end = Math.min(toBlock, cursor + logChunkSize - 1);
-      const logs = await rpcRequest("eth_getLogs", [{
-        address: BURNFLIP_ADDRESS,
-        fromBlock: hexBlock(cursor),
-        toBlock: hexBlock(end),
-        topics: [settledTopic]
-      }]);
-      for (const log of logs || []) {
+      const logs = await fetchSettlementLogs(cursor, end);
+      for (const log of logs) {
         try {
           const parsed = iface.parseLog(log);
           if (parsed?.name === "BetSettled" && Boolean(parsed.args.won)) {
@@ -96,17 +112,24 @@ function installBurnFlipStatsCache(app, options) {
         };
       }
 
-      let totalWon = BigInt(state.totalWonRaw || "0");
-      if (Number(state.throughBlock) < latestBlock) {
-        totalWon = await scanSettlements(Number(state.throughBlock) + 1, latestBlock, totalWon);
-      }
-
+      // Read lightweight contract counters first. When there are no flips yet,
+      // no historical event scan is necessary at all.
       const [burned, bankroll, maximum, nextBetId] = await Promise.all([
         contractRead("totalBurnedByGame"),
         contractRead("availableBankroll"),
         contractRead("maxAcceptableBet"),
         contractRead("nextBetId")
       ]);
+      const totalFlips = nextBetId > 0n ? nextBetId - 1n : 0n;
+
+      let totalWon = BigInt(state.totalWonRaw || "0");
+      if (totalFlips === 0n) {
+        totalWon = 0n;
+        state.throughBlock = latestBlock;
+        state.totalWonRaw = "0";
+      } else if (Number(state.throughBlock) < latestBlock) {
+        totalWon = await scanSettlements(Number(state.throughBlock) + 1, latestBlock, totalWon);
+      }
 
       snapshot = {
         contractAddress: BURNFLIP_ADDRESS,
@@ -116,7 +139,7 @@ function installBurnFlipStatsCache(app, options) {
         totalBurnedRaw: burned.toString(),
         availableBankrollRaw: bankroll.toString(),
         maximumBetRaw: maximum.toString(),
-        totalFlips: (nextBetId > 0n ? nextBetId - 1n : 0n).toString(),
+        totalFlips: totalFlips.toString(),
         totalWonRaw: totalWon.toString(),
         updatedAt: new Date().toISOString(),
         generatedAt: Date.now()
