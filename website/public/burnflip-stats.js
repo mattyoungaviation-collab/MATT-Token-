@@ -9,7 +9,6 @@
   const ABI = [
     'function totalBurnedByGame() view returns (uint256)',
     'function availableBankroll() view returns (uint256)',
-    'function maxAcceptableBet() view returns (uint256)',
     'function nextBetId() view returns (uint256)',
     'event BetSettled(uint256 indexed betId,address indexed player,uint8 choice,uint8 outcome,uint256 amount,uint256 payout,bool won,bytes32 entropyBlockHash,uint256 randomWord)'
   ];
@@ -17,11 +16,13 @@
   let ethers;
   let iface;
   let refreshBusy = false;
+  let refreshTimer = null;
   const deploymentBlock = Number(config.deploymentBlock || 0);
   const statsCacheKey = `mattBurnFlipStats:${String(config.contractAddress).toLowerCase()}`;
 
-  const navLink = [...document.querySelectorAll('a[href="#coin-flip"]')];
-  navLink.forEach(link => { link.textContent = link.closest('.desktop-nav') ? 'BurnFlip' : link.textContent; });
+  for (const link of document.querySelectorAll('a[href="#coin-flip"]')) {
+    if (link.closest('.desktop-nav')) link.textContent = 'BurnFlip';
+  }
 
   const heading = section.querySelector('.section-heading');
   if (heading) {
@@ -32,115 +33,40 @@
     `;
   }
 
-  const promise = document.createElement('article');
-  promise.className = 'burnflip-promise';
-  promise.innerHTML = `
-    <div class="burnflip-flame" aria-hidden="true">🔥</div>
-    <div>
-      <p class="eyebrow">DEFLATIONARY COIN FLIP</p>
-      <h3>100% OF LOSING BETS ARE PERMANENTLY BURNED</h3>
-      <p>Every losing MATT wager is destroyed forever. <strong>No treasury. No redistribution.</strong> Every loss permanently reduces the total MATT supply.</p>
-    </div>
-  `;
+  if (!section.querySelector('.burnflip-promise')) {
+    const promise = document.createElement('article');
+    promise.className = 'burnflip-promise';
+    promise.innerHTML = `
+      <div class="burnflip-flame" aria-hidden="true">🔥</div>
+      <div>
+        <p class="eyebrow">DEFLATIONARY COIN FLIP</p>
+        <h3>100% OF LOSING BETS ARE PERMANENTLY BURNED</h3>
+        <p>Every losing MATT wager is destroyed forever. <strong>No treasury. No redistribution.</strong> Every loss permanently reduces the total MATT supply.</p>
+      </div>
+    `;
 
-  const live = document.createElement('div');
-  live.className = 'burnflip-live-stats';
-  live.setAttribute('aria-label', 'Live MATT BurnFlip statistics');
-  live.innerHTML = `
-    <article class="burnflip-stat burn-stat"><span>🔥 Total MATT Burned</span><strong id="burnflip-total-burned">Loading…</strong></article>
-    <article class="burnflip-stat"><span>🎲 Total BurnFlips</span><strong id="burnflip-total-flips">Loading…</strong></article>
-    <article class="burnflip-stat"><span>🏆 Total MATT Won</span><strong id="burnflip-total-won">Loading…</strong></article>
-    <article class="burnflip-stat"><span>💰 Current Bankroll</span><strong id="burnflip-bankroll">Loading…</strong></article>
-  `;
+    const live = document.createElement('div');
+    live.className = 'burnflip-live-stats';
+    live.setAttribute('aria-label', 'Live MATT BurnFlip statistics');
+    live.innerHTML = `
+      <article class="burnflip-stat burn-stat"><span>🔥 Total MATT Burned</span><strong id="burnflip-total-burned">Loading…</strong></article>
+      <article class="burnflip-stat"><span>🎲 Total BurnFlips</span><strong id="burnflip-total-flips">Loading…</strong></article>
+      <article class="burnflip-stat"><span>🏆 Total MATT Won</span><strong id="burnflip-total-won">Loading…</strong></article>
+      <article class="burnflip-stat"><span>💰 Current Bankroll</span><strong id="burnflip-bankroll">Loading…</strong></article>
+    `;
 
-  const reasons = document.createElement('div');
-  reasons.className = 'burnflip-reasons';
-  reasons.innerHTML = `
-    <strong>WHY PLAY BURNFLIP?</strong>
-    <span>✓ Fair commit/reveal result</span>
-    <span>✓ Bet up to the live bankroll limit</span>
-    <span>✓ Automatic 2× payouts</span>
-    <span>✓ Every losing bet reduces supply</span>
-  `;
+    const reasons = document.createElement('div');
+    reasons.className = 'burnflip-reasons';
+    reasons.innerHTML = `
+      <strong>WHY PLAY BURNFLIP?</strong>
+      <span>✓ Fair commit/reveal result</span>
+      <span>✓ Bet up to the live bankroll limit</span>
+      <span>✓ Automatic 2× payouts</span>
+      <span>✓ Every losing bet reduces supply</span>
+    `;
 
-  const gameCard = section.querySelector('.game-card');
-  if (gameCard) {
-    gameCard.before(promise, live, reasons);
+    section.querySelector('.game-card')?.before(promise, live, reasons);
   }
-
-  const amountInput = document.getElementById('coin-bet-amount');
-  if (amountInput) {
-    amountInput.removeAttribute('max');
-    amountInput.setAttribute('placeholder', 'Enter any supported amount');
-  }
-
-  const quickButtons = [...document.querySelectorAll('.coin-quick-button')];
-  const quickValues = [
-    ['1000', '1K'],
-    ['100000', '100K'],
-    ['1000000', '1M'],
-    ['10000000', '10M']
-  ];
-  quickButtons.forEach((button, index) => {
-    if (!quickValues[index]) return;
-    button.dataset.bet = quickValues[index][0];
-    button.textContent = quickValues[index][1];
-  });
-
-  const warning = section.querySelector('.coin-game-warning');
-  if (warning) {
-    warning.innerHTML = `<strong>Keep this browser open or preserve its storage while a bet is pending.</strong> The secret never leaves your device before reveal. If the reveal window expires, 100% of the unrevealed stake is permanently burned.`;
-  }
-
-  const legalText = section.querySelector('.coin-legal-check span');
-  if (legalText) {
-    legalText.textContent = 'I confirm I am at least 18, permitted to use token wagering where I live, and understand that 100% of a losing bet is permanently burned.';
-  }
-
-  const contractStripLabel = section.querySelector('.coin-contract-strip span');
-  if (contractStripLabel) contractStripLabel.textContent = 'BURNFLIP CONTRACT';
-
-  const statLabels = [...section.querySelectorAll('.game-stats span')];
-  if (statLabels.length >= 3) {
-    statLabels[0].textContent = 'Your bets';
-    statLabels[1].textContent = 'Your wins';
-    statLabels[2].textContent = 'Your pending';
-  }
-
-  const result = document.getElementById('flip-result');
-  if (result) {
-    const replaceTreasuryText = () => {
-      if (/sent to treasury/i.test(result.textContent)) {
-        result.textContent = result.textContent.replace(/sent to treasury/gi, 'PERMANENTLY BURNED');
-      }
-    };
-    new MutationObserver(replaceTreasuryText).observe(result, { childList: true, characterData: true, subtree: true });
-    replaceTreasuryText();
-  }
-
-  function enforceRewardMigration() {
-    const rewards = document.getElementById('daily-missions');
-    if (!rewards) return;
-    rewards.classList.add('burnflip-reward-migration');
-    const rewardsHeading = rewards.querySelector('.section-heading');
-    if (rewardsHeading) {
-      rewardsHeading.innerHTML = `
-        <p class="eyebrow">BURNFLIP REWARD UPGRADE</p>
-        <h2>Daily Reward Migration in Progress</h2>
-        <p>The previous reward contract validates the retired coin-flip contract. Claims are temporarily disabled while the verified reward is linked to BurnFlip.</p>
-      `;
-    }
-    rewards.querySelectorAll('.mission-reward-summary, .server-mission-list, .daily-claim-panel, .mission-completion-feed').forEach(element => {
-      element.hidden = true;
-    });
-    const claim = document.getElementById('v2-claim');
-    if (claim) claim.disabled = true;
-    const status = document.getElementById('v2-status');
-    if (status) status.textContent = 'BurnFlip is live. The 1,000,000 MATT daily reward will reopen after the replacement reward contract is deployed and funded.';
-  }
-
-  enforceRewardMigration();
-  window.setInterval(enforceRewardMigration, 2500);
 
   async function rpc(method, params = []) {
     const response = await fetch('/api/rpc', {
@@ -182,7 +108,10 @@
   }
 
   function saveWonCache(cache) {
-    localStorage.setItem(statsCacheKey, JSON.stringify({ through: cache.through, totalWon: cache.totalWon.toString() }));
+    localStorage.setItem(statsCacheKey, JSON.stringify({
+      through: cache.through,
+      totalWon: cache.totalWon.toString()
+    }));
   }
 
   async function scanTotalWon(latestBlock) {
@@ -208,13 +137,18 @@
             cache.totalWon += BigInt(parsed.args.payout);
           }
         } catch {
-          // Ignore malformed or unrelated logs.
+          // Ignore malformed logs.
         }
       }
       cache.through = to;
       saveWonCache(cache);
     }
     return cache.totalWon;
+  }
+
+  function scheduleRefresh(delay = 60000) {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshLiveStats, document.hidden ? Math.max(delay, 120000) : delay);
   }
 
   async function refreshLiveStats() {
@@ -230,8 +164,7 @@
       const burned = BigInt(burnedRaw[0]);
       const bankroll = BigInt(bankrollRaw[0]);
       const totalFlips = BigInt(nextBetRaw[0]) - 1n;
-      const latestBlock = Number(BigInt(latestHex));
-      const totalWon = await scanTotalWon(latestBlock);
+      const totalWon = await scanTotalWon(Number(BigInt(latestHex)));
 
       document.getElementById('burnflip-total-burned').textContent = formatMatt(burned);
       document.getElementById('burnflip-total-flips').textContent = totalFlips.toLocaleString();
@@ -244,6 +177,7 @@
       });
     } finally {
       refreshBusy = false;
+      scheduleRefresh();
     }
   }
 
@@ -251,7 +185,14 @@
     ethers = module;
     iface = new ethers.Interface(ABI);
     refreshLiveStats();
-    window.setInterval(refreshLiveStats, 15000);
-    window.addEventListener('matt:burnflip-updated', () => window.setTimeout(refreshLiveStats, 2500));
+    window.addEventListener('matt:burnflip-updated', () => {
+      clearTimeout(refreshTimer);
+      window.setTimeout(refreshLiveStats, 1200);
+    });
+    document.addEventListener('visibilitychange', () => {
+      clearTimeout(refreshTimer);
+      if (!document.hidden) refreshLiveStats();
+      else scheduleRefresh(120000);
+    });
   }).catch(error => console.error('BurnFlip statistics failed to load:', error));
 })();
