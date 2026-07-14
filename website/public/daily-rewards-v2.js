@@ -32,7 +32,7 @@
     <div class="mission-list server-mission-list">
       <article class="mission-card locked" data-v2="connect"><span class="mission-number">01</span><div><h3>Connect Ronin Wallet</h3><p>Your wallet session remains connected after refresh.</p></div><strong class="mission-status">LOCKED</strong><button class="mission-action" id="v2-connect">CONNECT</button></article>
       <article class="mission-card locked" data-v2="flip"><span class="mission-number">02</span><div><h3>Settle a MATT Coin Flip</h3><p>A newly settled bet owned by this wallet is required.</p></div><strong class="mission-status">LOCKED</strong><button class="mission-action" id="v2-flip">GO TO COIN</button></article>
-      <article class="mission-card locked" data-v2="x"><span class="mission-number">03</span><div><h3>Verify Follow on X</h3><p>Sign in through X OAuth. The server checks the real follow relationship.</p></div><strong class="mission-status">LOCKED</strong><button class="mission-action" id="v2-x">VERIFY X</button></article>
+      <article class="mission-card locked" data-v2="x"><span class="mission-number">03</span><div><h3>Verify Follow on X</h3><p>Sign in through X OAuth. The server checks the real follow relationship before this task completes.</p></div><strong class="mission-status">LOCKED</strong><button class="mission-action" id="v2-x">VERIFY X</button></article>
     </div>
     <div class="daily-claim-panel" id="v2-claim-panel" hidden><div><span>ALL TASKS VERIFIED</span><strong>1,000,000 MATT is ready.</strong><p>Confirm the on-chain claim in Ronin Wallet.</p></div><button class="flip-button" id="v2-claim">CLAIM 1,000,000 MATT</button></div>
     <p class="mission-notice" id="v2-status" role="status">Verified rewards V2 is preparing.</p>
@@ -45,6 +45,7 @@
   const status = document.getElementById('v2-status');
   const claimPanel = document.getElementById('v2-claim-panel');
   const claimButton = document.getElementById('v2-claim');
+  const xButton = document.getElementById('v2-x');
   const coinProgress = document.getElementById('coin-game-progress');
   let ethers;
   let iface;
@@ -81,7 +82,7 @@
 
   async function refresh() {
     const owner = account();
-    try { xStatus = await fetch('/api/x/status', { credentials: 'same-origin' }).then(r => r.json()); } catch { xStatus = null; }
+    try { xStatus = await fetch('/api/x/status', { credentials: 'same-origin', cache: 'no-store' }).then(r => r.json()); } catch { xStatus = null; }
     if (owner && configured()) {
       const [lastClaimAt, lastBet, claims, paused] = await Promise.all([
         read('lastClaimAt', [owner]), read('lastUsedBetId', [owner]), read('availableClaims'), read('paused')
@@ -109,19 +110,24 @@
     const nextAt = chain?.lastClaimAt ? Number(chain.lastClaimAt) + 86400 : 0;
     const cooling = nextAt > now;
     const flipDone = Boolean(state.betId && (!chain || BigInt(state.betId) > chain.lastBet));
-    const xDone = Boolean(xStatus?.connected && xStatus.wallet?.toLowerCase() === owner?.toLowerCase());
+    const xConnectedForWallet = Boolean(xStatus?.connected && xStatus.wallet?.toLowerCase() === owner?.toLowerCase());
+    const xDone = Boolean(xConnectedForWallet && xStatus?.verified === true);
     const count = [Boolean(owner), flipDone, xDone].filter(Boolean).length;
+
     progress.textContent = `${count} / 3 COMPLETE`;
     pool.textContent = chain ? `${chain.claims} rewards available` : configured() ? 'Loading…' : 'V2 deployment pending';
     next.textContent = cooling ? new Date(nextAt * 1000).toLocaleString() : count === 3 ? 'Ready to claim' : `${3 - count} tasks remaining`;
     setCard('connect', Boolean(owner), true);
     setCard('flip', flipDone, Boolean(owner) && !cooling);
     setCard('x', xDone, Boolean(owner) && flipDone && !cooling);
+    xButton.textContent = xDone ? `VERIFIED @${xStatus.username || config.xHandle || 'X'}` : xConnectedForWallet ? 'CHECK FOLLOW AGAIN' : 'VERIFY X';
     claimPanel.hidden = !(count === 3 && !cooling);
-    claimButton.disabled = busy || !configured() || !chain || chain.paused || chain.claims === 0n;
+    claimButton.disabled = busy || !configured() || !chain || chain.paused || chain.claims === 0n || !xDone;
+
     if (!configured()) status.textContent = 'Verified rewards V2 is built but not active until the new contract is deployed and configured.';
     else if (!xStatus?.enabled) status.textContent = 'X OAuth is not configured on Render yet.';
     else if (cooling) status.textContent = 'Reward already claimed. This wallet is inside the 24-hour cooldown.';
+    else if (xConnectedForWallet && !xDone) status.textContent = 'X is connected, but the follow has not been verified. Press CHECK FOLLOW AGAIN.';
     else status.textContent = count === 3 ? 'All three tasks are verified. Claim is ready.' : 'Complete all three verified tasks.';
   }
 
@@ -138,9 +144,11 @@
     if (!owner || !provider?.request || !state.betId || busy) return;
     busy = true; render();
     try {
-      const latest = await fetch('/api/x/status', { credentials: 'same-origin' }).then(r => r.json());
-      if (!latest.connected || latest.wallet?.toLowerCase() !== owner.toLowerCase()) throw new Error('Reconnect X verification for this wallet.');
-      const message = `MATT X follow verification\nWallet: ${owner.toLowerCase()}\nBet: ${state.betId}\nNonce: ${latest.nonce}`;
+      const latest = await fetch('/api/x/status', { credentials: 'same-origin', cache: 'no-store' }).then(r => r.json());
+      if (!latest.connected || latest.wallet?.toLowerCase() !== owner.toLowerCase() || latest.verified !== true) {
+        throw new Error('Verify the X follow for this wallet before claiming.');
+      }
+      const message = `MATT X follow verification\nWallet: ${owner.toLowerCase()}\nBet: ${state.betId}\nNonce: ${latest.nonce || 'verified-session'}`;
       const signature = await provider.request({ method: 'personal_sign', params: [ethers.hexlify(ethers.toUtf8Bytes(message)), owner] });
       const proofResponse = await fetch('/api/x/proof', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ wallet: owner, betId: state.betId, signature }) });
       const proof = await proofResponse.json();
@@ -151,13 +159,13 @@
       status.textContent = 'Claim submitted. Waiting for Ronin confirmation…';
       setTimeout(refresh, 5000);
     } catch (error) {
-      status.textContent = String(error?.message || error).slice(0, 220);
+      status.textContent = String(error?.message || error).slice(0, 260);
     } finally { busy = false; render(); }
   }
 
   document.getElementById('v2-connect').addEventListener('click', () => window.MattRoninConnect?.connect());
   document.getElementById('v2-flip').addEventListener('click', () => document.getElementById('coin-flip')?.scrollIntoView({ behavior: 'smooth' }));
-  document.getElementById('v2-x').addEventListener('click', verifyX);
+  xButton.addEventListener('click', verifyX);
   claimButton.addEventListener('click', claim);
   document.getElementById('v2-refresh').addEventListener('click', refresh);
   window.addEventListener('matt:wallet-connected', refresh);
