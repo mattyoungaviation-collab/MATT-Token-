@@ -3,7 +3,10 @@
 
   const config = window.MATT_COIN_FLIP_CONFIG || {};
   const ETHERS_URL = 'https://esm.sh/ethers@6.13.5?bundle';
-  const POLL_MS = 1400;
+  const TX_POLL_MS = 900;
+  const ACTIVE_POLL_MS = 2500;
+  const IDLE_POLL_MS = 15000;
+  const HIDDEN_POLL_MS = 30000;
   const TX_TIMEOUT_MS = 180000;
   const GAME_ABI = [
     'function activeBetOf(address) view returns (uint256)',
@@ -52,6 +55,7 @@
   let currentAccountSeen = null;
   let currentMaximum = 0n;
   let walletBalance = 0n;
+  let summaryLoaded = false;
   let refreshTimer = null;
 
   const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -136,45 +140,73 @@
     return `mattCoinFlipPendingSecret:${config.contractAddress.toLowerCase()}:${owner}:${commitment}`;
   }
 
-  async function waitForChange({ label, requestPromise, probe }) {
-    const started = Date.now();
-    let responseReady = false;
-    let responseValue;
-    requestPromise.then(value => { responseReady = true; responseValue = { value }; })
-      .catch(error => { responseReady = true; responseValue = { error }; });
+  function scheduleSync(delay) {
+    clearTimeout(refreshTimer);
+    const nextDelay = document.hidden ? Math.max(delay, HIDDEN_POLL_MS) : delay;
+    refreshTimer = setTimeout(() => syncState({ preserveMessage: busy }), nextDelay);
+  }
 
-    while (Date.now() - started < TX_TIMEOUT_MS) {
-      if (responseReady && responseValue?.error) throw responseValue.error;
-      const hash = responseReady ? txHash(responseValue?.value) : null;
-      if (hash) {
+  async function waitForSubmittedTransaction(response, label, probe) {
+    const hash = txHash(response);
+    const started = Date.now();
+
+    if (hash) {
+      setStatus(`${label} submitted (${hash.slice(0, 10)}…). Waiting for Ronin confirmation…`);
+      while (Date.now() - started < TX_TIMEOUT_MS) {
         const receipt = await rpc('eth_getTransactionReceipt', [hash]);
         if (receipt) {
           if (BigInt(receipt.status || '0x0') !== 1n) throw new Error(`${label} transaction reverted.`);
           return { hash, receipt };
         }
-        setStatus(`${label} submitted (${hash.slice(0, 10)}…). Waiting for Ronin confirmation…`);
-      } else {
-        setStatus(`${label} signed. Detecting it on Ronin…`);
+        await sleep(TX_POLL_MS);
       }
-      if (await probe()) return { hash: hash || null, receipt: null };
-      await sleep(POLL_MS);
+    } else {
+      setStatus(`${label} submitted. Waiting for Ronin confirmation…`);
+      while (Date.now() - started < TX_TIMEOUT_MS) {
+        if (await probe()) return { hash: null, receipt: null };
+        await sleep(TX_POLL_MS);
+      }
     }
-    throw new Error(`${label} was not detected on-chain. Refresh to resume from the wallet’s actual state.`);
+
+    throw new Error(`${label} was not confirmed in time. Refresh to resume from the wallet’s actual state.`);
   }
 
   async function sendTransaction({ to, data, label, probe }) {
     const owner = account();
     const provider = wallet();
     if (!owner || !provider?.request) throw new Error('Connect Ronin Wallet first.');
-    return waitForChange({
-      label,
-      requestPromise: provider.request({ method: 'eth_sendTransaction', params: [{ from: owner, to, data, value: '0x0' }] }),
-      probe
+
+    setStatus(`Open Ronin Wallet and confirm ${label}.`);
+    const response = await provider.request({
+      method: 'eth_sendTransaction',
+      params: [{ from: owner, to, data, value: '0x0' }]
     });
+
+    // No blockchain polling occurs while the wallet approval prompt is open.
+    return waitForSubmittedTransaction(response, label, probe);
   }
 
   function selectedChoice() {
     return document.querySelector('.choice.active')?.dataset.choice === 'tails' ? 1 : 0;
+  }
+
+  async function refreshSummary(owner) {
+    const [balanceRaw, bankrollRaw, maximumRaw, pausedRaw] = await Promise.all([
+      read(config.tokenAddress, token, 'balanceOf', [owner]),
+      read(config.contractAddress, game, 'availableBankroll'),
+      read(config.contractAddress, game, 'maxAcceptableBet'),
+      read(config.contractAddress, game, 'paused')
+    ]);
+    walletBalance = BigInt(balanceRaw[0]);
+    const bankroll = BigInt(bankrollRaw[0]);
+    const maximum = BigInt(maximumRaw[0]);
+    currentMaximum = maximum < walletBalance ? maximum : walletBalance;
+    balanceDisplay.textContent = formatMatt(walletBalance);
+    bankrollDisplay.textContent = formatMatt(bankroll);
+    maxDisplay.textContent = formatMatt(currentMaximum);
+    if (amountInput) amountInput.max = ethers.formatUnits(currentMaximum, 18);
+    summaryLoaded = true;
+    return Boolean(pausedRaw[0]);
   }
 
   async function syncState({ preserveMessage = false } = {}) {
@@ -187,35 +219,25 @@
         activeBetId = 0n;
         activeBet = null;
         activeSecret = null;
+        summaryLoaded = false;
       }
 
       if (!owner || !wallet()?.request) {
         actionButton.textContent = 'CONNECT RONIN';
         actionButton.disabled = false;
+        balanceDisplay.textContent = 'Connect wallet';
+        maxDisplay.textContent = 'Connect wallet';
         if (!preserveMessage) setStatus('Connect Ronin Wallet to enter MATT BurnFlip.');
         setFlow('commit');
+        activeBetId = 0n;
         return;
       }
 
-      const [balanceRaw, bankrollRaw, maximumRaw, pausedRaw, betId] = await Promise.all([
-        read(config.tokenAddress, token, 'balanceOf', [owner]),
-        read(config.contractAddress, game, 'availableBankroll'),
-        read(config.contractAddress, game, 'maxAcceptableBet'),
-        read(config.contractAddress, game, 'paused'),
-        active(owner)
-      ]);
-      walletBalance = BigInt(balanceRaw[0]);
-      const bankroll = BigInt(bankrollRaw[0]);
-      const maximum = BigInt(maximumRaw[0]);
-      currentMaximum = maximum < walletBalance ? maximum : walletBalance;
-      const paused = Boolean(pausedRaw[0]);
-      balanceDisplay.textContent = formatMatt(walletBalance);
-      bankrollDisplay.textContent = formatMatt(bankroll);
-      maxDisplay.textContent = formatMatt(currentMaximum);
-      if (amountInput) amountInput.max = ethers.formatUnits(currentMaximum, 18);
+      const betId = await active(owner);
       activeBetId = betId;
 
       if (activeBetId === 0n) {
+        const paused = await refreshSummary(owner);
         activeBet = null;
         activeSecret = null;
         actionButton.textContent = paused ? 'BURNFLIP PAUSED' : 'PLACE BURNFLIP BET';
@@ -230,7 +252,11 @@
         return;
       }
 
-      const decoded = await read(config.contractAddress, game, 'bets', [activeBetId]);
+      if (!summaryLoaded) await refreshSummary(owner);
+      const [decoded, block] = await Promise.all([
+        read(config.contractAddress, game, 'bets', [activeBetId]),
+        currentBlock()
+      ]);
       activeBet = {
         amount: BigInt(decoded.amount ?? decoded[1]),
         entropyBlock: Number(decoded.entropyBlock ?? decoded[2]),
@@ -241,7 +267,6 @@
       };
       activeSecret = localStorage.getItem(secretKey(owner, activeBetId.toString())) ||
         localStorage.getItem(pendingKey(owner, activeBet.commitment));
-      const block = await currentBlock();
 
       if (block <= activeBet.entropyBlock) {
         actionButton.textContent = `BET #${activeBetId} CONFIRMED`;
@@ -266,6 +291,7 @@
       if (!busy) setStatus(friendly(error), 'error');
     } finally {
       syncing = false;
+      scheduleSync(activeBetId !== 0n ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     }
   }
 
@@ -276,7 +302,7 @@
     if (amount < ethers.parseUnits('1', 18)) throw new Error('The minimum BurnFlip bet is 1 MATT.');
     if (amount > walletBalance) throw new Error('Your wallet does not hold that much MATT.');
     if (amount > currentMaximum) throw new Error(`The current maximum is ${formatMatt(currentMaximum)}.`);
-    if (await active(owner) !== 0n) throw new Error('This wallet already has a pending BurnFlip bet.');
+    if (activeBetId !== 0n) throw new Error('This wallet already has a pending BurnFlip bet.');
 
     const secret = ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
     const choice = selectedChoice();
@@ -287,7 +313,6 @@
     localStorage.setItem(pendingKey(owner, commitment), secret);
 
     if (await allowance(owner) < amount) {
-      setStatus('Step 1 of 2: confirm MATT approval in Ronin Wallet.');
       await sendTransaction({
         to: config.tokenAddress,
         data: token.encodeFunctionData('approve', [config.contractAddress, amount]),
@@ -296,12 +321,11 @@
       });
     }
 
-    setStatus('Step 2 of 2: confirm the BurnFlip bet in Ronin Wallet.');
-    const before = await active(owner);
+    const before = activeBetId;
     await sendTransaction({
       to: config.contractAddress,
       data: game.encodeFunctionData('placeBet', [choice, amount, commitment]),
-      label: 'BurnFlip bet',
+      label: 'the BurnFlip bet',
       probe: async () => (await active(owner)) !== before
     });
 
@@ -309,7 +333,8 @@
     if (betId === 0n) throw new Error('The BurnFlip bet was not detected on-chain.');
     localStorage.setItem(secretKey(owner, betId.toString()), secret);
     localStorage.removeItem(pendingKey(owner, commitment));
-    setStatus(`BurnFlip bet #${betId} is confirmed on Ronin.`, 'good');
+    activeBetId = betId;
+    setStatus(`BurnFlip bet #${betId} is confirmed on Ronin. Preparing reveal…`, 'good');
     await syncState({ preserveMessage: true });
   }
 
@@ -318,18 +343,18 @@
     const betId = activeBetId;
     const secret = activeSecret;
     if (!betId || !secret) throw new Error('The reveal secret is unavailable in this browser.');
-    setStatus(`Confirm Reveal & Settle for BurnFlip bet #${betId}.`);
     await sendTransaction({
       to: config.contractAddress,
       data: game.encodeFunctionData('revealAndSettle', [betId, secret]),
-      label: 'Reveal & Settle',
+      label: `Reveal & Settle for bet #${betId}`,
       probe: async () => (await active(owner)) === 0n
     });
     localStorage.removeItem(secretKey(owner, betId.toString()));
+    activeBetId = 0n;
+    summaryLoaded = false;
     setStatus(`Bet #${betId} settled on Ronin. Loading your result…`, 'good');
     window.dispatchEvent(new CustomEvent('matt:coin-settled', { detail: { account: owner, betId: betId.toString() } }));
     window.dispatchEvent(new CustomEvent('matt:burnflip-updated'));
-    await syncState({ preserveMessage: true });
     if (typeof loadBalances === 'function') loadBalances(owner).catch(() => {});
   }
 
@@ -339,10 +364,12 @@
     await sendTransaction({
       to: config.contractAddress,
       data: game.encodeFunctionData('expireBet', [betId]),
-      label: 'Burn expired stake',
+      label: `Burn expired bet #${betId}`,
       probe: async () => (await active(owner)) === 0n
     });
     localStorage.removeItem(secretKey(owner, betId.toString()));
+    activeBetId = 0n;
+    summaryLoaded = false;
     setStatus(`Bet #${betId} expired. 100% of the stake was permanently burned.`, 'good');
     window.dispatchEvent(new CustomEvent('matt:burnflip-updated'));
   }
@@ -351,6 +378,7 @@
     if (busy) return;
     if (!account() || !wallet()?.request) return window.MattRoninConnect?.connect();
     busy = true;
+    clearTimeout(refreshTimer);
     actionButton.disabled = true;
     try {
       if (activeBetId === 0n) await placeBet();
@@ -366,6 +394,7 @@
   expireButton?.addEventListener('click', async () => {
     if (busy) return;
     busy = true;
+    clearTimeout(refreshTimer);
     try { await expireBet(); } catch (error) { setStatus(friendly(error), 'error'); }
     finally { busy = false; await syncState({ preserveMessage: true }); }
   });
@@ -375,8 +404,13 @@
     amountInput.value = ethers.formatUnits(currentMaximum, 18).replace(/\.0+$/, '');
   }, true);
 
-  window.addEventListener('matt:wallet-connected', () => syncState());
+  window.addEventListener('matt:wallet-connected', () => { summaryLoaded = false; syncState(); });
   window.addEventListener('matt:wallet-disconnected', () => syncState());
+  document.addEventListener('visibilitychange', () => {
+    clearTimeout(refreshTimer);
+    if (!document.hidden) syncState({ preserveMessage: true });
+    else scheduleSync(HIDDEN_POLL_MS);
+  });
 
   (async () => {
     try {
@@ -384,8 +418,6 @@
       game = new ethers.Interface(GAME_ABI);
       token = new ethers.Interface(TOKEN_ABI);
       await syncState();
-      clearInterval(refreshTimer);
-      refreshTimer = setInterval(() => syncState({ preserveMessage: busy }), POLL_MS);
     } catch (error) {
       setStatus(`BurnFlip controller failed to load: ${friendly(error)}`, 'error');
       actionButton.disabled = true;
