@@ -34,7 +34,13 @@ function config() {
 async function requestJson(url, options = {}) {
   const response = await fetch(url, options);
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.detail || body.title || body.error_description || `X returned HTTP ${response.status}`);
+  if (!response.ok) {
+    const message = body.detail || body.title || body.error_description || `X returned HTTP ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.code = body.type || body.error || "X_API_ERROR";
+    throw error;
+  }
   return body;
 }
 
@@ -57,6 +63,14 @@ function currentSession(req) {
   const session = id ? sessions.get(id) : null;
   if (!session || session.expiresAt < Date.now()) return null;
   return session;
+}
+
+function publicError(error) {
+  const message = String(error?.message || error || "X verification failed");
+  if (/credits depleted|payment required/i.test(message) || Number(error?.status) === 402) {
+    return "X API credits are depleted. The MATT administrator must add X developer credits before follow verification can continue.";
+  }
+  return message.slice(0, 200);
 }
 
 function installXFollowVerifier(app) {
@@ -101,17 +115,26 @@ function installXFollowVerifier(app) {
       const headers = { "content-type": "application/x-www-form-urlencoded" };
       if (cfg.clientSecret) headers.authorization = `Basic ${Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString("base64")}`;
       const oauth = await requestJson("https://api.x.com/2/oauth2/token", { method: "POST", headers, body });
-      const me = await requestJson(`${API}/users/me`, { headers: { authorization: `Bearer ${oauth.access_token}` } });
+      const authHeaders = { authorization: `Bearer ${oauth.access_token}` };
+      const me = await requestJson(`${API}/users/me`, { headers: authHeaders });
+      const verified = await isFollowing(oauth.access_token, String(me.data.id), cfg.targetId);
+      if (!verified) {
+        return res.status(403).send(`@${String(me.data.username || "this account")} is not following @${cfg.targetHandle}. Follow the account, then verify again.`);
+      }
       const id = token();
       sessions.set(id, {
-        wallet: flow.wallet, accessToken: oauth.access_token,
-        xUserId: String(me.data.id), username: String(me.data.username || ""),
+        wallet: flow.wallet,
+        xUserId: String(me.data.id),
+        username: String(me.data.username || ""),
+        verified: true,
+        verifiedAt: Date.now(),
         expiresAt: Date.now() + 3600000,
       });
       res.cookie(COOKIE, id, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 3600000, path: "/" });
-      res.redirect("/hub.html?x_connected=1#daily-missions");
+      res.redirect("/hub.html?x_verified=1#daily-missions");
     } catch (error) {
-      res.status(502).send(`X verification failed: ${String(error.message || error).slice(0, 180)}`);
+      const message = publicError(error);
+      res.status(Number(error?.status) === 402 ? 402 : 502).send(`X verification failed: ${message}`);
     }
   });
 
@@ -119,22 +142,24 @@ function installXFollowVerifier(app) {
     const cfg = config();
     const session = currentSession(req);
     res.set("Cache-Control", "no-store").json(session ? {
-      enabled: cfg.enabled, connected: true, wallet: session.wallet,
-      username: session.username, targetHandle: cfg.targetHandle,
-    } : { enabled: cfg.enabled, connected: false, targetHandle: cfg.targetHandle });
+      enabled: cfg.enabled,
+      connected: true,
+      verified: session.verified === true,
+      wallet: session.wallet,
+      username: session.username,
+      targetHandle: cfg.targetHandle,
+    } : { enabled: cfg.enabled, connected: false, verified: false, targetHandle: cfg.targetHandle });
   });
 
   app.post("/api/x/proof", async (req, res) => {
     const cfg = config();
     const session = currentSession(req);
     if (!session) return res.status(401).json({ error: "Authorize X first." });
+    if (!session.verified) return res.status(403).json({ error: "The X follow has not been verified." });
     const wallet = String(req.body?.wallet || "").toLowerCase();
     const betId = String(req.body?.betId || "");
     if (wallet !== session.wallet || !/^\d+$/.test(betId)) return res.status(400).json({ error: "Wallet or bet mismatch." });
     try {
-      if (!(await isFollowing(session.accessToken, session.xUserId, cfg.targetId))) {
-        return res.status(403).json({ error: `@${session.username} is not following @${cfg.targetHandle}.` });
-      }
       const xUserHash = keccak256(Buffer.from(session.xUserId));
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
       const encoded = AbiCoder.defaultAbiCoder().encode(
@@ -144,7 +169,7 @@ function installXFollowVerifier(app) {
       const proof = await new Wallet(cfg.verifierKey).signMessage(getBytes(keccak256(encoded)));
       res.json({ xUserHash, deadline: deadline.toString(), proof, username: session.username });
     } catch (error) {
-      res.status(502).json({ error: String(error.message || error).slice(0, 200) });
+      res.status(502).json({ error: publicError(error) });
     }
   });
 
