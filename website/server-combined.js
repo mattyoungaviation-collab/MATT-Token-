@@ -5,11 +5,13 @@ const path = require("path");
 const { fork } = require("child_process");
 const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
+const { createBlackjackRouter } = require("./lib/blackjack-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
 const proxyPort = Number.parseInt(process.env.INTERNAL_PROXY_PORT || String(publicPort + 1), 10);
 const roninRpcUrl = process.env.RONIN_RPC_URL || "https://api.roninchain.com/rpc";
+const publicDir = path.join(__dirname, "public");
 const configuredDiskPath = String(
   process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || ""
 ).trim();
@@ -88,6 +90,11 @@ installBurnFlipStatsCache(app, {
   rpcRequest: statsRpcRequest,
   stateFile: burnFlipStatsFile
 });
+
+app.use("/api/blackjack", createBlackjackRouter());
+app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
+app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
+app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
 
 app.use((req, res) => {
   const headers = { ...req.headers, host: `127.0.0.1:${proxyPort}` };
