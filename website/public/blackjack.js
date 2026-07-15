@@ -7,6 +7,13 @@
   const TOKEN_ABI = ["function allowance(address owner,address spender) view returns (uint256)", "function approve(address spender,uint256 amount) returns (bool)"];
   const VAULT_ABI = ["function openWager(bytes32 roundId,uint256 amount) returns (bytes32)", "function withdraw()"];
 
+  function roninProvider() {
+    const candidates = [window.ronin?.provider, window.ronin];
+    const provider = candidates.find(candidate => candidate && typeof candidate.request === "function");
+    if (!provider) throw new Error("Ronin Wallet was not detected. Unlock the Ronin Wallet extension and refresh this page.");
+    return provider;
+  }
+
   function cardMarkup(card) {
     if (!card || card.hidden) return '<div class="card back" aria-label="Hidden card"></div>';
     const red = card.suit === "♥" || card.suit === "♦";
@@ -91,37 +98,40 @@
   }
 
   async function ensureRonin() {
-    const chainId = await window.ethereum.request({ method: "eth_chainId" });
-    if (String(chainId).toLowerCase() === "0x7e4") return;
+    const provider = roninProvider();
+    const chainId = await provider.request({ method: "eth_chainId" });
+    if (String(chainId).toLowerCase() === "0x7e4") return provider;
     try {
-      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x7e4" }] });
-    } catch (error) {
-      throw new Error("Switch your wallet to Ronin mainnet before placing a wager.");
+      await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x7e4" }] });
+      return provider;
+    } catch {
+      throw new Error("Switch Ronin Wallet to Ronin mainnet before placing a wager.");
     }
   }
 
-  async function signMessage(account, message) {
-    try { return await window.ethereum.request({ method: "personal_sign", params: [message, account] }); }
+  async function signMessage(provider, account, message) {
+    try { return await provider.request({ method: "personal_sign", params: [message, account] }); }
     catch (error) {
       if (error?.code === 4001) throw error;
-      return window.ethereum.request({ method: "personal_sign", params: [account, message] });
+      return provider.request({ method: "personal_sign", params: [account, message] });
     }
   }
 
   async function connectWallet() {
-    if (!window.ethereum) throw new Error("Open this page in Ronin Wallet or install a compatible wallet.");
-    const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
+    const provider = roninProvider();
+    const [account] = await provider.request({ method: "eth_requestAccounts" });
+    if (!account) throw new Error("Ronin Wallet did not return an account.");
     const wallet = String(account).toLowerCase();
     const challenge = await post("/api/blackjack/auth/challenge", { wallet }, false);
-    const signature = await signMessage(wallet, challenge.message);
+    const signature = await signMessage(provider, wallet, challenge.message);
     const session = await post("/api/blackjack/auth/verify", { wallet, signature }, false);
     state.wallet = session.wallet;
     state.token = session.token;
     localStorage.setItem("mattBlackjackWallet", session.wallet);
     localStorage.setItem("mattBlackjackToken", session.token);
     $("#wallet-address").textContent = short(session.wallet);
-    $("#wallet-button").textContent = `SIGNED IN ${short(session.wallet)}`;
-    $("#auth-status").textContent = "Wallet ownership verified.";
+    $("#wallet-button").textContent = `RONIN CONNECTED ${short(session.wallet)}`;
+    $("#auth-status").textContent = "Ronin Wallet ownership verified.";
     await refreshAccount();
     if (state.table) render(state.table);
   }
@@ -132,8 +142,8 @@
     state.seat = null;
     localStorage.removeItem("mattBlackjackWallet");
     localStorage.removeItem("mattBlackjackToken");
-    $("#wallet-address").textContent = "Not signed in";
-    $("#wallet-button").textContent = "SIGN IN WITH WALLET";
+    $("#wallet-address").textContent = "Not connected";
+    $("#wallet-button").textContent = "CONNECT RONIN WALLET";
     $("#claimable-balance").textContent = "0 MATT";
     $("#withdraw-winnings").disabled = true;
     if (state.table) render(state.table);
@@ -146,7 +156,7 @@
     state.wallet = wallet;
     state.token = token;
     $("#wallet-address").textContent = short(wallet);
-    $("#wallet-button").textContent = `SIGNED IN ${short(wallet)}`;
+    $("#wallet-button").textContent = `RONIN CONNECTED ${short(wallet)}`;
   }
 
   async function refreshAccount() {
@@ -188,24 +198,23 @@
       if (!config.connected) throw new Error("The server cannot reach Ronin right now.");
       if (config.paused) throw new Error("The vault is still paused. The treasury must fund and unpause it before live wagering.");
       if (!config.operatorMatches) throw new Error("Settlement operator configuration does not match the vault.");
-      await ensureRonin();
-
-      const provider = new window.ethers.BrowserProvider(window.ethereum);
+      const ronin = await ensureRonin();
+      const provider = new window.ethers.BrowserProvider(ronin);
       const signer = await provider.getSigner();
       const signerAddress = (await signer.getAddress()).toLowerCase();
-      if (signerAddress !== state.wallet.toLowerCase()) throw new Error("The connected wallet changed. Sign in again.");
+      if (signerAddress !== state.wallet.toLowerCase()) throw new Error("The connected Ronin account changed. Connect again.");
 
       const amountWei = window.ethers.parseUnits(String(state.bet), 18);
       const token = new window.ethers.Contract(config.mattAddress, TOKEN_ABI, signer);
       const vault = new window.ethers.Contract(config.vaultAddress, VAULT_ABI, signer);
       const allowance = await token.allowance(signerAddress, config.vaultAddress);
       if (allowance < amountWei) {
-        $("#auth-status").textContent = "Approve MATT in your wallet…";
+        $("#auth-status").textContent = "Approve MATT in Ronin Wallet…";
         const approval = await token.approve(config.vaultAddress, amountWei);
         await approval.wait(1);
       }
 
-      $("#auth-status").textContent = "Open the wager in your wallet…";
+      $("#auth-status").textContent = "Confirm the wager in Ronin Wallet…";
       const wagerTx = await vault.openWager(config.contractRoundId, amountWei);
       await wagerTx.wait(1);
       $("#auth-status").textContent = "Verifying wager with the live table…";
@@ -224,8 +233,8 @@
     if (!window.ethers || !state.config) throw new Error("Vault configuration is unavailable.");
     state.busy = true;
     try {
-      await ensureRonin();
-      const provider = new window.ethers.BrowserProvider(window.ethereum);
+      const ronin = await ensureRonin();
+      const provider = new window.ethers.BrowserProvider(ronin);
       const signer = await provider.getSigner();
       const vault = new window.ethers.Contract(state.config.vaultAddress, VAULT_ABI, signer);
       const tx = await vault.withdraw();
@@ -254,7 +263,7 @@
   $("#seat-grid").addEventListener("click", async event => { const seat = event.target.closest("[data-seat]"); if (!seat) return; try { if (!state.token) await connectWallet(); await post("/api/blackjack/join", { seat: Number(seat.dataset.seat) }); } catch (error) { alert(error.message); } });
   $("#leave-seat").addEventListener("click", () => post("/api/blackjack/leave", {}).catch(error => alert(error.message)));
   $(".actions").addEventListener("click", event => { const action = event.target.dataset.action; if (action) post("/api/blackjack/action", { action }).catch(error => alert(error.message)); });
-  window.ethereum?.on?.("accountsChanged", () => clearSession());
+  try { roninProvider().on?.("accountsChanged", () => clearSession()); } catch {}
   setInterval(refreshCountdown, 250);
   setInterval(refreshSettlement, 3_000);
   setInterval(loadConfig, 15_000);
