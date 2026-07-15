@@ -12,7 +12,7 @@ const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
 const proxyPort = Number.parseInt(process.env.INTERNAL_PROXY_PORT || String(publicPort + 1), 10);
 const roninRpcUrl = process.env.RONIN_RPC_URL || "https://api.roninchain.com/rpc";
 const publicDir = path.join(__dirname, "public");
-const ethersBrowserBundle = path.resolve(path.dirname(require.resolve("ethers")), "../../dist/ethers.min.js");
+const ethersBrowserBundle = path.resolve(path.dirname(require.resolve("ethers")), "../dist/ethers.min.js");
 const configuredDiskPath = String(
   process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || ""
 ).trim();
