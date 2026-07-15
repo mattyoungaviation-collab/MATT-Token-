@@ -12,7 +12,7 @@ const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
 const proxyPort = Number.parseInt(process.env.INTERNAL_PROXY_PORT || String(publicPort + 1), 10);
 const roninRpcUrl = process.env.RONIN_RPC_URL || "https://api.roninchain.com/rpc";
 const publicDir = path.join(__dirname, "public");
-const ethersBrowserBundle = path.resolve(path.dirname(require.resolve("ethers")), "../dist/ethers.min.js");
+const ethersBrowserBundle = path.resolve(path.dirname(require.resolve("ethers")), "../dist/ethers.umd.min.js");
 const configuredDiskPath = String(
   process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || ""
 ).trim();
@@ -96,8 +96,9 @@ app.use("/api/blackjack", createBlackjackRouter());
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
-app.get("/vendor/ethers.min.js", (_req, res) => {
+app.get("/vendor/ethers.umd.min.js", (_req, res) => {
   res.set("Cache-Control", "public, max-age=31536000, immutable");
+  res.type("application/javascript");
   res.sendFile(ethersBrowserBundle);
 });
 
