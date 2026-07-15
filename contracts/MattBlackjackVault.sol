@@ -14,13 +14,7 @@ interface IERC20Burnable is IERC20 {
 contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    enum Outcome {
-        Loss,
-        Surrender,
-        Push,
-        Win,
-        Blackjack
-    }
+    enum Outcome { Loss, Surrender, Push, Win, Blackjack }
 
     struct Wager {
         address player;
@@ -62,9 +56,7 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
     error RefundNotAvailable();
 
     constructor(address mattToken, address treasuryAddress, address operatorAddress) Ownable(treasuryAddress) {
-        if (mattToken == address(0) || treasuryAddress == address(0) || operatorAddress == address(0)) {
-            revert InvalidAddress();
-        }
+        if (mattToken == address(0) || treasuryAddress == address(0) || operatorAddress == address(0)) revert InvalidAddress();
         matt = IERC20Burnable(mattToken);
         treasury = treasuryAddress;
         settlementOperator = operatorAddress;
@@ -96,13 +88,8 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
         emit RefundDelayUpdated(previous, newDelay);
     }
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
     function fundBankroll(uint256 amount) external onlyTreasury nonReentrant {
         if (amount == 0) revert InvalidAmount();
@@ -112,7 +99,7 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     function withdrawBankroll(uint256 amount) external onlyTreasury nonReentrant {
-        if (amount == 0 || amount > availableBankroll()) revert InsufficientBankroll();
+        if (amount == 0 || amount > unreservedBankroll()) revert InsufficientBankroll();
         totalTreasuryWithdrawn += amount;
         IERC20(address(matt)).safeTransfer(treasury, amount);
         emit BankrollWithdrawn(treasury, amount);
@@ -124,13 +111,12 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
         if (wagers[wagerId].player != address(0)) revert WagerAlreadyExists();
 
         uint256 maxProfit = blackjackProfit(amount);
-        if (availableBankroll() < maxProfit) revert InsufficientBankroll();
+        if (unreservedBankroll() < maxProfit) revert InsufficientBankroll();
 
         IERC20(address(matt)).safeTransferFrom(msg.sender, address(this), amount);
-        wagers[wagerId] = Wager({player: msg.sender, amount: uint128(amount), openedAt: uint64(block.timestamp), settled: false});
+        wagers[wagerId] = Wager(msg.sender, uint128(amount), uint64(block.timestamp), false);
         lockedWagers += amount;
         reservedProfit += maxProfit;
-
         emit WagerOpened(wagerId, roundId, msg.sender, amount);
     }
 
@@ -147,14 +133,12 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
         uint256 profit;
         uint256 burned;
 
-        if (outcome == Outcome.Loss) {
-            burned = amount;
-        } else if (outcome == Outcome.Surrender) {
+        if (outcome == Outcome.Loss) burned = amount;
+        else if (outcome == Outcome.Surrender) {
             returnedPrincipal = amount / 2;
             burned = amount - returnedPrincipal;
-        } else if (outcome == Outcome.Push) {
-            returnedPrincipal = amount;
-        } else if (outcome == Outcome.Win) {
+        } else if (outcome == Outcome.Push) returnedPrincipal = amount;
+        else if (outcome == Outcome.Win) {
             returnedPrincipal = amount;
             profit = amount;
         } else {
@@ -164,7 +148,6 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
 
         uint256 credit = returnedPrincipal + profit;
         if (credit != 0) {
-            if (profit > availableBankroll()) revert InsufficientBankroll();
             claimable[wager.player] += credit;
             totalClaimable += credit;
         }
@@ -189,7 +172,6 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
         reservedProfit -= blackjackProfit(amount);
         claimable[wager.player] += amount;
         totalClaimable += amount;
-
         emit WagerRefunded(wagerId, wager.player, amount);
     }
 
@@ -213,14 +195,12 @@ contract MattBlackjackVault is Ownable, Pausable, ReentrancyGuard {
     function availableBankroll() public view returns (uint256) {
         uint256 balance = matt.balanceOf(address(this));
         uint256 protectedTokens = protectedBalance();
-        if (balance <= protectedTokens) return 0;
-        return balance - protectedTokens;
+        return balance > protectedTokens ? balance - protectedTokens : 0;
     }
 
-    function unreservedBankroll() external view returns (uint256) {
+    function unreservedBankroll() public view returns (uint256) {
         uint256 available = availableBankroll();
-        if (available <= reservedProfit) return 0;
-        return available - reservedProfit;
+        return available > reservedProfit ? available - reservedProfit : 0;
     }
 
     function isSolvent() external view returns (bool) {
