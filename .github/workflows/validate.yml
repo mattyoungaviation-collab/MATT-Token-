@@ -20,4 +20,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run compile
-      - run: npm test
+      - name: Run contract tests
+        run: npm test -- --reporter dot
