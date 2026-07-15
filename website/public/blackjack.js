@@ -1,5 +1,5 @@
 (() => {
-  const state = { wallet: null, seat: null, bet: 0, lastBet: 0, table: null, stream: null };
+  const state = { wallet: null, token: null, seat: null, bet: 0, lastBet: 0, table: null, stream: null };
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const fmt = value => `${Number(value || 0).toLocaleString()} MATT`;
@@ -30,9 +30,9 @@
 
     const me = table.seats.find(player => player && state.wallet && player.wallet.toLowerCase() === state.wallet.toLowerCase());
     state.seat = me ? table.seats.indexOf(me) : null;
-    $("#leave-seat").disabled = state.seat === null;
+    $("#leave-seat").disabled = state.seat === null || !state.token;
     const allowed = new Set(me?.allowedActions || []);
-    $$('[data-action]').forEach(button => { button.disabled = !allowed.has(button.dataset.action); });
+    $$('[data-action]').forEach(button => { button.disabled = !state.token || !allowed.has(button.dataset.action); });
     $("#activity-feed").innerHTML = (table.activity || []).slice(-20).reverse().map(item => `<li><time>${new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${escapeHtml(item.text)}</li>`).join("");
   }
 
@@ -42,19 +42,62 @@
     return div.innerHTML;
   }
 
-  async function api(path, body) {
-    const response = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  async function api(path, body, authenticated = true) {
+    const headers = { "content-type": "application/json" };
+    if (authenticated && state.token) headers.authorization = `Bearer ${state.token}`;
+    const response = await fetch(path, { method: "POST", headers, body: JSON.stringify(body || {}) });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || "Request failed");
+    if (!response.ok) {
+      if (response.status === 401 && authenticated) clearSession();
+      throw new Error(payload.message || "Request failed");
+    }
     return payload;
+  }
+
+  async function signMessage(account, message) {
+    try {
+      return await window.ethereum.request({ method: "personal_sign", params: [message, account] });
+    } catch (error) {
+      if (error?.code === 4001) throw error;
+      return window.ethereum.request({ method: "personal_sign", params: [account, message] });
+    }
   }
 
   async function connectWallet() {
     if (!window.ethereum) throw new Error("Open this page in Ronin Wallet or install a compatible wallet.");
     const [account] = await window.ethereum.request({ method: "eth_requestAccounts" });
-    state.wallet = account;
-    $("#wallet-address").textContent = short(account);
-    $("#wallet-button").textContent = short(account);
+    const wallet = String(account).toLowerCase();
+    const challenge = await api("/api/blackjack/auth/challenge", { wallet }, false);
+    const signature = await signMessage(wallet, challenge.message);
+    const session = await api("/api/blackjack/auth/verify", { wallet, signature }, false);
+    state.wallet = session.wallet;
+    state.token = session.token;
+    localStorage.setItem("mattBlackjackWallet", session.wallet);
+    localStorage.setItem("mattBlackjackToken", session.token);
+    $("#wallet-address").textContent = short(session.wallet);
+    $("#wallet-button").textContent = `SIGNED IN ${short(session.wallet)}`;
+    if (state.table) render(state.table);
+  }
+
+  function clearSession() {
+    state.wallet = null;
+    state.token = null;
+    state.seat = null;
+    localStorage.removeItem("mattBlackjackWallet");
+    localStorage.removeItem("mattBlackjackToken");
+    $("#wallet-address").textContent = "Not signed in";
+    $("#wallet-button").textContent = "SIGN IN WITH WALLET";
+    if (state.table) render(state.table);
+  }
+
+  function restoreSession() {
+    const wallet = localStorage.getItem("mattBlackjackWallet");
+    const token = localStorage.getItem("mattBlackjackToken");
+    if (!wallet || !token) return;
+    state.wallet = wallet;
+    state.token = token;
+    $("#wallet-address").textContent = short(wallet);
+    $("#wallet-button").textContent = `SIGNED IN ${short(wallet)}`;
   }
 
   function connectStream() {
@@ -69,9 +112,11 @@
   $("#chip-row").addEventListener("click", event => { const chip = Number(event.target.dataset.chip); if (!chip) return; state.bet = Math.min(5_000_000, state.bet + chip); $("#bet-display").textContent = fmt(state.bet); });
   $("#clear-bet").addEventListener("click", () => { state.bet = 0; $("#bet-display").textContent = fmt(0); });
   $("#repeat-bet").addEventListener("click", () => { state.bet = state.lastBet; $("#bet-display").textContent = fmt(state.bet); });
-  $("#place-bet").addEventListener("click", async () => { try { if (!state.wallet) await connectWallet(); if (state.seat === null) throw new Error("Take a seat first."); await api("/api/blackjack/bet", { wallet: state.wallet, amount: state.bet }); state.lastBet = state.bet; } catch (error) { alert(error.message); } });
-  $("#seat-grid").addEventListener("click", async event => { const seat = event.target.closest("[data-seat]"); if (!seat) return; try { if (!state.wallet) await connectWallet(); await api("/api/blackjack/join", { wallet: state.wallet, seat: Number(seat.dataset.seat) }); } catch (error) { alert(error.message); } });
-  $("#leave-seat").addEventListener("click", () => api("/api/blackjack/leave", { wallet: state.wallet }).catch(error => alert(error.message)));
-  $(".actions").addEventListener("click", event => { const action = event.target.dataset.action; if (action) api("/api/blackjack/action", { wallet: state.wallet, action }).catch(error => alert(error.message)); });
+  $("#place-bet").addEventListener("click", async () => { try { if (!state.token) await connectWallet(); if (state.seat === null) throw new Error("Take a seat first."); await api("/api/blackjack/bet", { amount: state.bet }); state.lastBet = state.bet; } catch (error) { alert(error.message); } });
+  $("#seat-grid").addEventListener("click", async event => { const seat = event.target.closest("[data-seat]"); if (!seat) return; try { if (!state.token) await connectWallet(); await api("/api/blackjack/join", { seat: Number(seat.dataset.seat) }); } catch (error) { alert(error.message); } });
+  $("#leave-seat").addEventListener("click", () => api("/api/blackjack/leave", {}).catch(error => alert(error.message)));
+  $(".actions").addEventListener("click", event => { const action = event.target.dataset.action; if (action) api("/api/blackjack/action", { action }).catch(error => alert(error.message)); });
+  window.ethereum?.on?.("accountsChanged", () => clearSession());
+  restoreSession();
   connectStream();
 })();
