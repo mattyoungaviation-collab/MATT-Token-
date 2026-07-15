@@ -21,6 +21,10 @@
   }
 
   function countdownText(table) {
+    if (table.phase === "BETTING" && table.bettingDeadline) {
+      const seconds = Math.max(0, Math.ceil((Number(table.bettingDeadline) - Date.now()) / 1000));
+      return `Betting closes in ${seconds}s • Confirm your wager in Ronin Wallet`;
+    }
     if (table.phase !== "PLAYER_TURNS" || !table.turnDeadline || table.activeSeat == null) return table.message || "Waiting for players.";
     const seconds = Math.max(0, Math.ceil((Number(table.turnDeadline) - Date.now()) / 1000));
     const active = table.seats[table.activeSeat];
@@ -51,7 +55,7 @@
 
     const me = table.seats.find(player => player && state.wallet && player.wallet.toLowerCase() === state.wallet.toLowerCase());
     state.seat = me ? table.seats.indexOf(me) : null;
-    $("#leave-seat").disabled = state.seat === null || !state.token || state.busy;
+    $("#leave-seat").disabled = state.seat === null || !state.token || state.busy || Number(me?.bet || 0) > 0;
     const allowed = new Set((me?.allowedActions || []).filter(action => ["hit", "stand", "surrender"].includes(action)));
     $$('[data-action]').forEach(button => { button.disabled = state.busy || !state.token || !allowed.has(button.dataset.action); });
     $("#activity-feed").innerHTML = (table.activity || []).slice(-20).reverse().map(item => `<li><time>${new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>${escapeHtml(item.text)}</li>`).join("");
