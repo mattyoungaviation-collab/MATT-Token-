@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "test": "node scripts/run-contract-tests.js",
     "coverage": "hardhat coverage",
     "deploy:saigon": "hardhat deploy --network saigon --tags MattToken",
     "deploy:ronin": "hardhat deploy --network ronin --tags MattToken",
@@ -18,6 +18,8 @@
     "deploy:rewards:ronin": "hardhat deploy --network ronin --tags MattDailyRewards",
     "deploy:rewards-v2:saigon": "hardhat deploy --network saigon --tags MattDailyRewardsV2",
     "deploy:rewards-v2:ronin": "hardhat deploy --network ronin --tags MattDailyRewardsV2",
+    "deploy:blackjack:saigon": "hardhat deploy --network saigon --tags MattBlackjackVault",
+    "deploy:blackjack:ronin": "hardhat deploy --network ronin --tags MattBlackjackVault",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
     "site": "node website/server-combined.js",

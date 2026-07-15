@@ -1,0 +1,47 @@
+name: Deploy blackjack vault
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: Network to deploy to
+        required: true
+        type: choice
+        default: saigon
+        options:
+          - saigon
+          - ronin
+
+permissions:
+  contents: read
+
+env:
+  DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+  BLACKJACK_SETTLEMENT_OPERATOR: ${{ secrets.BLACKJACK_SETTLEMENT_OPERATOR }}
+  RONIN_RPC_URL: ${{ secrets.RONIN_RPC_URL }}
+  SAIGON_RPC_URL: ${{ secrets.SAIGON_RPC_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.network == 'ronin' && 'ronin-mainnet' || 'saigon-testnet' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          test -n "$DEPLOYER_PRIVATE_KEY" || (echo "DEPLOYER_PRIVATE_KEY is missing" && exit 1)
+          test -n "$BLACKJACK_SETTLEMENT_OPERATOR" || (echo "BLACKJACK_SETTLEMENT_OPERATOR is missing" && exit 1)
+
+      - run: npm ci
+      - run: npm run compile
+      - run: npm test -- --grep MattBlackjackVault
+
+      - name: Deploy vault
+        run: npm run deploy:blackjack:${{ inputs.network }}
