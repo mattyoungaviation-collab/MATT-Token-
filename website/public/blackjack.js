@@ -11,10 +11,22 @@
     return `<div class="card ${red ? "red" : ""}" aria-label="${card.rank} of ${card.suit}"><span>${card.rank}${card.suit}</span><span class="center">${card.suit}</span></div>`;
   }
 
+  function countdownText(table) {
+    if (table.phase !== "PLAYER_TURNS" || !table.turnDeadline || table.activeSeat == null) return table.message || "Waiting for players.";
+    const seconds = Math.max(0, Math.ceil((Number(table.turnDeadline) - Date.now()) / 1000));
+    const active = table.seats[table.activeSeat];
+    const mine = active && state.wallet && active.wallet.toLowerCase() === state.wallet.toLowerCase();
+    return `${mine ? "Your turn" : `${short(active?.wallet)} is acting`} • ${seconds}s remaining`;
+  }
+
+  function refreshCountdown() {
+    if (state.table) $("#round-message").textContent = countdownText(state.table);
+  }
+
   function render(table) {
     state.table = table;
     $("#round-id").textContent = table.roundId || "Waiting";
-    $("#round-message").textContent = table.message || "Waiting for players.";
+    refreshCountdown();
     $("#dealer-total").textContent = table.dealer?.total ?? "—";
     $("#dealer-hand").innerHTML = (table.dealer?.cards || []).map(cardMarkup).join("");
     $("#server-commit").textContent = table.commitment || "Waiting for round";
@@ -25,7 +37,7 @@
     $("#seat-grid").innerHTML = table.seats.map((player, index) => {
       if (!player) return `<article class="seat empty"><button data-seat="${index}">SEAT ${index + 1}<br>JOIN</button></article>`;
       const mine = state.wallet && player.wallet.toLowerCase() === state.wallet.toLowerCase();
-      return `<article class="seat ${mine ? "active" : ""}"><strong>${mine ? "YOU" : short(player.wallet)}</strong><span>${fmt(player.bet)}</span><div class="hand">${(player.cards || []).map(cardMarkup).join("")}</div><b>${player.total ?? "—"}</b><small>${player.status || "Waiting"}</small></article>`;
+      return `<article class="seat ${mine ? "active" : ""} ${player.isActive ? "turn" : ""}"><strong>${mine ? "YOU" : short(player.wallet)}</strong><span>${fmt(player.bet)}</span><div class="hand">${(player.cards || []).map(cardMarkup).join("")}</div><b>${player.total ?? "—"}</b><small>${player.status || "Waiting"}</small></article>`;
     }).join("");
 
     const me = table.seats.find(player => player && state.wallet && player.wallet.toLowerCase() === state.wallet.toLowerCase());
@@ -55,9 +67,8 @@
   }
 
   async function signMessage(account, message) {
-    try {
-      return await window.ethereum.request({ method: "personal_sign", params: [message, account] });
-    } catch (error) {
+    try { return await window.ethereum.request({ method: "personal_sign", params: [message, account] }); }
+    catch (error) {
       if (error?.code === 4001) throw error;
       return window.ethereum.request({ method: "personal_sign", params: [account, message] });
     }
@@ -117,6 +128,7 @@
   $("#leave-seat").addEventListener("click", () => api("/api/blackjack/leave", {}).catch(error => alert(error.message)));
   $(".actions").addEventListener("click", event => { const action = event.target.dataset.action; if (action) api("/api/blackjack/action", { action }).catch(error => alert(error.message)); });
   window.ethereum?.on?.("accountsChanged", () => clearSession());
+  setInterval(refreshCountdown, 250);
   restoreSession();
   connectStream();
 })();
