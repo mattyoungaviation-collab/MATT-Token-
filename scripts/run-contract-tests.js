@@ -2,19 +2,21 @@ const { spawnSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
-const testDir = path.join(__dirname, "..", "test");
+const rootDir = path.join(__dirname, "..");
+const testDir = path.join(rootDir, "test");
+const hardhatCli = require.resolve("hardhat/internal/cli/cli");
 const files = fs.readdirSync(testDir)
   .filter(name => name.endsWith(".test.js"))
   .sort();
 
 for (const file of files) {
   console.log(`\n=== ${file} ===`);
-  const hardhatBin = process.platform === "win32" ? "npx.cmd" : "npx";
-  const result = spawnSync(hardhatBin, ["hardhat", "test", path.join("test", file)], {
-    cwd: path.join(__dirname, ".."),
+  const result = spawnSync(process.execPath, [hardhatCli, "test", path.join("test", file)], {
+    cwd: rootDir,
     stdio: "inherit",
     shell: false,
     env: process.env,
+    windowsHide: true,
   });
 
   if (result.error) {
