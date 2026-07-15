@@ -163,14 +163,17 @@ function installBurnFlipStatsCache(app, options) {
   app.get("/api/burnflip-stats", async (req, res) => {
     const force = String(req.query.fresh || "") === "1";
     const stale = !snapshot || Date.now() - Number(snapshot.generatedAt || 0) >= cacheTtlMs;
-    if (force || stale) {
+
+    if (!snapshot) {
       const work = refresh();
-      if (!snapshot) {
-        await Promise.race([
-          work,
-          new Promise(resolve => setTimeout(resolve, firstLoadWaitMs))
-        ]);
-      }
+      await Promise.race([
+        work,
+        new Promise(resolve => setTimeout(resolve, firstLoadWaitMs))
+      ]);
+    } else if (force || stale) {
+      // A complete saved snapshot is already available. Refresh it quietly
+      // without changing the API's readiness status.
+      refresh();
     }
 
     if (!snapshot) {
@@ -184,11 +187,13 @@ function installBurnFlipStatsCache(app, options) {
       });
     }
 
+    const updating = Boolean(refreshPromise);
     res.set("Cache-Control", force
       ? "no-store"
       : "public, max-age=5, stale-while-revalidate=30");
     return res.json({
-      status: refreshPromise ? "REFRESHING" : "READY",
+      status: "READY",
+      updating,
       ...snapshot
     });
   });
