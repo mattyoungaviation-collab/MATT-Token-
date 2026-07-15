@@ -19,6 +19,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Validate blackjack JavaScript
+        run: |
+          node --check website/lib/blackjack-chain.js
+          node --check website/lib/blackjack-routes.js
+          node --check website/lib/blackjack-service.js
+          node --check website/public/blackjack.js
+          node -e "require('ethers'); require('./website/lib/blackjack-chain'); require('./website/lib/blackjack-routes')"
       - run: npm run compile
       - name: Run contract tests
         id: contract-tests
