@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm test -- --reporter spec > contract-test-output.txt 2>&1
+          npm test > contract-test-output.txt 2>&1
           status=$?
           cat contract-test-output.txt
           exit $status
