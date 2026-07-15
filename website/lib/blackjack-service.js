@@ -5,7 +5,9 @@ const path = require("path");
 const MIN_BET = 10_000;
 const MAX_BET = 5_000_000;
 const TABLE_ID = "genesis";
-const TURN_MS = positiveInteger(process.env.BLACKJACK_TURN_MS, 30_000);
+const TURN_MS = positiveInteger(process.env.BLACKJACK_TURN_MS, 50_000);
+const BETTING_MS = positiveInteger(process.env.BLACKJACK_BETTING_MS, 50_000);
+const INACTIVITY_MS = positiveInteger(process.env.BLACKJACK_INACTIVITY_MS, 5 * 60_000);
 const configuredDiskPath = String(process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || "").trim();
 const persistentDiskPath = configuredDiskPath || (fs.existsSync("/var/data") ? "/var/data" : "");
 const STATE_FILE = process.env.BLACKJACK_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-table.json") : path.join(__dirname, "..", ".blackjack-state.json"));
@@ -14,7 +16,11 @@ function createBlackjackService() {
   const clients = new Set();
   let table = loadTable() || newTable();
   let turnTimer = null;
+  let bettingTimer = null;
+  normalizeLoadedState();
   recoverState();
+  const inactivityTimer = setInterval(ejectInactivePlayers, 10_000);
+  inactivityTimer.unref?.();
 
   function newTable() {
     return {
@@ -32,6 +38,7 @@ function createBlackjackService() {
       activity: [],
       activeSeat: null,
       turnDeadline: null,
+      bettingDeadline: null,
       updatedAt: new Date().toISOString()
     };
   }
@@ -46,6 +53,16 @@ function createBlackjackService() {
       console.error("Could not load blackjack state:", String(error.message || error));
       return null;
     }
+  }
+
+  function normalizeLoadedState() {
+    table.bettingDeadline = Number(table.bettingDeadline || 0) || null;
+    table.turnDeadline = Number(table.turnDeadline || 0) || null;
+    const fallback = Date.parse(table.updatedAt || "") || Date.now();
+    table.seats = table.seats.map(seatedPlayer => seatedPlayer ? {
+      ...seatedPlayer,
+      lastActivityAt: Number(seatedPlayer.lastActivityAt || fallback)
+    } : null);
   }
 
   function save() {
@@ -71,6 +88,10 @@ function createBlackjackService() {
         const remaining = Number(table.turnDeadline || 0) - Date.now();
         beginTurn(remaining > 0 ? remaining : 1_000, true);
       }
+    } else if (table.phase === "BETTING" && table.bettingDeadline) {
+      const remaining = Number(table.bettingDeadline) - Date.now();
+      if (remaining > 0) beginBettingWindow(remaining, true);
+      else setTimeout(closeBettingWindow, 250).unref?.();
     } else if (table.phase === "SETTLED") {
       setTimeout(reset, 8_000).unref?.();
     }
@@ -93,14 +114,14 @@ function createBlackjackService() {
     return {
       ...table,
       shoe: undefined,
-      seats: table.seats.map((player, index) => player ? {
-        wallet: player.wallet,
-        bet: player.bet,
-        cards: player.cards,
-        total: handValue(player.cards),
-        status: index === table.activeSeat && table.phase === "PLAYER_TURNS" ? "Your turn" : player.status,
+      seats: table.seats.map((seatedPlayer, index) => seatedPlayer ? {
+        wallet: seatedPlayer.wallet,
+        bet: seatedPlayer.bet,
+        cards: seatedPlayer.cards,
+        total: handValue(seatedPlayer.cards),
+        status: index === table.activeSeat && table.phase === "PLAYER_TURNS" ? "Your turn" : seatedPlayer.status,
         isActive: index === table.activeSeat && table.phase === "PLAYER_TURNS",
-        allowedActions: index === table.activeSeat ? allowedActions(player) : []
+        allowedActions: index === table.activeSeat ? allowedActions(seatedPlayer) : []
       } : null),
       dealer: {
         cards: table.dealer.cards.map((card, index) => table.phase === "PLAYER_TURNS" && index === 1 ? { hidden: true } : card),
@@ -119,13 +140,17 @@ function createBlackjackService() {
     return value;
   }
 
+  function touch(seatedPlayer) {
+    seatedPlayer.lastActivityAt = Date.now();
+  }
+
   function join(wallet, seat) {
     wallet = normalize(wallet);
     if (!Number.isInteger(seat) || seat < 0 || seat > 4) throw new Error("Invalid seat.");
     if (table.phase !== "BETTING") throw new Error("Wait for the current hand to finish.");
-    if (table.seats.some(player => player?.wallet === wallet)) throw new Error("This wallet is already seated.");
+    if (table.seats.some(seatedPlayer => seatedPlayer?.wallet === wallet)) throw new Error("This wallet is already seated.");
     if (table.seats[seat]) throw new Error("That seat is occupied.");
-    table.seats[seat] = { wallet, bet: 0, cards: [], status: "Betting", stood: false, busted: false };
+    table.seats[seat] = { wallet, bet: 0, cards: [], status: "Betting", stood: false, busted: false, lastActivityAt: Date.now() };
     log(`${short(wallet)} joined seat ${seat + 1}.`);
     emit();
   }
@@ -135,6 +160,7 @@ function createBlackjackService() {
     const index = table.seats.findIndex(candidate => candidate?.wallet === wallet);
     if (index < 0) throw new Error("Wallet is not seated.");
     if (table.phase !== "BETTING") throw new Error("You cannot leave during an active hand.");
+    if (table.seats[index].bet > 0) throw new Error("You cannot leave after confirming an on-chain wager.");
     table.seats[index] = null;
     log(`${short(wallet)} left the table.`);
     emit();
@@ -148,13 +174,63 @@ function createBlackjackService() {
     if (!Number.isSafeInteger(amount) || amount < MIN_BET || amount > MAX_BET) throw new Error(`Bet must be between ${MIN_BET.toLocaleString()} and ${MAX_BET.toLocaleString()} MATT.`);
     seatedPlayer.bet = amount;
     seatedPlayer.status = "Ready";
+    touch(seatedPlayer);
     log(`${short(seatedPlayer.wallet)} bet ${amount.toLocaleString()} MATT.`);
+    if (!table.bettingDeadline) beginBettingWindow(BETTING_MS);
+    else emit();
+  }
+
+  function beginBettingWindow(milliseconds = BETTING_MS, recovering = false) {
+    clearBettingTimer();
+    table.bettingDeadline = Date.now() + Math.max(250, milliseconds);
+    table.message = "Place your wager before betting closes.";
+    if (!recovering) log(`Betting is open for ${Math.ceil(milliseconds / 1000)} seconds.`);
     emit();
-    const seated = table.seats.filter(Boolean);
-    if (seated.some(candidate => candidate.bet > 0) && seated.every(candidate => candidate.bet > 0)) startRound();
+    bettingTimer = setTimeout(closeBettingWindow, Math.max(250, milliseconds));
+    bettingTimer.unref?.();
+  }
+
+  function closeBettingWindow() {
+    if (table.phase !== "BETTING") return;
+    clearBettingTimer();
+    table.bettingDeadline = null;
+    for (let index = 0; index < table.seats.length; index += 1) {
+      const seatedPlayer = table.seats[index];
+      if (seatedPlayer && seatedPlayer.bet <= 0) {
+        log(`${short(seatedPlayer.wallet)} was removed for not placing a bet in time.`);
+        table.seats[index] = null;
+      }
+    }
+    if (table.seats.some(seatedPlayer => seatedPlayer?.bet > 0)) startRound();
+    else {
+      table.message = "Take a seat and place a bet.";
+      emit();
+    }
+  }
+
+  function clearBettingTimer() {
+    if (bettingTimer) clearTimeout(bettingTimer);
+    bettingTimer = null;
+  }
+
+  function ejectInactivePlayers() {
+    if (table.phase !== "BETTING") return;
+    const now = Date.now();
+    let changed = false;
+    for (let index = 0; index < table.seats.length; index += 1) {
+      const seatedPlayer = table.seats[index];
+      if (!seatedPlayer || seatedPlayer.bet > 0) continue;
+      if (now - Number(seatedPlayer.lastActivityAt || 0) < INACTIVITY_MS) continue;
+      log(`${short(seatedPlayer.wallet)} was auto-ejected after 5 minutes of inactivity.`);
+      table.seats[index] = null;
+      changed = true;
+    }
+    if (changed) emit();
   }
 
   function startRound() {
+    clearBettingTimer();
+    table.bettingDeadline = null;
     clearTurnTimer();
     table.roundId = `MATT-${Date.now().toString(36).toUpperCase()}`;
     table.shoe = shuffle(createShoe(6));
@@ -168,6 +244,7 @@ function createBlackjackService() {
       seatedPlayer.stood = false;
       seatedPlayer.busted = false;
       seatedPlayer.status = "Playing";
+      touch(seatedPlayer);
     }
     for (let index = 0; index < 2; index += 1) {
       for (const seatedPlayer of table.seats.filter(Boolean)) seatedPlayer.cards.push(draw());
@@ -187,6 +264,7 @@ function createBlackjackService() {
     if (seat !== table.activeSeat) throw new Error("Wait for your turn.");
     if (!allowedActions(seatedPlayer).includes(actionName)) throw new Error("That action is not allowed.");
     clearTurnTimer();
+    touch(seatedPlayer);
 
     if (actionName === "hit") {
       seatedPlayer.cards.push(draw());
@@ -272,6 +350,7 @@ function createBlackjackService() {
       else if (dealerTotal > 21 || total > dealerTotal) seatedPlayer.status = total === 21 && seatedPlayer.cards.length === 2 ? "Blackjack" : "Won";
       else if (total === dealerTotal) seatedPlayer.status = "Push";
       else { seatedPlayer.status = "Lost • Burn"; burned.push(seatedPlayer.bet); }
+      touch(seatedPlayer);
     }
     table.phase = "SETTLED";
     table.message = `Dealer has ${dealerTotal}. Round complete.`;
@@ -285,12 +364,14 @@ function createBlackjackService() {
 
   function reset() {
     clearTurnTimer();
+    clearBettingTimer();
     for (const seatedPlayer of table.seats.filter(Boolean)) {
       seatedPlayer.bet = 0;
       seatedPlayer.cards = [];
       seatedPlayer.status = "Betting";
       seatedPlayer.stood = false;
       seatedPlayer.busted = false;
+      touch(seatedPlayer);
     }
     table.phase = "BETTING";
     table.roundId = null;
@@ -300,16 +381,14 @@ function createBlackjackService() {
     table.deckHash = null;
     table.activeSeat = null;
     table.turnDeadline = null;
+    table.bettingDeadline = null;
     table.settlement = "Waiting for wagers";
     emit();
   }
 
   function allowedActions(seatedPlayer) {
     if (table.phase !== "PLAYER_TURNS" || seatedPlayer.stood || seatedPlayer.busted || !seatedPlayer.bet) return [];
-    const actions = ["hit", "stand", "surrender"];
-    if (seatedPlayer.cards.length === 2 && seatedPlayer.bet * 2 <= MAX_BET) actions.push("double");
-    if (seatedPlayer.cards.length === 2 && seatedPlayer.cards[0].rank === seatedPlayer.cards[1].rank) actions.push("split");
-    return actions;
+    return ["hit", "stand", "surrender"];
   }
 
   function draw() {
