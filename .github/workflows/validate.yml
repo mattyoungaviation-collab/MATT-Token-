@@ -21,4 +21,18 @@ jobs:
       - run: npm ci
       - run: npm run compile
       - name: Run contract tests
-        run: npm test -- --reporter dot
+        id: contract-tests
+        shell: bash
+        run: |
+          set +e
+          npm test -- --reporter spec > contract-test-output.txt 2>&1
+          status=$?
+          cat contract-test-output.txt
+          exit $status
+      - name: Upload contract test output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-test-output
+          path: contract-test-output.txt
+          if-no-files-found: error
