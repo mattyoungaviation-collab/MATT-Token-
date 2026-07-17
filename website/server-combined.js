@@ -6,6 +6,7 @@ const { fork } = require("child_process");
 const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
+const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 
 const app = express();
@@ -19,6 +20,7 @@ const persistentDiskPath = configuredDiskPath || (fs.existsSync("/var/data") ? "
 const holderStateFile = process.env.HOLDER_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-holder-index.json") : "");
 const burnFlipStatsFile = process.env.BURNFLIP_STATS_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-stats.json") : "");
 const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-history.json") : "");
+const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -60,6 +62,7 @@ async function statsRpcRequest(method, params = []) {
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 installXFollowVerifier(app);
+installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
 app.use("/api/blackjack", createBlackjackRouter());
@@ -84,6 +87,7 @@ const server = app.listen(publicPort, () => {
   console.log(holderStateFile ? `Persistent holder checkpoint: ${holderStateFile}` : "Persistent holder checkpoint: no Render disk detected; using ephemeral storage.");
   console.log(burnFlipStatsFile ? `Persistent BurnFlip stats: ${burnFlipStatsFile}` : "Persistent BurnFlip stats: no Render disk detected; using memory only.");
   console.log(burnFlipHistoryFile ? `Persistent BurnFlip history: ${burnFlipHistoryFile}` : "Persistent BurnFlip history: no Render disk detected; using memory only.");
+  console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });
