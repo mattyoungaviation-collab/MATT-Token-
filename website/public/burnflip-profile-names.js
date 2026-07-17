@@ -15,6 +15,9 @@
         const wallet = anchor.href.match(/\/address\/(0x[0-9a-fA-F]{40})/)?.[1]?.toLowerCase();
         if (!wallet) continue;
         const name = window.MattProfiles.username(wallet);
+        const key = `${wallet}:${name || ''}`;
+        if (anchor.dataset.profileKey === key) continue;
+        anchor.dataset.profileKey = key;
         anchor.innerHTML = name
           ? `<strong>${escapeHtml(name)}</strong><small style="display:block;opacity:.65">${window.MattProfiles.short(wallet)}</small>`
           : window.MattProfiles.short(wallet);
@@ -24,7 +27,8 @@
       const wallet = window.MattProfiles.currentWallet();
       if (own && wallet) {
         const name = window.MattProfiles.username(wallet);
-        own.textContent = name ? `${name} · ${window.MattProfiles.short(wallet)}` : window.MattProfiles.short(wallet);
+        const next = name ? `${name} · ${window.MattProfiles.short(wallet)}` : window.MattProfiles.short(wallet);
+        if (own.textContent !== next) own.textContent = next;
         own.title = wallet;
       }
     } finally { running = false; }
