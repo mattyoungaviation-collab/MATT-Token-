@@ -18,7 +18,8 @@
         if (!heading) return;
         const mine = window.MattProfiles.currentWallet()?.toLowerCase() === String(player.wallet).toLowerCase();
         const name = window.MattProfiles.username(player.wallet);
-        heading.textContent = mine ? (name ? `YOU · ${name}` : 'YOU') : (name || window.MattProfiles.short(player.wallet));
+        const next = mine ? (name ? `YOU · ${name}` : 'YOU') : (name || window.MattProfiles.short(player.wallet));
+        if (heading.textContent !== next) heading.textContent = next;
         heading.title = player.wallet;
         seats[index].dataset.wallet = player.wallet;
       });
@@ -26,7 +27,8 @@
       const walletDisplay = document.getElementById('wallet-address');
       if (wallet && walletDisplay) {
         const name = window.MattProfiles.username(wallet);
-        walletDisplay.textContent = name ? `${name} · ${window.MattProfiles.short(wallet)}` : window.MattProfiles.short(wallet);
+        const next = name ? `${name} · ${window.MattProfiles.short(wallet)}` : window.MattProfiles.short(wallet);
+        if (walletDisplay.textContent !== next) walletDisplay.textContent = next;
         walletDisplay.title = wallet;
       }
     } catch {} finally { busy = false; }
