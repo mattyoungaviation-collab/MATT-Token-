@@ -6,6 +6,8 @@ const { fork } = require("child_process");
 const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
+const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
+const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 
@@ -20,6 +22,8 @@ const persistentDiskPath = configuredDiskPath || (fs.existsSync("/var/data") ? "
 const holderStateFile = process.env.HOLDER_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-holder-index.json") : "");
 const burnFlipStatsFile = process.env.BURNFLIP_STATS_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-stats.json") : "");
 const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-history.json") : "");
+const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
+const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 
 let statsRpcId = 0;
@@ -56,7 +60,7 @@ async function statsRpcRequest(method, params = []) {
       await delay(500 * (2 ** attempt));
     } finally { clearTimeout(timeout); }
   }
-  throw new Error("BurnFlip stats RPC exhausted retries");
+  throw new Error("Leaderboard stats RPC exhausted retries");
 }
 
 app.disable("x-powered-by");
@@ -65,6 +69,8 @@ installXFollowVerifier(app);
 installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
+installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
+installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
 app.use("/api/blackjack", createBlackjackRouter());
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
@@ -87,6 +93,8 @@ const server = app.listen(publicPort, () => {
   console.log(holderStateFile ? `Persistent holder checkpoint: ${holderStateFile}` : "Persistent holder checkpoint: no Render disk detected; using ephemeral storage.");
   console.log(burnFlipStatsFile ? `Persistent BurnFlip stats: ${burnFlipStatsFile}` : "Persistent BurnFlip stats: no Render disk detected; using memory only.");
   console.log(burnFlipHistoryFile ? `Persistent BurnFlip history: ${burnFlipHistoryFile}` : "Persistent BurnFlip history: no Render disk detected; using memory only.");
+  console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
+  console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
