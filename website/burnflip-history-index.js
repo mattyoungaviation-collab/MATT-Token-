@@ -187,6 +187,7 @@ function comparator(sort) {
     return left > right ? direction : -direction;
   };
   switch (sort) {
+    case "flips-desc": return (a, b) => b.flips - a.flips || b.wins - a.wins;
     case "net-asc": return byBig("netRaw", 1);
     case "volume-desc": return byBig("totalBetRaw", -1);
     case "wins-desc": return (a, b) => b.wins - a.wins || Number(BigInt(b.netRaw) - BigInt(a.netRaw));
