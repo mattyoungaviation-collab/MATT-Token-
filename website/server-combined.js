@@ -74,7 +74,12 @@ installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnF
 installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
 installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
 app.use("/api/blackjack", createBlackjackRouter());
-app.use("/api/flappy", createFlappyMattRouter({ rpcRequest: statsRpcRequest, stateFile: flappyMattStateFile }));
+app.use("/api/flappy", createFlappyMattRouter({
+  rpcRequest: statsRpcRequest,
+  rpcUrl: roninRpcUrl,
+  stateFile: flappyMattStateFile,
+  operatorPrivateKey: process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY
+}));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
@@ -104,6 +109,7 @@ const server = app.listen(publicPort, () => {
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
   console.log(flappyMattStateFile ? `Persistent Flappy MATT state: ${flappyMattStateFile}` : "Persistent Flappy MATT state: no Render disk detected; using memory only.");
+  console.log(process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY ? "Flappy MATT keeper key: configured in backend environment." : "Flappy MATT keeper key: missing; paid mode remains locked.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });
