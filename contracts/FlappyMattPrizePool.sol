@@ -33,16 +33,11 @@ contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
         uint256 potAfter
     );
     event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
+    event WinnerPaid(uint256 indexed roundId, uint8 indexed rank, address indexed winner, uint256 amount);
     event RoundSettled(
         uint256 indexed roundId,
         uint256 entries,
         uint256 prizePot,
-        address indexed first,
-        address indexed second,
-        address third,
-        uint256 firstPrize,
-        uint256 secondPrize,
-        uint256 thirdPrize,
         uint256 carriedForward,
         uint256 carryoverRoundId
     );
@@ -142,28 +137,32 @@ contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
         uint256 secondShare = prizePot * 35 / 100;
         uint256 thirdShare = prizePot - firstShare - secondShare;
 
-        uint256 firstPrize = first == address(0) ? 0 : firstShare;
-        uint256 secondPrize = second == address(0) ? 0 : secondShare;
-        uint256 thirdPrize = third == address(0) ? 0 : thirdShare;
-        uint256 carriedForward = prizePot - firstPrize - secondPrize - thirdPrize;
+        uint256 carriedForward;
+        if (first == address(0)) carriedForward += firstShare;
+        else {
+            matt.safeTransfer(first, firstShare);
+            emit WinnerPaid(roundId, 1, first, firstShare);
+        }
+
+        if (second == address(0)) carriedForward += secondShare;
+        else {
+            matt.safeTransfer(second, secondShare);
+            emit WinnerPaid(roundId, 2, second, secondShare);
+        }
+
+        if (third == address(0)) carriedForward += thirdShare;
+        else {
+            matt.safeTransfer(third, thirdShare);
+            emit WinnerPaid(roundId, 3, third, thirdShare);
+        }
+
         uint256 carryoverRoundId = currentRoundId();
-
         if (carriedForward != 0) roundCarryover[carryoverRoundId] += carriedForward;
-
-        if (firstPrize != 0) matt.safeTransfer(first, firstPrize);
-        if (secondPrize != 0) matt.safeTransfer(second, secondPrize);
-        if (thirdPrize != 0) matt.safeTransfer(third, thirdPrize);
 
         emit RoundSettled(
             roundId,
             roundEntries[roundId],
             prizePot,
-            first,
-            second,
-            third,
-            firstPrize,
-            secondPrize,
-            thirdPrize,
             carriedForward,
             carryoverRoundId
         );
