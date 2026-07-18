@@ -4,10 +4,12 @@ const fs = require("fs");
 const path = require("path");
 const { Interface } = require("ethers");
 const { createFlappyMattAuth } = require("./flappy-matt-auth");
+const { createFlappyMattSettlement } = require("./flappy-matt-settlement");
 const { simulateRun } = require("../public/flappy-matt-engine");
 const { newRound, leaderboardRows, finalizeRound, publicRound, parseTokenAmount, formatUnits } = require("./flappy-matt-rounds");
 
 const MATT_ADDRESS = String(process.env.MATT_CONTRACT || "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d").toLowerCase();
+const MATT_TREASURY = String(process.env.MATT_TREASURY || "0xf79913cb83cc9cabd95d0ba9250103fbb939f984").toLowerCase();
 const POOL_ABI = [
   "event EntryPaid(uint256 indexed roundId,address indexed player,uint256 entryNumber,uint256 treasuryFee,uint256 prizeAdded,uint256 potAfter)"
 ];
@@ -17,6 +19,8 @@ const RUN_MAX_MS = 120_000;
 const RUN_MIN_TIME_LEFT_MS = 15_000;
 const HISTORY_LIMIT = 14;
 const USED_TX_LIMIT = 25_000;
+const SETTLEMENT_INTERVAL_MS = positiveInteger(process.env.FLAPPY_MATT_SETTLEMENT_INTERVAL_MS, 30_000);
+const HEALTH_INTERVAL_MS = positiveInteger(process.env.FLAPPY_MATT_HEALTH_INTERVAL_MS, 60_000);
 
 function createFlappyMattRouter(options = {}) {
   const router = express.Router();
@@ -29,14 +33,31 @@ function createFlappyMattRouter(options = {}) {
   const treasuryFeeRaw = parseTokenAmount("1000");
   const prizeRaw = entryRaw - treasuryFeeRaw;
   const contractAddress = normalizeOptionalAddress(process.env.FLAPPY_MATT_POT_ADDRESS);
-  const paidMode = Boolean(contractAddress && entryRaw === parseTokenAmount("50000"));
   const state = loadState(stateFile) || freshState(Date.now());
   const requestTimes = new Map();
+  const settlement = createFlappyMattSettlement({
+    rpcUrl: options.rpcUrl,
+    contractAddress,
+    privateKey: options.operatorPrivateKey,
+    expectedMatt: MATT_ADDRESS,
+    expectedTreasury: MATT_TREASURY
+  });
+  let settlementPromise = null;
+
+  function isPaidMode() {
+    return Boolean(contractAddress && entryRaw === parseTokenAmount("50000") && settlement.isReady());
+  }
 
   router.use(express.json({ limit: "32kb", strict: true }));
 
-  router.get("/config", (_req, res) => {
+  router.get("/config", async (_req, res) => {
     rolloverIfNeeded();
+    const keeperStatus = settlement.status();
+    if (keeperStatus.enabled && (!keeperStatus.lastCheckedAt || Date.now() - Date.parse(keeperStatus.lastCheckedAt) > HEALTH_INTERVAL_MS)) {
+      await settlement.refreshHealth();
+    }
+    const paidMode = isPaidMode();
+    const currentStatus = settlement.status();
     res.set("Cache-Control", "no-store");
     res.json({
       mode: paidMode ? "PAID" : "PRACTICE",
@@ -51,9 +72,10 @@ function createFlappyMattRouter(options = {}) {
       prizeMatt: formatUnits(prizeRaw),
       payoutSplit: { first: 50, second: 35, third: 15 },
       round: publicRound(state.round),
+      settlement: publicSettlementStatus(currentStatus),
       notice: paidMode
-        ? "Each flight calls the prize contract: 1,000 MATT goes immediately to treasury and 49,000 MATT joins the UTC day prize pot. The contract pays the verified leaders after the round closes."
-        : "Practice mode is active. Set FLAPPY_MATT_POT_ADDRESS to the deployed prize-pool contract to enable paid entries."
+        ? "Each flight calls the prize contract: 1,000 MATT goes immediately to treasury and 49,000 MATT joins the UTC day prize pot. The backend keeper submits the verified leaders after the round closes."
+        : practiceNotice(contractAddress, currentStatus)
     });
   });
 
@@ -67,6 +89,20 @@ function createFlappyMattRouter(options = {}) {
     rolloverIfNeeded();
     res.set("Cache-Control", "no-store");
     res.json({ rounds: state.history.slice(0, HISTORY_LIMIT) });
+  });
+
+  router.get("/settlement-status", (_req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({
+      keeper: publicSettlementStatus(settlement.status()),
+      pendingRounds: state.history.filter(isPendingSettlement).map(round => ({
+        id: round.id,
+        chainRoundId: round.chainRoundId,
+        status: round.status,
+        settlementStatus: round.settlementStatus || null,
+        settlementError: round.settlementError || null
+      }))
+    });
   });
 
   router.post("/auth/challenge", (req, res) => {
@@ -98,15 +134,21 @@ function createFlappyMattRouter(options = {}) {
 
       let paidRaw = 0n;
       let txHash = null;
-      if (paidMode) {
-        txHash = normalizeTxHash(req.body.txHash);
+      let eligible = false;
+      const suppliedTxHash = String(req.body.txHash || "").trim();
+      if (suppliedTxHash) {
+        if (!contractAddress) throw new Error("The official Flappy MATT prize contract is not configured.");
+        txHash = normalizeTxHash(suppliedTxHash);
         if (state.usedTransactions[txHash]) throw new Error("That payment transaction has already been used for a Flappy MATT run.");
         const payment = await verifyEntryPayment({ rpcRequest, txHash, wallet, contractAddress, entryRaw, prizeRaw, round: state.round });
         paidRaw = entryRaw;
+        eligible = true;
         state.usedTransactions[txHash] = { wallet, amountRaw: paidRaw.toString(), acceptedAt: Date.now(), roundId: state.round.id };
         trimUsedTransactions();
         state.round.potRaw = payment.potAfterRaw.toString();
         state.round.entries = Number(payment.entryNumber);
+      } else if (isPaidMode()) {
+        throw new Error("A confirmed Flappy MATT contract entry is required for this paid run.");
       }
 
       const now = Date.now();
@@ -121,7 +163,7 @@ function createFlappyMattRouter(options = {}) {
         expiresAt,
         paidRaw: paidRaw.toString(),
         txHash,
-        eligible: paidMode
+        eligible
       };
       state.activeRuns[runId] = run;
       saveState(stateFile, state);
@@ -206,12 +248,51 @@ function createFlappyMattRouter(options = {}) {
   });
 
   function rolloverIfNeeded(now = Date.now()) {
-    if (state.round && now < state.round.endsAt) return;
+    if (state.round && now < state.round.endsAt) return false;
     if (state.round) state.history.unshift(finalizeRound(state.round));
     state.history = state.history.slice(0, HISTORY_LIMIT);
     state.round = newRound(now);
     state.activeRuns = {};
     saveState(stateFile, state);
+    return true;
+  }
+
+  async function settlePendingRounds() {
+    rolloverIfNeeded();
+    if (!settlement.isReady()) await settlement.refreshHealth();
+    if (!settlement.isReady()) return;
+
+    const pending = state.history.filter(isPendingSettlement)
+      .sort((left, right) => Number(left.chainRoundId) - Number(right.chainRoundId));
+
+    for (const round of pending) {
+      round.settlementStatus = "SUBMITTING";
+      round.settlementAttemptedAt = new Date().toISOString();
+      round.settlementError = null;
+      saveState(stateFile, state);
+      try {
+        const result = await settlement.settle(round);
+        const hasWinners = Array.isArray(round.winners) && round.winners.length > 0;
+        round.status = result.noPrize ? "NO_ENTRIES" : hasWinners ? "PAID" : "CARRIED_FORWARD";
+        round.settlementStatus = result.alreadySettled ? "ALREADY_SETTLED" : result.noPrize ? "NO_PRIZE" : "CONFIRMED";
+        round.settlementTxHash = result.txHash || round.settlementTxHash || null;
+        round.settledAt = new Date().toISOString();
+        round.settlementError = null;
+        for (const winner of round.winners || []) winner.payoutStatus = "PAID";
+      } catch (error) {
+        round.status = "PAYOUT_RETRY";
+        round.settlementStatus = "RETRYING";
+        round.settlementError = safe(error);
+        console.warn(`Flappy MATT settlement ${round.chainRoundId} failed:`, round.settlementError);
+      }
+      saveState(stateFile, state);
+    }
+  }
+
+  function triggerSettlement() {
+    if (settlementPromise) return settlementPromise;
+    settlementPromise = settlePendingRounds().finally(() => { settlementPromise = null; });
+    return settlementPromise;
   }
 
   function enforceCooldown(wallet) {
@@ -232,6 +313,16 @@ function createFlappyMattRouter(options = {}) {
     rows.sort((a, b) => Number(a[1].acceptedAt || 0) - Number(b[1].acceptedAt || 0));
     for (const [txHash] of rows.slice(0, rows.length - USED_TX_LIMIT)) delete state.usedTransactions[txHash];
   }
+
+  const healthTimer = setInterval(() => settlement.refreshHealth().catch(error => console.warn("Flappy MATT keeper health check failed:", safe(error))), HEALTH_INTERVAL_MS);
+  healthTimer.unref?.();
+  const settlementTimer = setInterval(() => triggerSettlement().catch(error => console.warn("Flappy MATT settlement loop failed:", safe(error))), SETTLEMENT_INTERVAL_MS);
+  settlementTimer.unref?.();
+  const startupTimer = setTimeout(async () => {
+    await settlement.refreshHealth();
+    await triggerSettlement();
+  }, 1_000);
+  startupTimer.unref?.();
 
   return router;
 }
@@ -282,25 +373,19 @@ function normalizeTxHash(value) {
   return txHash;
 }
 
-function topicAddress(topic) {
-  const value = String(topic || "").toLowerCase();
-  if (!/^0x[0-9a-f]{64}$/.test(value)) return "";
-  return `0x${value.slice(-40)}`;
-}
-
 function loadState(file) {
   try {
     if (!file || !fs.existsSync(file)) return null;
-    const state = JSON.parse(fs.readFileSync(file, "utf8"));
-    if (state?.version !== 1 || !state.round) return null;
-    state.history = Array.isArray(state.history) ? state.history : [];
-    state.activeRuns = state.activeRuns && typeof state.activeRuns === "object" ? state.activeRuns : {};
-    state.usedTransactions = state.usedTransactions && typeof state.usedTransactions === "object" ? state.usedTransactions : {};
-    state.round.players = state.round.players && typeof state.round.players === "object" ? state.round.players : {};
-    state.round.chainRoundId = Number(state.round.chainRoundId ?? Math.floor(Number(state.round.startsAt) / (24 * 60 * 60_000)));
-    return state;
+    const loaded = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (loaded?.version !== 1 || !loaded.round) return null;
+    loaded.history = Array.isArray(loaded.history) ? loaded.history : [];
+    loaded.activeRuns = loaded.activeRuns && typeof loaded.activeRuns === "object" ? loaded.activeRuns : {};
+    loaded.usedTransactions = loaded.usedTransactions && typeof loaded.usedTransactions === "object" ? loaded.usedTransactions : {};
+    loaded.round.players = loaded.round.players && typeof loaded.round.players === "object" ? loaded.round.players : {};
+    loaded.round.chainRoundId = Number(loaded.round.chainRoundId ?? Math.floor(Number(loaded.round.startsAt) / (24 * 60 * 60_000)));
+    return loaded;
   } catch (error) {
-    console.warn("Ignoring invalid Flappy MATT state:", String(error?.message || error).slice(0, 220));
+    console.warn("Ignoring invalid Flappy MATT state:", safe(error));
     return null;
   }
 }
@@ -313,21 +398,59 @@ function saveState(file, state) {
     fs.writeFileSync(temporary, JSON.stringify(state));
     fs.renameSync(temporary, file);
   } catch (error) {
-    console.warn("Flappy MATT state checkpoint failed:", String(error?.message || error).slice(0, 220));
+    console.warn("Flappy MATT state checkpoint failed:", safe(error));
   }
 }
 
+function isPendingSettlement(round) {
+  return ["PAYOUT_PENDING", "PAYOUT_RETRY", "CONTRACT_PAYOUT_PENDING"].includes(String(round?.status || ""));
+}
+
+function publicSettlementStatus(status) {
+  return {
+    enabled: Boolean(status?.enabled),
+    ready: Boolean(status?.ready),
+    contractAddress: status?.contractAddress || null,
+    walletAddress: status?.walletAddress || null,
+    operatorAddress: status?.operatorAddress || null,
+    operatorMatches: Boolean(status?.operatorMatches),
+    contractMatches: Boolean(status?.contractMatches),
+    lastCheckedAt: status?.lastCheckedAt || null,
+    lastSettlementAt: status?.lastSettlementAt || null,
+    lastSettlementRoundId: status?.lastSettlementRoundId ?? null,
+    lastTxHash: status?.lastTxHash || null,
+    lastError: status?.lastError || null
+  };
+}
+
+function practiceNotice(contractAddress, status) {
+  if (!contractAddress) return "Practice mode is active. Configure the deployed Flappy MATT prize contract before accepting paid entries.";
+  if (!status?.enabled) return "Practice mode is active. The prize contract is configured, but the dedicated backend keeper key is not configured.";
+  return `Practice mode is active until the prize contract and keeper pass the safety check${status?.lastError ? `: ${status.lastError}` : "."}`;
+}
+
+function positiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function safe(error) {
+  return String(error?.shortMessage || error?.reason || error?.message || error || "Unknown error").slice(0, 240);
+}
+
 function actionError(res, error) {
-  const message = String(error?.shortMessage || error?.reason || error?.message || error).slice(0, 240);
+  const message = safe(error);
   const unauthorized = /session|sign in|expired/i.test(message);
   res.status(unauthorized ? 401 : 400).json({ error: unauthorized ? "FLAPPY_AUTH_REQUIRED" : "FLAPPY_RUN_REJECTED", message });
 }
 
 function authError(res, error) {
-  res.status(401).json({ error: "FLAPPY_AUTH_FAILED", message: String(error?.message || error).slice(0, 240) });
+  res.status(401).json({ error: "FLAPPY_AUTH_FAILED", message: safe(error) });
 }
 
 module.exports = {
   createFlappyMattRouter,
-  verifyEntryPayment
+  verifyEntryPayment,
+  isPendingSettlement,
+  publicSettlementStatus
 };
