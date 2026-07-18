@@ -6,10 +6,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/// @notice Holds Flappy MATT entry payments and pays each completed UTC day's top three wallets.
-/// @dev Players transfer exactly ENTRY_FEE directly to this contract. The trusted game operator
-///      submits the server-verified winners after the UTC day closes. The contract performs the
-///      treasury fee and 50/35/15 transfers atomically.
+/// @notice Collects Flappy MATT entries, sends the creator fee immediately,
+///         and pays the server-verified top three wallets after each UTC day.
 contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -21,33 +19,50 @@ contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
     address public immutable treasury;
     address public operator;
 
+    mapping(uint256 roundId => uint256 entries) public roundEntries;
+    mapping(uint256 roundId => uint256 prizePot) public roundPot;
+    mapping(uint256 roundId => uint256 carriedPrize) public roundCarryover;
     mapping(uint256 roundId => bool settled) public roundSettled;
 
+    event EntryPaid(
+        uint256 indexed roundId,
+        address indexed player,
+        uint256 entryNumber,
+        uint256 treasuryFee,
+        uint256 prizeAdded,
+        uint256 potAfter
+    );
     event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
     event RoundSettled(
         uint256 indexed roundId,
         uint256 entries,
-        uint256 treasuryFee,
         uint256 prizePot,
         address indexed first,
         address indexed second,
         address third,
         uint256 firstPrize,
         uint256 secondPrize,
-        uint256 thirdPrize
+        uint256 thirdPrize,
+        uint256 carriedForward,
+        uint256 carryoverRoundId
     );
 
     error NotOperator();
     error RoundStillOpen();
     error RoundAlreadySettled();
-    error InvalidWinner();
+    error InvalidWinnerOrder();
     error DuplicateWinner();
-    error InsufficientMATT();
+    error NoPrizePot();
+    error MattLocked();
+    error ZeroAddress();
 
     constructor(address mattToken, address treasuryWallet, address initialOperator, address initialOwner)
         Ownable(initialOwner)
     {
-        require(mattToken != address(0) && treasuryWallet != address(0), "ZERO_ADDRESS");
+        if (
+            mattToken == address(0) || treasuryWallet == address(0) ||
+            initialOperator == address(0) || initialOwner == address(0)
+        ) revert ZeroAddress();
         matt = IERC20(mattToken);
         treasury = treasuryWallet;
         operator = initialOperator;
@@ -58,7 +73,7 @@ contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
         _;
     }
 
-    /// @notice UTC round identifier used by the website: floor(timestamp / 1 day).
+    /// @notice UTC round identifier: floor(timestamp / 1 day).
     function currentRoundId() public view returns (uint256) {
         return block.timestamp / 1 days;
     }
@@ -67,59 +82,97 @@ contract FlappyMattPrizePool is Ownable, ReentrancyGuard {
         return (roundId + 1) * 1 days;
     }
 
+    function availablePrize(uint256 roundId) public view returns (uint256) {
+        return roundPot[roundId] + roundCarryover[roundId];
+    }
+
     function setOperator(address newOperator) external onlyOwner {
+        if (newOperator == address(0)) revert ZeroAddress();
         address previous = operator;
         operator = newOperator;
         emit OperatorUpdated(previous, newOperator);
     }
 
-    /// @notice Settles one completed UTC round and pays all recipients in the same transaction.
-    /// @param entries Number of verified 50,000 MATT entries recorded for the round.
-    function settleRound(
-        uint256 roundId,
-        uint256 entries,
-        address first,
-        address second,
-        address third
-    ) external onlyOperator nonReentrant {
+    /// @notice Pays one 50,000 MATT game entry.
+    /// @dev Requires an allowance of at least ENTRY_FEE. The entire amount is pulled once,
+    ///      then 1,000 MATT is sent to treasury and 49,000 MATT remains assigned to this UTC round.
+    function enter() external nonReentrant returns (uint256 roundId, uint256 entryNumber) {
+        roundId = currentRoundId();
+        matt.safeTransferFrom(msg.sender, address(this), ENTRY_FEE);
+        matt.safeTransfer(treasury, TREASURY_FEE_PER_ENTRY);
+
+        entryNumber = ++roundEntries[roundId];
+        uint256 potAfter = roundPot[roundId] + PRIZE_PER_ENTRY;
+        roundPot[roundId] = potAfter;
+
+        emit EntryPaid(
+            roundId,
+            msg.sender,
+            entryNumber,
+            TREASURY_FEE_PER_ENTRY,
+            PRIZE_PER_ENTRY,
+            potAfter
+        );
+    }
+
+    /// @notice Settles a completed UTC round. Missing winner shares carry forward.
+    /// @dev The trusted game operator submits server-verified winners. All-zero winners carry the full pot.
+    function settleRound(uint256 roundId, address first, address second, address third)
+        external
+        onlyOperator
+        nonReentrant
+    {
         if (block.timestamp < roundEndsAt(roundId)) revert RoundStillOpen();
         if (roundSettled[roundId]) revert RoundAlreadySettled();
-        if (first == address(0) || second == address(0) || third == address(0)) revert InvalidWinner();
-        if (first == second || first == third || second == third) revert DuplicateWinner();
+        if (first == address(0) && (second != address(0) || third != address(0))) revert InvalidWinnerOrder();
+        if (second == address(0) && third != address(0)) revert InvalidWinnerOrder();
+        if (
+            (second != address(0) && first == second) ||
+            (third != address(0) && (first == third || second == third))
+        ) revert DuplicateWinner();
 
-        uint256 treasuryFee = entries * TREASURY_FEE_PER_ENTRY;
-        uint256 prizePot = entries * PRIZE_PER_ENTRY;
-        uint256 requiredBalance = treasuryFee + prizePot;
-        if (matt.balanceOf(address(this)) < requiredBalance) revert InsufficientMATT();
+        uint256 prizePot = availablePrize(roundId);
+        if (prizePot == 0) revert NoPrizePot();
 
         roundSettled[roundId] = true;
+        roundPot[roundId] = 0;
+        roundCarryover[roundId] = 0;
 
-        uint256 firstPrize = prizePot * 50 / 100;
-        uint256 secondPrize = prizePot * 35 / 100;
-        uint256 thirdPrize = prizePot - firstPrize - secondPrize;
+        uint256 firstShare = prizePot * 50 / 100;
+        uint256 secondShare = prizePot * 35 / 100;
+        uint256 thirdShare = prizePot - firstShare - secondShare;
 
-        matt.safeTransfer(treasury, treasuryFee);
-        matt.safeTransfer(first, firstPrize);
-        matt.safeTransfer(second, secondPrize);
-        matt.safeTransfer(third, thirdPrize);
+        uint256 firstPrize = first == address(0) ? 0 : firstShare;
+        uint256 secondPrize = second == address(0) ? 0 : secondShare;
+        uint256 thirdPrize = third == address(0) ? 0 : thirdShare;
+        uint256 carriedForward = prizePot - firstPrize - secondPrize - thirdPrize;
+        uint256 carryoverRoundId = currentRoundId();
+
+        if (carriedForward != 0) roundCarryover[carryoverRoundId] += carriedForward;
+
+        if (firstPrize != 0) matt.safeTransfer(first, firstPrize);
+        if (secondPrize != 0) matt.safeTransfer(second, secondPrize);
+        if (thirdPrize != 0) matt.safeTransfer(third, thirdPrize);
 
         emit RoundSettled(
             roundId,
-            entries,
-            treasuryFee,
+            roundEntries[roundId],
             prizePot,
             first,
             second,
             third,
             firstPrize,
             secondPrize,
-            thirdPrize
+            thirdPrize,
+            carriedForward,
+            carryoverRoundId
         );
     }
 
-    /// @notice Recovers tokens sent by mistake, excluding MATT while unsettled player funds remain.
+    /// @notice Recovers unrelated tokens accidentally sent to this contract. MATT remains locked to prizes.
     function recoverToken(address token, address to, uint256 amount) external onlyOwner {
-        require(token != address(matt), "MATT_LOCKED");
+        if (token == address(matt)) revert MattLocked();
+        if (to == address(0)) revert ZeroAddress();
         IERC20(token).safeTransfer(to, amount);
     }
 }
