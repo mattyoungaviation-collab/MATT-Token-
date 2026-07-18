@@ -26,8 +26,12 @@ async function main() {
 
   const transaction = await pool.setOperator(newOperator);
   console.log("Operator update transaction:", transaction.hash);
-  await transaction.wait(1);
-  console.log("New operator:", await pool.operator());
+  const receipt = await transaction.wait(1);
+  const confirmedOperator = await pool.operator({ blockTag: receipt.blockNumber });
+  if (confirmedOperator.toLowerCase() !== newOperator.toLowerCase()) {
+    throw new Error(`Operator transaction confirmed, but block ${receipt.blockNumber} did not report the expected operator.`);
+  }
+  console.log("New operator:", confirmedOperator);
 }
 
 function requireAddress(name) {
