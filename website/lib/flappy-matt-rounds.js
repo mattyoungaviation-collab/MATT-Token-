@@ -1,10 +1,10 @@
 const ROUND_MS = 24 * 60 * 60_000;
-const TREASURY_FEE_RAW = 1_000n * 10n ** 18n;
 
 function newRound(now) {
   const startsAt = Math.floor(now / ROUND_MS) * ROUND_MS;
   return {
     id: new Date(startsAt).toISOString().slice(0, 10),
+    chainRoundId: Math.floor(startsAt / ROUND_MS),
     startsAt,
     endsAt: startsAt + ROUND_MS,
     potRaw: "0",
@@ -19,15 +19,9 @@ function leaderboardRows(round) {
     .map((player, index) => ({ rank: index + 1, ...player }));
 }
 
-function prizePotRaw(round) {
-  const gross = BigInt(round.potRaw || "0");
-  const fees = BigInt(Number(round.entries || 0)) * TREASURY_FEE_RAW;
-  return gross > fees ? gross - fees : 0n;
-}
-
 function finalizeRound(round) {
   const leaders = leaderboardRows(round).slice(0, 3);
-  const pot = prizePotRaw(round);
+  const pot = BigInt(round.potRaw || "0");
   const first = pot * 50n / 100n;
   const second = pot * 35n / 100n;
   const third = pot - first - second;
@@ -37,32 +31,31 @@ function finalizeRound(round) {
     sharePercent: [50, 35, 15][index],
     payoutRaw: shares[index].toString(),
     payoutMatt: formatUnits(shares[index]),
-    payoutStatus: "PENDING_SMART_CONTRACT_SETTLEMENT"
+    payoutStatus: "PENDING_CONTRACT_SETTLEMENT"
   }));
   return {
     id: round.id,
+    chainRoundId: Number(round.chainRoundId ?? Math.floor(round.startsAt / ROUND_MS)),
     startsAt: round.startsAt,
     endsAt: round.endsAt,
-    grossEntriesRaw: String(round.potRaw || "0"),
-    treasuryFeeRaw: (BigInt(Number(round.entries || 0)) * TREASURY_FEE_RAW).toString(),
     potRaw: pot.toString(),
     potMatt: formatUnits(pot),
     entries: round.entries,
     playerCount: Object.keys(round.players || {}).length,
     winners,
-    status: winners.length ? "CONTRACT_PAYOUT_PENDING" : "NO_WINNERS",
+    status: pot > 0n ? "PAYOUT_PENDING" : "NO_ENTRIES",
     finalizedAt: Date.now()
   };
 }
 
 function publicRound(round) {
-  const pot = prizePotRaw(round);
   return {
     id: round.id,
+    chainRoundId: Number(round.chainRoundId ?? Math.floor(round.startsAt / ROUND_MS)),
     startsAt: round.startsAt,
     endsAt: round.endsAt,
-    potRaw: pot.toString(),
-    potMatt: formatUnits(pot),
+    potRaw: String(round.potRaw || "0"),
+    potMatt: formatUnits(BigInt(round.potRaw || "0")),
     entries: Number(round.entries || 0),
     playerCount: Object.keys(round.players || {}).length
   };
@@ -82,4 +75,4 @@ function formatUnits(value) {
   return fraction ? `${whole}.${fraction}` : whole.toString();
 }
 
-module.exports = { ROUND_MS, TREASURY_FEE_RAW, newRound, leaderboardRows, prizePotRaw, finalizeRound, publicRound, parseTokenAmount, formatUnits };
+module.exports = { ROUND_MS, newRound, leaderboardRows, finalizeRound, publicRound, parseTokenAmount, formatUnits };
