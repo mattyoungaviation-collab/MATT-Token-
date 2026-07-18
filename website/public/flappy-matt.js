@@ -18,7 +18,11 @@
   const canvas = $("#game-canvas");
   const context = canvas.getContext("2d");
   const engine = window.FlappyMattEngine;
-  const TOKEN_ABI = ["function transfer(address to,uint256 amount) returns (bool)"];
+  const TOKEN_ABI = [
+    "function allowance(address owner,address spender) view returns (uint256)",
+    "function approve(address spender,uint256 amount) returns (bool)"
+  ];
+  const POOL_ABI = ["function enter() returns (uint256 roundId,uint256 entryNumber)"];
 
   function roninProvider() {
     const candidates = [window.ronin?.provider, window.ronin];
@@ -106,7 +110,9 @@
     const config = await request("/api/flappy/config", { auth: false });
     state.config = config;
     renderRound(config.round);
-    $("#entry-value").textContent = config.mode === "PAID" ? `${formatMatt(config.entryRaw)} MATT` : "PRACTICE";
+    $("#entry-value").textContent = config.mode === "PAID"
+      ? `${formatMatt(config.entryRaw)} MATT`
+      : "PRACTICE";
     $("#play-button").textContent = state.wallet ? playButtonText() : "CONNECT TO PLAY";
     $("#mode-notice").textContent = config.notice;
     return config;
@@ -122,7 +128,6 @@
 
   function renderRound(round) {
     if (!round) return;
-    if (state.config) state.config.round = round;
     $("#round-id").textContent = `Round ${round.id}`;
     $("#round-label").textContent = `${round.playerCount.toLocaleString()} players • ${round.entries.toLocaleString()} flights`;
     $("#pot-value").textContent = `${formatMatt(round.potRaw)} MATT`;
@@ -182,8 +187,17 @@
         const signerAddress = (await signer.getAddress()).toLowerCase();
         if (signerAddress !== state.wallet.toLowerCase()) throw new Error("The connected Ronin account changed. Connect again.");
         const token = new window.ethers.Contract(config.mattAddress, TOKEN_ABI, signer);
-        const transaction = await token.transfer(config.potAddress, BigInt(config.entryRaw));
-        setStatus("Entry sent. Waiting for Ronin confirmation.");
+        const pool = new window.ethers.Contract(config.contractAddress, POOL_ABI, signer);
+        const entryAmount = BigInt(config.entryRaw);
+        const allowance = await token.allowance(signerAddress, config.contractAddress);
+        if (allowance < entryAmount) {
+          setStatus("Approve 50,000 MATT for one Flappy MATT entry.");
+          const approval = await token.approve(config.contractAddress, entryAmount);
+          await approval.wait(1);
+        }
+        setStatus("Confirm your Flappy MATT entry. 1,000 goes to treasury and 49,000 joins the pot.");
+        const transaction = await pool.enter();
+        setStatus("Entry recorded by the prize contract. Waiting for confirmation.");
         await transaction.wait(1);
         txHash = transaction.hash;
       }
