@@ -103,7 +103,7 @@
     localStorage.removeItem("flappyMattWallet");
     localStorage.removeItem("flappyMattToken");
     $("#wallet-button").textContent = "CONNECT RONIN WALLET";
-    $("#play-button").textContent = "CONNECT TO PLAY";
+    $("#play-button").textContent = state.run && !state.running ? "START GAME" : "CONNECT TO PLAY";
   }
 
   async function loadConfig() {
@@ -166,12 +166,24 @@
   }
 
   function playButtonText() {
+    if (state.run && !state.running) return "START GAME";
     if (!state.config) return "LOADING";
     return state.config.mode === "PAID" ? `FLY FOR ${formatMatt(state.config.entryRaw)} MATT` : "START PRACTICE";
   }
 
   async function startRun() {
     if (state.busy || state.running) return;
+
+    if (state.run) {
+      if (Date.now() >= Number(state.run.expiresAt || 0)) {
+        state.run = null;
+        $("#play-button").textContent = playButtonText();
+        throw new Error("This prepared flight expired. Enter a new flight to play.");
+      }
+      beginGame(state.run);
+      return;
+    }
+
     state.busy = true;
     $("#play-button").disabled = true;
     try {
@@ -201,9 +213,9 @@
         await transaction.wait(1);
         txHash = transaction.hash;
       }
-      setStatus("Building your verified flight.");
+      setStatus("Preparing your verified flight.");
       const run = await request("/api/flappy/run/start", { method: "POST", body: { txHash } });
-      beginGame(run);
+      prepareGame(run);
       await loadLeaderboard();
     } finally {
       state.busy = false;
@@ -211,8 +223,20 @@
     }
   }
 
-  function beginGame(run) {
+  function prepareGame(run) {
     state.run = run;
+    state.runtime = null;
+    state.events = [];
+    state.running = false;
+    $("#live-score").textContent = "0";
+    $("#game-overlay").classList.remove("hidden");
+    $("#overlay-title").textContent = "FLIGHT READY";
+    $("#overlay-copy").textContent = "Your entry is confirmed. Press START GAME when you are ready, then tap, click, or press Space to fly.";
+    $("#play-button").textContent = "START GAME";
+    setStatus("Flight ready. The game will not begin until you press START GAME.");
+  }
+
+  function beginGame(run) {
     state.runtime = engine.createRuntime(run.seed);
     state.events = [];
     state.running = true;
@@ -271,15 +295,17 @@
       state.leaderboard = result.leaders || state.leaderboard;
       renderRound(result.round);
       renderLeaderboard();
+      state.run = null;
       $("#play-button").textContent = playButtonText();
       setStatus(result.eligible ? "Score accepted by the 24 hour leaderboard." : "Practice score verified. Paid leaderboard mode is not enabled yet.");
     } catch (error) {
       $("#overlay-copy").textContent = error.message;
       setStatus(error.message);
-    } finally {
       state.run = null;
+    } finally {
       state.runtime = null;
       state.events = [];
+      $("#play-button").textContent = playButtonText();
       $("#play-button").disabled = false;
     }
   }
@@ -402,6 +428,7 @@
     setStatus(error.message);
     state.busy = false;
     $("#play-button").disabled = false;
+    $("#play-button").textContent = playButtonText();
   }));
   $("#refresh-board").addEventListener("click", () => loadLeaderboard().catch(error => setStatus(error.message)));
   canvas.addEventListener("pointerdown", handleGameInput);
