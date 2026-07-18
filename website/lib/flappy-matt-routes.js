@@ -2,12 +2,17 @@ const crypto = require("crypto");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const { Interface } = require("ethers");
 const { createFlappyMattAuth } = require("./flappy-matt-auth");
 const { simulateRun } = require("../public/flappy-matt-engine");
 const { newRound, leaderboardRows, finalizeRound, publicRound, parseTokenAmount, formatUnits } = require("./flappy-matt-rounds");
 
 const MATT_ADDRESS = String(process.env.MATT_CONTRACT || "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d").toLowerCase();
-const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+const POOL_ABI = [
+  "event EntryPaid(uint256 indexed roundId,address indexed player,uint256 entryNumber,uint256 treasuryFee,uint256 prizeAdded,uint256 potAfter)"
+];
+const poolInterface = new Interface(POOL_ABI);
+const ENTRY_TOPIC = poolInterface.getEvent("EntryPaid").topicHash.toLowerCase();
 const RUN_MAX_MS = 120_000;
 const RUN_MIN_TIME_LEFT_MS = 15_000;
 const HISTORY_LIMIT = 14;
@@ -20,9 +25,11 @@ function createFlappyMattRouter(options = {}) {
   if (typeof rpcRequest !== "function") throw new Error("Flappy MATT requires rpcRequest");
 
   const stateFile = String(options.stateFile || process.env.FLAPPY_MATT_STATE_FILE || "").trim();
-  const entryRaw = parseTokenAmount(process.env.FLAPPY_MATT_ENTRY_MATT || "100000");
-  const potAddress = normalizeOptionalAddress(process.env.FLAPPY_MATT_POT_ADDRESS);
-  const paidMode = Boolean(potAddress && entryRaw > 0n);
+  const entryRaw = parseTokenAmount(process.env.FLAPPY_MATT_ENTRY_MATT || "50000");
+  const treasuryFeeRaw = parseTokenAmount("1000");
+  const prizeRaw = entryRaw - treasuryFeeRaw;
+  const contractAddress = normalizeOptionalAddress(process.env.FLAPPY_MATT_POT_ADDRESS);
+  const paidMode = Boolean(contractAddress && entryRaw === parseTokenAmount("50000"));
   const state = loadState(stateFile) || freshState(Date.now());
   const requestTimes = new Map();
 
@@ -34,14 +41,19 @@ function createFlappyMattRouter(options = {}) {
     res.json({
       mode: paidMode ? "PAID" : "PRACTICE",
       mattAddress: MATT_ADDRESS,
-      potAddress,
+      contractAddress,
+      potAddress: contractAddress,
       entryRaw: entryRaw.toString(),
       entryMatt: formatUnits(entryRaw),
+      treasuryFeeRaw: treasuryFeeRaw.toString(),
+      treasuryFeeMatt: formatUnits(treasuryFeeRaw),
+      prizeRaw: prizeRaw.toString(),
+      prizeMatt: formatUnits(prizeRaw),
       payoutSplit: { first: 50, second: 35, third: 15 },
       round: publicRound(state.round),
       notice: paidMode
-        ? "Each verified play adds its MATT entry to the current 24 hour prize pot. Payouts are recorded for manual treasury settlement until the dedicated payout contract is deployed."
-        : "Practice mode is active. Set FLAPPY_MATT_POT_ADDRESS to enable paid entries and the prize leaderboard."
+        ? "Each flight calls the prize contract: 1,000 MATT goes immediately to treasury and 49,000 MATT joins the UTC day prize pot. The contract pays the verified leaders after the round closes."
+        : "Practice mode is active. Set FLAPPY_MATT_POT_ADDRESS to the deployed prize-pool contract to enable paid entries."
     });
   });
 
@@ -89,12 +101,12 @@ function createFlappyMattRouter(options = {}) {
       if (paidMode) {
         txHash = normalizeTxHash(req.body.txHash);
         if (state.usedTransactions[txHash]) throw new Error("That payment transaction has already been used for a Flappy MATT run.");
-        const payment = await verifyEntryPayment({ rpcRequest, txHash, wallet, potAddress, minimumRaw: entryRaw, round: state.round });
-        paidRaw = payment.amountRaw;
+        const payment = await verifyEntryPayment({ rpcRequest, txHash, wallet, contractAddress, entryRaw, prizeRaw, round: state.round });
+        paidRaw = entryRaw;
         state.usedTransactions[txHash] = { wallet, amountRaw: paidRaw.toString(), acceptedAt: Date.now(), roundId: state.round.id };
         trimUsedTransactions();
-        state.round.potRaw = (BigInt(state.round.potRaw) + paidRaw).toString();
-        state.round.entries += 1;
+        state.round.potRaw = payment.potAfterRaw.toString();
+        state.round.entries = Number(payment.entryNumber);
       }
 
       const now = Date.now();
@@ -224,24 +236,35 @@ function createFlappyMattRouter(options = {}) {
   return router;
 }
 
-async function verifyEntryPayment({ rpcRequest, txHash, wallet, potAddress, minimumRaw, round }) {
+async function verifyEntryPayment({ rpcRequest, txHash, wallet, contractAddress, entryRaw, prizeRaw, round }) {
   const receipt = await rpcRequest("eth_getTransactionReceipt", [txHash]);
-  if (!receipt) throw new Error("The MATT entry transaction is not confirmed yet.");
-  if (BigInt(receipt.status || "0x0") !== 1n) throw new Error("The MATT entry transaction failed on Ronin.");
+  if (!receipt) throw new Error("The Flappy MATT entry transaction is not confirmed yet.");
+  if (BigInt(receipt.status || "0x0") !== 1n) throw new Error("The Flappy MATT entry transaction failed on Ronin.");
+  if (String(receipt.to || "").toLowerCase() !== contractAddress) throw new Error("This transaction did not call the official Flappy MATT prize contract.");
+
   const block = await rpcRequest("eth_getBlockByNumber", [receipt.blockNumber, false]);
   const paidAt = Number(BigInt(block?.timestamp || "0x0")) * 1000;
-  if (!paidAt || paidAt < round.startsAt || paidAt >= round.endsAt) throw new Error("The MATT entry payment must be confirmed during the current leaderboard round.");
+  if (!paidAt || paidAt < round.startsAt || paidAt >= round.endsAt) throw new Error("The entry must be confirmed during the current leaderboard round.");
 
-  let amountRaw = 0n;
   for (const log of receipt.logs || []) {
-    if (String(log.address || "").toLowerCase() !== MATT_ADDRESS) continue;
-    if (String(log.topics?.[0] || "").toLowerCase() !== TRANSFER_TOPIC) continue;
-    const from = topicAddress(log.topics?.[1]);
-    const to = topicAddress(log.topics?.[2]);
-    if (from === wallet && to === potAddress) amountRaw += BigInt(log.data || "0x0");
+    if (String(log.address || "").toLowerCase() !== contractAddress) continue;
+    if (String(log.topics?.[0] || "").toLowerCase() !== ENTRY_TOPIC) continue;
+    const parsed = poolInterface.parseLog(log);
+    const eventRoundId = Number(parsed.args.roundId);
+    const player = String(parsed.args.player).toLowerCase();
+    const treasuryFeeRaw = BigInt(parsed.args.treasuryFee);
+    const prizeAddedRaw = BigInt(parsed.args.prizeAdded);
+    if (eventRoundId !== Number(round.chainRoundId)) throw new Error("The contract entry belongs to a different UTC round.");
+    if (player !== wallet) throw new Error("The contract entry was paid by a different wallet.");
+    if (treasuryFeeRaw + prizeAddedRaw !== entryRaw || prizeAddedRaw !== prizeRaw) throw new Error("The contract entry split does not match the official 50,000 MATT rules.");
+    return {
+      entryNumber: BigInt(parsed.args.entryNumber),
+      prizeAddedRaw,
+      potAfterRaw: BigInt(parsed.args.potAfter),
+      paidAt
+    };
   }
-  if (amountRaw < minimumRaw) throw new Error(`Send at least ${formatUnits(minimumRaw)} MATT to enter this run.`);
-  return { amountRaw, paidAt };
+  throw new Error("The transaction did not emit a valid Flappy MATT entry event.");
 }
 
 function freshState(now) {
@@ -274,6 +297,7 @@ function loadState(file) {
     state.activeRuns = state.activeRuns && typeof state.activeRuns === "object" ? state.activeRuns : {};
     state.usedTransactions = state.usedTransactions && typeof state.usedTransactions === "object" ? state.usedTransactions : {};
     state.round.players = state.round.players && typeof state.round.players === "object" ? state.round.players : {};
+    state.round.chainRoundId = Number(state.round.chainRoundId ?? Math.floor(Number(state.round.startsAt) / (24 * 60 * 60_000)));
     return state;
   } catch (error) {
     console.warn("Ignoring invalid Flappy MATT state:", String(error?.message || error).slice(0, 220));
@@ -303,4 +327,7 @@ function authError(res, error) {
   res.status(401).json({ error: "FLAPPY_AUTH_FAILED", message: String(error?.message || error).slice(0, 240) });
 }
 
-module.exports = { createFlappyMattRouter, topicAddress };
+module.exports = {
+  createFlappyMattRouter,
+  verifyEntryPayment
+};
