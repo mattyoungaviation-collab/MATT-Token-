@@ -10,7 +10,7 @@ const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
-const { createFlappyMattRouter } = require("./lib/flappy-matt-routes");
+const { createFlappyMattRouter } = require("./lib/flappy-matt-routes-contract");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
