@@ -10,6 +10,7 @@ const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
+const { createFlappyMattRouter } = require("./lib/flappy-matt-routes-contract");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -25,6 +26,7 @@ const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDisk
 const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
+const flappyMattStateFile = process.env.FLAPPY_MATT_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-flappy-state.json") : "");
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -72,9 +74,19 @@ installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnF
 installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
 installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
 app.use("/api/blackjack", createBlackjackRouter());
+app.use("/api/flappy", createFlappyMattRouter({
+  rpcRequest: statsRpcRequest,
+  rpcUrl: roninRpcUrl,
+  stateFile: flappyMattStateFile,
+  operatorPrivateKey: process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY
+}));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
+app.get(["/flappy-matt", "/flappy-matt/"], (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.html")));
+app.get("/flappy-matt.css", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.css")));
+app.get("/flappy-matt.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.js")));
+app.get("/flappy-matt-engine.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-engine.js")));
 app.get("/vendor/ethers.umd.min.js", (_req, res) => { res.set("Cache-Control", "public, max-age=31536000, immutable"); res.type("application/javascript"); res.sendFile(ethersBrowserBundle); });
 app.use((req, res) => {
   const headers = { ...req.headers, host: `127.0.0.1:${proxyPort}` };
@@ -96,6 +108,8 @@ const server = app.listen(publicPort, () => {
   console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
+  console.log(flappyMattStateFile ? `Persistent Flappy MATT state: ${flappyMattStateFile}` : "Persistent Flappy MATT state: no Render disk detected; using memory only.");
+  console.log(process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY ? "Flappy MATT keeper key: configured in backend environment." : "Flappy MATT keeper key: missing; paid mode remains locked.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });

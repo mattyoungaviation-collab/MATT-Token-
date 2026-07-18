@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1624">
+  <title>Flappy MATT | 24 Hour Prize Leaderboard</title>
+  <meta name="description" content="Play Flappy MATT on Ronin. Every paid run grows the 24 hour prize pot, split 50/35/15 between the top three scores.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/flappy-matt.css?v=1">
+</head>
+<body id="top">
+  <header class="topbar">
+    <a class="brand" href="/hub">MATT <span>FLAPPY</span></a>
+    <div class="round-live"><i></i><span id="round-label">Loading round</span></div>
+    <button id="wallet-button" type="button">Connect Ronin Wallet</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">THE 24 HOUR MATT CHALLENGE</p>
+        <h1>FLAPPY<br><span>MATT</span></h1>
+        <p class="lead">Every 50,000 MATT flight sends 1,000 MATT to treasury and adds 49,000 MATT to the contract pot. When the timer hits zero, first place wins 50%, second takes 35%, and third takes 15%.</p>
+      </div>
+      <div class="round-card">
+        <span>ROUND ENDS IN</span>
+        <strong id="countdown">--:--:--</strong>
+        <small id="round-id">Preparing leaderboard</small>
+      </div>
+    </section>
+
+    <section class="prize-grid" aria-label="Current prize details">
+      <article class="pot-card">
+        <span>LIVE REWARD POT</span>
+        <strong id="pot-value">0 MATT</strong>
+        <small id="entry-count">0 paid flights</small>
+      </article>
+      <article><span>1ST PLACE</span><strong>50%</strong><small id="first-prize">0 MATT</small></article>
+      <article><span>2ND PLACE</span><strong>35%</strong><small id="second-prize">0 MATT</small></article>
+      <article><span>3RD PLACE</span><strong>15%</strong><small id="third-prize">0 MATT</small></article>
+    </section>
+
+    <section class="game-layout">
+      <article class="game-shell">
+        <div class="game-toolbar">
+          <div><span>YOUR SCORE</span><strong id="live-score">0</strong></div>
+          <div><span>YOUR BEST</span><strong id="personal-best">0</strong></div>
+          <div><span>ENTRY</span><strong id="entry-value">Loading</strong></div>
+        </div>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="game-canvas" width="420" height="680" aria-label="Flappy MATT game"></canvas>
+          <div class="game-overlay" id="game-overlay">
+            <img src="/assets/matt-logo-512.png" alt="MATT mascot">
+            <h2 id="overlay-title">FLAPPY MATT</h2>
+            <p id="overlay-copy">Connect your Ronin Wallet, enter the round, then tap to fly.</p>
+            <button id="play-button" type="button">CONNECT TO PLAY</button>
+            <small id="game-status">Scores are verified by a server replay before they reach the leaderboard.</small>
+          </div>
+        </div>
+        <div class="controls-note"><strong>TAP, CLICK, OR PRESS SPACE</strong><span>Keep MATT flying through every gap.</span></div>
+      </article>
+
+      <aside class="leaderboard-card">
+        <div class="leaderboard-heading">
+          <div><p class="eyebrow">LIVE RANKINGS</p><h2>Top Flights</h2></div>
+          <button id="refresh-board" type="button">Refresh</button>
+        </div>
+        <ol id="leaderboard-list" class="leaderboard-list">
+          <li class="empty">No verified flights yet. The first score owns first place.</li>
+        </ol>
+        <div class="tie-rule"><strong>TIE RULE</strong><span>The first player to post the tied score keeps the higher rank.</span></div>
+      </aside>
+    </section>
+
+    <section class="how-it-works">
+      <article><b>01</b><h3>Enter the Flight</h3><p>One contract entry starts one prize-eligible run: 1,000 MATT goes to treasury and 49,000 MATT joins the current pot.</p></article>
+      <article><b>02</b><h3>Set Your Score</h3><p>Your taps are replayed by the server. Impossible or altered scores are rejected.</p></article>
+      <article><b>03</b><h3>Take the Pot</h3><p>After the UTC round closes, the contract pays the verified top three wallets 50%, 35%, and 15% of the final pot.</p></article>
+    </section>
+
+    <section class="previous-round" id="previous-round" hidden>
+      <div><p class="eyebrow">LAST ROUND</p><h2>Previous Winners</h2></div>
+      <div id="previous-winners"></div>
+    </section>
+
+    <p class="legal-note" id="mode-notice">Loading Flappy MATT configuration.</p>
+  </main>
+
+  <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span><a href="#top">Back to top ↑</a></footer>
+
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/flappy-matt-engine.js?v=1"></script>
+  <script src="/flappy-matt.js?v=2"></script>
+</body>
+</html>
