@@ -11,6 +11,8 @@ const MAX_MULTIPLIER = 1_000;
 const EPOCH = Date.UTC(2026, 6, 19, 0, 0, 0);
 const SECRET = process.env.CRASH_SERVER_SECRET || "matt-crash-shared-rounds-v2";
 const BOT_NAMES = ["DynoKing", "LuckyMatt", "BurnBoss", "GoldMatt", "RoninRider", "MoonDyno", "MattLegend", "FlipMaster", "CraftLord"];
+let cursorRound = 1;
+let cursorStartAt = EPOCH;
 
 function sha256(value) {
   return crypto.createHash("sha256").update(String(value)).digest("hex");
@@ -49,32 +51,34 @@ function roundData(roundNumber) {
 }
 
 function locateRound(now = Date.now()) {
-  let roundNumber = 1;
-  let startAt = EPOCH;
-  while (roundNumber < 1_000_000) {
-    const data = roundData(roundNumber);
-    if (now < startAt + data.cycleMs) break;
-    startAt += data.cycleMs;
-    roundNumber += 1;
+  if (now < cursorStartAt) {
+    cursorRound = 1;
+    cursorStartAt = EPOCH;
   }
 
-  const data = roundData(roundNumber);
-  const elapsed = Math.max(0, now - startAt);
+  let data = roundData(cursorRound);
+  while (now >= cursorStartAt + data.cycleMs && cursorRound < 1_000_000) {
+    cursorStartAt += data.cycleMs;
+    cursorRound += 1;
+    data = roundData(cursorRound);
+  }
+
+  const elapsed = Math.max(0, now - cursorStartAt);
   let phase = "betting";
   let multiplier = 1;
-  let phaseEndsAt = startAt + BETTING_MS;
+  let phaseEndsAt = cursorStartAt + BETTING_MS;
 
   if (elapsed >= BETTING_MS && elapsed < BETTING_MS + data.flightMs) {
     phase = "flying";
     multiplier = Math.min(data.crashPoint, elapsedToMultiplier(elapsed - BETTING_MS));
-    phaseEndsAt = startAt + BETTING_MS + data.flightMs;
+    phaseEndsAt = cursorStartAt + BETTING_MS + data.flightMs;
   } else if (elapsed >= BETTING_MS + data.flightMs) {
     phase = "crashed";
     multiplier = data.crashPoint;
-    phaseEndsAt = startAt + data.cycleMs;
+    phaseEndsAt = cursorStartAt + data.cycleMs;
   }
 
-  return { ...data, startAt, phase, multiplier, phaseEndsAt, serverTime: now };
+  return { ...data, startAt: cursorStartAt, phase, multiplier, phaseEndsAt, serverTime: now };
 }
 
 function deterministicBots(roundNumber) {
@@ -129,6 +133,7 @@ app.get("/api/crash/health", (_req, res) => res.json({ ok: true, version: 2, rou
 app.use(websiteApp);
 
 if (require.main === module) {
+  locateRound();
   app.listen(port, () => console.log(`MATT website with shared Crash rounds listening on ${port}`));
 }
 
