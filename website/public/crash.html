@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07090f">
+  <title>MATT Crash | Free-Play Prototype</title>
+  <meta name="description" content="Take flight in the free-play MATT Crash prototype. Cash out before the multiplier crashes and verify every round.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/crash.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/hub">MATT</a>
+    <nav aria-label="Crash navigation">
+      <a href="/hub">Hub</a>
+      <a href="/blackjack">Blackjack</a>
+      <a href="/flappy-matt">Flappy MATT</a>
+      <a href="#fairness">Provably Fair</a>
+    </nav>
+    <div class="header-actions">
+      <button id="sound-toggle" class="icon-button" type="button" aria-pressed="true">SOUND ON</button>
+      <a class="wallet-button" href="/hub#wallet">CONNECT IN HUB</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="game-shell" aria-labelledby="page-title">
+      <div class="game-header">
+        <div>
+          <p class="eyebrow">FREE-PLAY PROTOTYPE • NO TOKENS MOVE</p>
+          <h1 id="page-title">MATT <span>CRASH</span></h1>
+        </div>
+        <div class="round-meta">
+          <span>ROUND</span>
+          <strong id="round-number">#000001</strong>
+        </div>
+      </div>
+
+      <div class="history-strip" id="history-strip" aria-label="Recent crash multipliers"></div>
+
+      <div class="game-grid">
+        <section class="flight-card" aria-label="Crash game">
+          <canvas id="crash-canvas" aria-label="Live multiplier chart"></canvas>
+          <div class="flight-overlay">
+            <p id="phase-label">NEXT FLIGHT</p>
+            <strong id="multiplier">1.00x</strong>
+            <span id="countdown">Preparing round…</span>
+          </div>
+          <div id="rocket" class="rocket" aria-hidden="true">M</div>
+          <div id="crash-flash" class="crash-flash" aria-hidden="true"></div>
+          <div class="live-summary">
+            <div><span>Players</span><strong id="player-count">0</strong></div>
+            <div><span>Round bets</span><strong id="round-total">0 MATT</strong></div>
+            <div><span>Largest bet</span><strong id="largest-bet">0 MATT</strong></div>
+          </div>
+        </section>
+
+        <aside class="bet-card">
+          <div class="balance-row">
+            <div><span>DEMO BALANCE</span><strong id="demo-balance">10,000,000 MATT</strong></div>
+            <button id="reset-balance" type="button">RESET</button>
+          </div>
+
+          <label class="field-label" for="bet-amount">BET AMOUNT</label>
+          <div class="amount-control">
+            <input id="bet-amount" type="number" min="1000" step="1000" value="100000" inputmode="numeric">
+            <span>MATT</span>
+          </div>
+          <div class="quick-row">
+            <button data-bet-action="half" type="button">½</button>
+            <button data-bet-action="double" type="button">2×</button>
+            <button data-bet-action="max" type="button">MAX</button>
+          </div>
+
+          <div class="auto-row">
+            <label class="switch-label">
+              <input id="auto-enabled" type="checkbox">
+              <span class="switch"></span>
+              AUTO CASH-OUT
+            </label>
+            <div class="auto-input"><input id="auto-multiplier" type="number" min="1.01" max="1000" step="0.01" value="2.00"><span>×</span></div>
+          </div>
+
+          <div class="potential-row"><span>Potential at auto cash-out</span><strong id="potential-payout">200,000 MATT</strong></div>
+          <button id="primary-action" class="primary-action" type="button">PLACE BET</button>
+          <button id="repeat-bet" class="secondary-action" type="button" disabled>REPEAT LAST BET</button>
+          <p class="game-message" id="game-message" role="status" aria-live="polite">Place a demo bet before the countdown ends.</p>
+          <p class="prototype-warning">Demo credits only. This prototype does not connect to a wallet, request approval, or move MATT.</p>
+        </aside>
+      </div>
+
+      <div class="lower-grid">
+        <section class="panel live-panel">
+          <div class="panel-heading"><div><p class="eyebrow">LIVE FLIGHT</p><h2>Players</h2></div><span id="live-status">BETTING OPEN</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Player</th><th>Bet</th><th>Cash-out</th><th>Payout</th></tr></thead>
+              <tbody id="players-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel stats-panel">
+          <div class="panel-heading"><div><p class="eyebrow">YOUR RECORD</p><h2>Flight Stats</h2></div><button id="clear-stats" type="button">CLEAR</button></div>
+          <div class="stats-grid">
+            <article><span>Rounds played</span><strong id="stat-rounds">0</strong></article>
+            <article><span>Wins</span><strong id="stat-wins">0</strong></article>
+            <article><span>Best cash-out</span><strong id="stat-best">—</strong></article>
+            <article><span>Biggest payout</span><strong id="stat-payout">0 MATT</strong></article>
+            <article><span>Current streak</span><strong id="stat-streak">0</strong></article>
+            <article><span>Net demo result</span><strong id="stat-profit">0 MATT</strong></article>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="fairness" id="fairness">
+      <div class="section-heading">
+        <p class="eyebrow">VERIFY EVERYTHING</p>
+        <h2>Provably Fair Demo</h2>
+        <p>The round commitment is published before betting closes. After the crash, the seed is revealed so the result can be recalculated in your browser.</p>
+      </div>
+      <div class="fair-grid">
+        <article><span>Round</span><code id="fair-round">—</code></article>
+        <article><span>Commitment</span><code id="fair-commitment">Preparing…</code><button data-copy="fair-commitment" type="button">COPY</button></article>
+        <article><span>Revealed seed</span><code id="fair-seed">Revealed after crash</code><button data-copy="fair-seed" type="button">COPY</button></article>
+        <article><span>Calculated result</span><code id="fair-result">Waiting for round</code></article>
+      </div>
+      <button id="verify-round" class="verify-button" type="button" disabled>VERIFY LAST ROUND</button>
+      <p id="verify-message" class="verify-message" aria-live="polite">The verification button unlocks after the first crash.</p>
+    </section>
+  </main>
+
+  <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span><a href="#page-title">Back to top ↑</a></footer>
+  <script src="/crash.js"></script>
+</body>
+</html>
