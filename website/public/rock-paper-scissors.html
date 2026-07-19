@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MATT Rock Paper Scissors</title>
+  <meta name="description" content="Player-versus-player Rock Paper Scissors using MATT on Ronin.">
+  <link rel="stylesheet" href="/rock-paper-scissors.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a href="/hub" class="brand">MATT <span>RPS</span></a>
+    <button id="wallet-button">CONNECT RONIN WALLET</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">PLAYER VS PLAYER • ON RONIN</p>
+      <h1>ROCK.<br>PAPER.<br><span>SCISSORS.</span></h1>
+      <p>25,000 MATT enters. The winner receives 45,000 MATT. Treasury receives 5,000 MATT.</p>
+      <div class="stats">
+        <div><b>25K</b><span>WAGER EACH</span></div>
+        <div><b>90%</b><span>TO WINNER</span></div>
+        <div><b>10%</b><span>TO TREASURY</span></div>
+      </div>
+    </section>
+
+    <section class="panel account-panel">
+      <div><span>WALLET</span><b id="wallet-address">Not connected</b></div>
+      <div><span>MATT BALANCE</span><b id="matt-balance">—</b></div>
+      <div><span>CONTRACT</span><b id="contract-status">Loading</b></div>
+      <button id="create-game" disabled>CREATE 25,000 MATT GAME</button>
+      <p id="global-status" class="status">Connect your Ronin Wallet to create or accept a game.</p>
+    </section>
+
+    <section class="layout">
+      <article class="panel board-panel">
+        <div class="section-head">
+          <div><p class="eyebrow">LIVE LOBBY</p><h2>Waiting Games</h2></div>
+          <button id="refresh-board" class="secondary">REFRESH</button>
+        </div>
+        <div id="waiting-board" class="waiting-board"><p class="empty">Loading open games…</p></div>
+      </article>
+
+      <article class="panel game-panel">
+        <div class="section-head">
+          <div><p class="eyebrow">YOUR MATCH</p><h2 id="game-title">No active game</h2></div>
+          <div id="countdown" class="countdown">—</div>
+        </div>
+
+        <div id="game-details" class="game-details hidden">
+          <div class="players">
+            <div><span>PLAYER 1</span><b id="creator-address">—</b><small id="creator-state">Waiting</small></div>
+            <div class="versus">VS</div>
+            <div><span>PLAYER 2</span><b id="opponent-address">—</b><small id="opponent-state">Waiting</small></div>
+          </div>
+
+          <div id="funding-actions" class="action-box hidden">
+            <h3>LOCK YOUR WAGER</h3>
+            <p>Approve the RPS contract if needed, then deposit exactly 25,000 MATT before the timer expires.</p>
+            <button id="fund-game">SIGN & FUND 25,000 MATT</button>
+          </div>
+
+          <div id="move-actions" class="action-box hidden">
+            <h3>CHOOSE IN SECRET</h3>
+            <p>Your browser sends only a cryptographic commitment. Your opponent cannot see the move.</p>
+            <div class="moves">
+              <button data-move="1"><span>🪨</span>ROCK</button>
+              <button data-move="2"><span>📄</span>PAPER</button>
+              <button data-move="3"><span>✂️</span>SCISSORS</button>
+            </div>
+          </div>
+
+          <div id="reveal-actions" class="action-box hidden">
+            <h3>REVEAL YOUR MOVE</h3>
+            <p>Your move is locked. Reveal it before time expires.</p>
+            <button id="reveal-move">REVEAL LOCKED MOVE</button>
+          </div>
+
+          <div id="timeout-actions" class="action-box hidden">
+            <h3>TIME EXPIRED</h3>
+            <p>Anyone can settle the expired stage. The contract determines the winner or refunds automatically.</p>
+            <button id="claim-timeout">SETTLE TIMEOUT</button>
+          </div>
+
+          <p id="match-status" class="status">Waiting for contract state.</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="how">
+      <article><b>01</b><h3>Create or Accept</h3><p>No wager is transferred when the challenge is posted. Both wallets get 60 seconds to fund after acceptance.</p></article>
+      <article><b>02</b><h3>Commit in Secret</h3><p>Each choice is hidden behind a one-time cryptographic salt until both players have committed.</p></article>
+      <article><b>03</b><h3>Reveal and Settle</h3><p>The contract pays 45,000 MATT to the winner and 5,000 MATT to treasury. Ties replay up to 30 rounds.</p></article>
+    </section>
+  </main>
+
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/rock-paper-scissors.js?v=1"></script>
+</body>
+</html>
