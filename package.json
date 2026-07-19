@@ -8,7 +8,7 @@
     "node": ">=20 <23"
   },
   "scripts": {
-    "start": "node website/crash-live-server.js",
+    "start": "node website/server-combined.js",
     "compile": "hardhat compile",
     "test": "node scripts/run-contract-tests.js",
     "coverage": "hardhat coverage",
