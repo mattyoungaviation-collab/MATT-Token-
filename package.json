@@ -29,7 +29,7 @@
     "test:flappy": "hardhat test test/FlappyMattPrizePool.test.js && node website/lib/flappy-matt-engine.test.js && node website/lib/flappy-matt-settlement.test.js",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
-    "site": "node website/server-combined.js",
+    "site": "node website/crash-live-server.js",
     "inspect:saigon": "hardhat run scripts/inspect-deployment.js --network saigon",
     "inspect:ronin": "hardhat run scripts/inspect-deployment.js --network ronin",
     "inspect:coinflip:saigon": "hardhat run scripts/inspect-coin-flip.js --network saigon",
