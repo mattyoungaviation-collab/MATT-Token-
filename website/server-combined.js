@@ -36,6 +36,16 @@ let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
 let nextStatsRpcAt = 0;
 function delay(milliseconds) { return new Promise(resolve => setTimeout(resolve, milliseconds)); }
+function noStore(res) {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
+}
+function sendFlappyAsset(res, filename) {
+  noStore(res);
+  res.sendFile(path.join(publicDir, filename));
+}
 async function reserveStatsRpcSlot() {
   const queued = statsRpcQueue.then(async () => {
     const waitMs = Math.max(0, nextStatsRpcAt - Date.now());
@@ -95,11 +105,14 @@ app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
-app.get(["/flappy-matt", "/flappy-matt/"], (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.html")));
-app.get("/flappy-matt.css", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.css")));
-app.get("/flappy-matt.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.js")));
-app.get("/flappy-matt-payment-guard.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-payment-guard.js")));
-app.get("/flappy-matt-engine.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-engine.js")));
+app.get(["/flappy-matt", "/flappy-matt/"], (_req, res) => sendFlappyAsset(res, "flappy-matt.html"));
+app.get("/flappy-matt.css", (_req, res) => sendFlappyAsset(res, "flappy-matt.css"));
+app.get("/flappy-matt-practice.css", (_req, res) => sendFlappyAsset(res, "flappy-matt-practice.css"));
+app.get("/flappy-matt.js", (_req, res) => sendFlappyAsset(res, "flappy-matt.js"));
+app.get("/flappy-matt-payment-guard.js", (_req, res) => sendFlappyAsset(res, "flappy-matt-payment-guard.js"));
+app.get("/flappy-matt-mode-refresh.js", (_req, res) => sendFlappyAsset(res, "flappy-matt-mode-refresh.js"));
+app.get("/flappy-matt-practice.js", (_req, res) => sendFlappyAsset(res, "flappy-matt-practice.js"));
+app.get("/flappy-matt-engine.js", (_req, res) => sendFlappyAsset(res, "flappy-matt-engine.js"));
 app.get("/crash-live.js", (_req, res) => res.sendFile(path.join(publicDir, "crash-live.js")));
 app.get("/vendor/ethers.umd.min.js", (_req, res) => { res.set("Cache-Control", "public, max-age=31536000, immutable"); res.type("application/javascript"); res.sendFile(ethersBrowserBundle); });
 app.use((req, res) => {
