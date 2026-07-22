@@ -1,8 +1,8 @@
 const express = require("express");
 const crypto = require("crypto");
 
-const BETTING_MS = 7_000;
-const CRASHED_MS = 3_000;
+const BETTING_MS = 15_000;
+const CRASHED_MS = 6_000;
 const HOUSE_EDGE = 0.01;
 const MAX_MULTIPLIER = 1_000;
 const BOT_NAMES = ["DynoKing", "LuckyMatt", "BurnBoss", "GoldMatt", "RoninRider", "MoonDyno", "MattLegend", "FlipMaster", "CraftLord"];
@@ -25,13 +25,13 @@ function crashFromSeed(seed, roundNumber) {
 
 function elapsedToMultiplier(milliseconds) {
   const seconds = Math.max(0, milliseconds / 1000);
-  return Math.exp(0.095 * seconds + 0.0062 * seconds * seconds);
+  return Math.exp(0.055 * seconds + 0.0028 * seconds * seconds);
 }
 
 function multiplierToElapsed(multiplier) {
   const target = Math.log(Math.max(1, multiplier));
-  const a = 0.0062;
-  const b = 0.095;
+  const a = 0.0028;
+  const b = 0.055;
   return ((-b + Math.sqrt(b * b + 4 * a * target)) / (2 * a)) * 1000;
 }
 
@@ -44,7 +44,7 @@ function createCrashEngine(options = {}) {
     const seed = sha256(`${secret}:round:${number}`);
     const commitment = sha256(seed);
     const crashPoint = crashFromSeed(seed, number);
-    const flightMs = Math.max(250, multiplierToElapsed(crashPoint));
+    const flightMs = Math.max(700, multiplierToElapsed(crashPoint));
     return { number, seed, commitment, crashPoint, flightMs, cycleMs: BETTING_MS + flightMs + CRASHED_MS };
   }
 
