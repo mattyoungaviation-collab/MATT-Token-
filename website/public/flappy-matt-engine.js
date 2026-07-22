@@ -22,8 +22,8 @@
     maxGapCenter: 502,
     floorHeight: 54,
     stepMs: 1000 / 120,
-    maxDurationMs: 120_000,
-    maxFlaps: 800
+    maxDurationMs: 900_000,
+    maxFlaps: 6_000
   });
 
   function normalizeSeed(value) {
