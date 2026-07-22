@@ -45,6 +45,57 @@ if (!backend.includes("flightStartedAt: r.flightStartedAt || null")) {
     "backend flightStartedAt"
   );
 }
+
+if (!backend.includes("let lastKeeperError = null;")) {
+  backend = replaceRequired(
+    backend,
+    /let ticking = false;\n/,
+    "let ticking = false;\n  let lastKeeperError = null;\n",
+    "backend keeper diagnostics"
+  );
+}
+
+const staleCommitRecovery = `    if (Date.now() >= r.bettingClosesAt * 1000) {
+      console.warn(\`Crash round \${r.counter} was never committed before its betting deadline; replacing the empty stale round.\`);
+      state.current = null;
+      state.cashouts = {};
+      wagerCache = { roundId: null, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
+      persist();
+      return;
+    }
+`;
+
+if (!backend.includes("was never committed before its betting deadline")) {
+  backend = replaceRequired(
+    backend,
+    /    const tx = await vaultWrite\.commitRound\(r\.roundId, r\.commitment, r\.bettingClosesAt\);/,
+    `${staleCommitRecovery}    const tx = await vaultWrite.commitRound(r.roundId, r.commitment, r.bettingClosesAt);`,
+    "backend stale commit recovery"
+  );
+}
+
+if (!backend.includes("lastKeeperError = { at: Date.now()")) {
+  backend = replaceRequired(
+    backend,
+    /      const status = await refreshStatus\(\);/,
+    "      lastKeeperError = null;\n      const status = await refreshStatus();",
+    "backend clear keeper error"
+  );
+  backend = replaceRequired(
+    backend,
+    /      console\.error\("Crash keeper tick failed:", errorText\(error\)\);/,
+    "      lastKeeperError = { at: Date.now(), stage: state.current?.stage || \"idle\", message: errorText(error) };\n      console.error(\"Crash keeper tick failed:\", lastKeeperError.message);",
+    "backend capture keeper error"
+  );
+  backend = replaceRequired(
+    backend,
+    /        stage: state\.current\?\.stage \|\| "idle",/,
+    "        stage: state.current?.stage || \"idle\",\n        lastKeeperError,",
+    "backend health keeper error"
+  );
+}
+
+backend = backend.replace("version: 6,", "version: 7,");
 fs.writeFileSync(backendFile, backend);
 
 let client = fs.readFileSync(clientFile, "utf8");
@@ -74,5 +125,6 @@ html = replaceRequired(
 fs.writeFileSync(htmlFile, html);
 
 console.log(`MATT Crash betting window configured to ${(bettingMs / 1000).toFixed(0)} seconds.`);
+console.log("MATT Crash stale uncommitted-round recovery enabled.");
 console.log(`MATT Crash client configured to use the keeper's authoritative flightStartedAt timestamp.`);
 console.log(`MATT Crash asset version: ${assetVersion}`);
