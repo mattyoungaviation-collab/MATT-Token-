@@ -12,6 +12,7 @@ const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createFlappyMattRouter } = require("./lib/flappy-matt-routes-contract");
 const { createCrashRouter } = require("./lib/crash-routes");
+const { createCrashContractRouter } = require("./lib/crash-routes-contract");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -28,6 +29,8 @@ const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDisk
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 const flappyMattStateFile = process.env.FLAPPY_MATT_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-flappy-state.json") : "");
+const crashStateFile = process.env.CRASH_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-crash-mainnet-state.json") : "");
+const crashLiveEnabled = String(process.env.CRASH_LIVE_ENABLED || "false").toLowerCase() === "true";
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -81,7 +84,14 @@ app.use("/api/flappy", createFlappyMattRouter({
   stateFile: flappyMattStateFile,
   operatorPrivateKey: process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY
 }));
-app.use("/api/crash", createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
+app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
+  rpcUrl: roninRpcUrl,
+  stateFile: crashStateFile,
+  vaultAddress: process.env.CRASH_VAULT_ADDRESS,
+  tokenAddress: process.env.CRASH_TOKEN_ADDRESS,
+  operatorPrivateKey: process.env.CRASH_OPERATOR_PRIVATE_KEY,
+  liveEnabled: true
+}) : createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
@@ -89,6 +99,7 @@ app.get(["/flappy-matt", "/flappy-matt/"], (_req, res) => res.sendFile(path.join
 app.get("/flappy-matt.css", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.css")));
 app.get("/flappy-matt.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.js")));
 app.get("/flappy-matt-engine.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-engine.js")));
+app.get("/crash-live.js", (_req, res) => res.sendFile(path.join(publicDir, "crash-live.js")));
 app.get("/vendor/ethers.umd.min.js", (_req, res) => { res.set("Cache-Control", "public, max-age=31536000, immutable"); res.type("application/javascript"); res.sendFile(ethersBrowserBundle); });
 app.use((req, res) => {
   const headers = { ...req.headers, host: `127.0.0.1:${proxyPort}` };
@@ -112,6 +123,8 @@ const server = app.listen(publicPort, () => {
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
   console.log(flappyMattStateFile ? `Persistent Flappy MATT state: ${flappyMattStateFile}` : "Persistent Flappy MATT state: no Render disk detected; using memory only.");
   console.log(process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY ? "Flappy MATT keeper key: configured in backend environment." : "Flappy MATT keeper key: missing; paid mode remains locked.");
+  console.log(crashStateFile ? `Persistent Crash state: ${crashStateFile}` : "Persistent Crash state: no Render disk detected; do not enable mainnet mode.");
+  console.log(crashLiveEnabled && process.env.CRASH_OPERATOR_PRIVATE_KEY ? "Crash mainnet keeper: enabled and operator key configured." : "Crash mainnet keeper: locked until CRASH_LIVE_ENABLED and CRASH_OPERATOR_PRIVATE_KEY are configured.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });
