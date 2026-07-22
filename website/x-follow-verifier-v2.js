@@ -65,6 +65,11 @@ function currentSession(req) {
   return session;
 }
 
+function getXSession(req) {
+  const session = currentSession(req);
+  return session ? { ...session } : null;
+}
+
 function publicError(error) {
   const message = String(error?.message || error || "X verification failed");
   if (/credits depleted|payment required/i.test(message) || Number(error?.status) === 402) {
@@ -180,4 +185,4 @@ function installXFollowVerifier(app) {
   }, 60000).unref();
 }
 
-module.exports = { installXFollowVerifier };
+module.exports = { installXFollowVerifier, getXSession };
