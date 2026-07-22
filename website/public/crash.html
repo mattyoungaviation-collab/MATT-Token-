@@ -20,7 +20,7 @@
     </nav>
     <div class="header-actions">
       <button id="sound-toggle" class="icon-button" type="button" aria-pressed="true">SOUND ON</button>
-      <button id="connect-wallet" class="wallet-button" type="button">CONNECT WALLET</button>
+      <button id="connect-wallet" class="wallet-button" type="button">CONNECT RONIN</button>
     </div>
   </header>
 
@@ -74,7 +74,7 @@
 
         <aside class="bet-card">
           <div class="balance-row">
-            <div><span id="balance-label">WALLET BALANCE</span><strong id="demo-balance">CONNECT WALLET</strong></div>
+            <div><span id="balance-label">WALLET BALANCE</span><strong id="demo-balance">CONNECT RONIN</strong></div>
             <button id="reset-balance" type="button">RESET</button>
           </div>
 
@@ -99,7 +99,7 @@
           </div>
 
           <div class="potential-row"><span>Potential at auto cash-out</span><strong id="potential-payout">2,000 MATT</strong></div>
-          <button id="primary-action" class="primary-action" type="button">CONNECT WALLET</button>
+          <button id="primary-action" class="primary-action" type="button">CONNECT RONIN</button>
           <button id="repeat-bet" class="secondary-action" type="button" disabled>NO WINNINGS TO WITHDRAW</button>
           <p class="game-message" id="game-message" role="status" aria-live="polite">Connect your Ronin wallet to play.</p>
           <p class="prototype-warning" id="mode-warning">MAINNET VAULT PAUSED • WAGERING LOCKED</p>
@@ -150,8 +150,6 @@
 
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span><a href="#page-title">Back to top ↑</a></footer>
   <script src="/vendor/ethers.umd.min.js"></script>
-  <script src="/crash-state-guard.js"></script>
-  <script src="/crash.js"></script>
-  <script src="/crash-live.js"></script>
+  <script src="/crash-mainnet.js?v=2"></script>
 </body>
 </html>
