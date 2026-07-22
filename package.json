@@ -8,7 +8,7 @@
     "node": ">=20 <23"
   },
   "scripts": {
-    "start": "node website/server-combined.js",
+    "start": "node scripts/configure-crash-betting-window.js && node website/server-combined.js",
     "compile": "hardhat compile",
     "test": "node scripts/run-contract-tests.js",
     "coverage": "hardhat coverage",
