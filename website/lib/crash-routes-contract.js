@@ -25,7 +25,8 @@ const VAULT_ABI = [
   "function commitRound(bytes32 roundId,bytes32 commitment,uint256 bettingClosesAt)",
   "function revealRound(bytes32 roundId,bytes32 seed) returns (uint256)",
   "function settleWagers(bytes32[] wagerIds,uint256[] cashoutBpsValues)",
-  "event WagerOpened(bytes32 indexed wagerId,bytes32 indexed roundId,address indexed player,uint256 amount)"
+  "event WagerOpened(bytes32 indexed wagerId,bytes32 indexed roundId,address indexed player,uint256 amount)",
+  "event WagerSettled(bytes32 indexed wagerId,address indexed player,uint256 cashoutBps,uint256 payout,uint256 burned,uint256 rewards)"
 ];
 const TOKEN_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -40,10 +41,11 @@ function atomicWrite(filename, value) {
   fs.writeFileSync(temp, JSON.stringify(value, null, 2));
   fs.renameSync(temp, filename);
 }
+function defaultState() { return { counter: 0, current: null, history: [], cashouts: {} }; }
 function loadState(filename) {
-  if (!filename || !fs.existsSync(filename)) return { counter: 0, current: null, history: [], cashouts: {} };
-  try { return { counter: 0, current: null, history: [], cashouts: {}, ...JSON.parse(fs.readFileSync(filename, "utf8")) }; }
-  catch (error) { console.error("Crash state load failed:", error); return { counter: 0, current: null, history: [], cashouts: {} }; }
+  if (!filename || !fs.existsSync(filename)) return defaultState();
+  try { return { ...defaultState(), ...JSON.parse(fs.readFileSync(filename, "utf8")) }; }
+  catch (error) { console.error("Crash state load failed:", error); return defaultState(); }
 }
 function multiplierToElapsed(multiplier) {
   const target = Math.log(Math.max(1, multiplier));
@@ -58,6 +60,7 @@ function normalizeAddress(value) { try { return ethers.getAddress(value); } catc
 function cashoutMessage({ vault, roundId, wallet, timestamp }) {
   return `MATT SPACE FLIGHT CASHOUT\nVault:${ethers.getAddress(vault)}\nRound:${roundId}\nWallet:${ethers.getAddress(wallet)}\nTimestamp:${timestamp}`;
 }
+function asString(value) { return typeof value === "bigint" ? value.toString() : String(value); }
 
 function createCrashContractRouter(options = {}) {
   const router = express.Router();
@@ -80,6 +83,7 @@ function createCrashContractRouter(options = {}) {
 
   let ticking = false;
   let contractStatus = { checkedAt: 0, paused: true, minWager: 0n, maxWager: 0n, maxCashoutBps: 0n, bankroll: 0n, unreserved: 0n, solvent: false };
+  let wagerCache = { roundId: null, checkedAt: 0, entries: [] };
 
   function persist() { atomicWrite(stateFile, state); }
   async function refreshStatus(force = false) {
@@ -103,6 +107,7 @@ function createCrashContractRouter(options = {}) {
     if (state.current) return;
     state.current = newRoundRecord();
     state.cashouts = {};
+    wagerCache = { roundId: state.current.roundId, checkedAt: 0, entries: [] };
     persist();
   }
   async function commitCurrent() {
@@ -125,7 +130,8 @@ function createCrashContractRouter(options = {}) {
     const r = state.current;
     const chainRound = await vaultRead.rounds(r.roundId);
     if (!chainRound.revealed) {
-      r.stage = "revealing"; persist();
+      r.stage = "revealing";
+      persist();
       const tx = await vaultWrite.revealRound(r.roundId, r.seed);
       await tx.wait();
     }
@@ -136,26 +142,49 @@ function createCrashContractRouter(options = {}) {
     persist();
     console.log(`Crash round ${r.counter} revealed at ${(r.crashPointBps / BPS).toFixed(2)}x`);
   }
-  function crashAt(r) { return r.flightStartedAt + multiplierToElapsed(r.crashPointBps / BPS); }
+  function crashAt(r) {
+    if (!r?.flightStartedAt || !r?.crashPointBps) return Number.POSITIVE_INFINITY;
+    return r.flightStartedAt + multiplierToElapsed(r.crashPointBps / BPS);
+  }
   function observedMultiplierBps(r, now = Date.now()) {
-    if (!r || r.stage === "betting" || r.stage === "committing") return BPS;
+    if (!r || r.stage !== "flying" || !r.flightStartedAt) return BPS;
     const raw = Math.floor(elapsedToMultiplier(now - r.flightStartedAt) * BPS);
     return Math.max(BPS, Math.min(raw, r.crashPointBps || raw));
   }
-  async function openWagersForRound(r) {
+  async function wagerEventsForRound(r, force = false) {
+    if (!r || !vaultRead) return [];
+    if (wagerCache.roundId !== r.roundId) wagerCache = { roundId: r.roundId, checkedAt: 0, entries: [] };
+    if (!force && Date.now() - wagerCache.checkedAt < 1_000) return wagerCache.entries;
     const filter = vaultRead.filters.WagerOpened(null, r.roundId);
     const logs = await vaultRead.queryFilter(filter, r.commitBlock || 0, "latest");
-    const wagers = [];
+    const deduped = new Map();
     for (const log of logs) {
-      const wagerId = log.args.wagerId;
-      const data = await vaultRead.wagers(wagerId);
-      if (!data.settled) wagers.push({ wagerId, player: data.player, amount: data.amount });
+      const wagerId = String(log.args.wagerId);
+      deduped.set(wagerId, {
+        wagerId,
+        wallet: normalizeAddress(log.args.player) || String(log.args.player),
+        amount: BigInt(log.args.amount),
+        blockNumber: Number(log.blockNumber || 0),
+        transactionHash: log.transactionHash || null
+      });
+    }
+    wagerCache = { roundId: r.roundId, checkedAt: Date.now(), entries: [...deduped.values()] };
+    return wagerCache.entries;
+  }
+  async function openWagersForRound(r) {
+    const events = await wagerEventsForRound(r, true);
+    const wagers = [];
+    for (const event of events) {
+      const data = await vaultRead.wagers(event.wagerId);
+      if (!data.settled) wagers.push({ wagerId: event.wagerId, player: data.player, amount: data.amount });
     }
     return wagers;
   }
   async function settleCurrent() {
     const r = state.current;
-    r.stage = "settling"; persist();
+    if (!r.crashedAt) r.crashedAt = Date.now();
+    r.stage = "settling";
+    persist();
     const wagers = await openWagersForRound(r);
     for (let offset = 0; offset < wagers.length; offset += 100) {
       const batch = wagers.slice(offset, offset + 100);
@@ -168,7 +197,6 @@ function createCrashContractRouter(options = {}) {
     }
     r.settled = true;
     r.stage = "crashed";
-    r.crashedAt = Date.now();
     state.history.unshift({ roundNumber: r.counter, roundId: r.roundId, crashPoint: r.crashPointBps / BPS, commitment: r.commitment, seed: r.seed });
     state.history = state.history.slice(0, 30);
     persist();
@@ -186,7 +214,12 @@ function createCrashContractRouter(options = {}) {
       else if ((r.stage === "betting" || r.stage === "revealing") && Date.now() >= r.bettingClosesAt * 1000) await revealCurrent();
       else if (r.stage === "flying" && Date.now() >= crashAt(r)) await settleCurrent();
       else if (r.stage === "settling") await settleCurrent();
-      else if (r.stage === "crashed" && Date.now() >= r.crashedAt + CRASHED_MS) { state.current = null; state.cashouts = {}; persist(); }
+      else if (r.stage === "crashed" && Date.now() >= r.crashedAt + CRASHED_MS) {
+        state.current = null;
+        state.cashouts = {};
+        wagerCache = { roundId: null, checkedAt: 0, entries: [] };
+        persist();
+      }
     } catch (error) {
       console.error("Crash keeper tick failed:", error?.shortMessage || error?.message || error);
       await delay(1_000);
@@ -200,29 +233,67 @@ function createCrashContractRouter(options = {}) {
   function phaseView(now = Date.now()) {
     const r = state.current;
     if (!r) return null;
-    if (["committing", "betting"].includes(r.stage)) return { phase: "betting", multiplier: 1, phaseEndsAt: r.bettingClosesAt * 1000, startAt: r.bettingClosesAt * 1000 - BETTING_MS };
-    if (["revealing", "flying"].includes(r.stage) && now < crashAt(r)) return { phase: "flying", multiplier: observedMultiplierBps(r, now) / BPS, phaseEndsAt: crashAt(r), startAt: r.flightStartedAt - BETTING_MS };
-    return { phase: "crashed", multiplier: r.crashPointBps / BPS, phaseEndsAt: (r.crashedAt || crashAt(r)) + CRASHED_MS, startAt: r.flightStartedAt - BETTING_MS };
+    const bettingStart = r.bettingClosesAt * 1000 - BETTING_MS;
+    if (r.stage === "committing") return { phase: "preparing", multiplier: 1, phaseEndsAt: r.bettingClosesAt * 1000, startAt: bettingStart };
+    if (r.stage === "betting") return { phase: "betting", multiplier: 1, phaseEndsAt: r.bettingClosesAt * 1000, startAt: bettingStart };
+    if (r.stage === "revealing") return { phase: "launching", multiplier: 1, phaseEndsAt: now + 1_500, startAt: bettingStart };
+    if (r.stage === "flying" && now < crashAt(r)) return { phase: "flying", multiplier: observedMultiplierBps(r, now) / BPS, phaseEndsAt: crashAt(r), startAt: r.flightStartedAt - BETTING_MS };
+    const impactAt = r.crashedAt || (Number.isFinite(crashAt(r)) ? crashAt(r) : now);
+    return { phase: "crashed", multiplier: r.crashPointBps ? r.crashPointBps / BPS : 1, phaseEndsAt: impactAt + CRASHED_MS, startAt: r.flightStartedAt ? r.flightStartedAt - BETTING_MS : bettingStart };
+  }
+  function playerView(event, r, view) {
+    const saved = state.cashouts[event.wagerId];
+    const validCashout = saved && r.crashPointBps && saved.cashoutBps < r.crashPointBps;
+    let status = "queued";
+    if (view.phase === "flying") status = validCashout ? "won" : "playing";
+    else if (view.phase === "crashed") status = validCashout ? "won" : "lost";
+    else if (view.phase === "launching") status = "locked";
+    const cashoutBps = validCashout ? Number(saved.cashoutBps) : 0;
+    const payout = validCashout ? (event.amount * BigInt(cashoutBps)) / BigInt(BPS) : 0n;
+    return {
+      wallet: event.wallet,
+      wagerId: event.wagerId,
+      amount: event.amount.toString(),
+      status,
+      cashoutBps,
+      cashout: cashoutBps ? cashoutBps / BPS : null,
+      payout: payout.toString(),
+      transactionHash: event.transactionHash
+    };
   }
   async function publicState() {
     const status = await refreshStatus();
     const r = state.current;
     const view = phaseView();
+    const events = r && view ? await wagerEventsForRound(r) : [];
+    const players = r && view ? events.map(event => playerView(event, r, view)) : [];
+    const total = events.reduce((sum, event) => sum + event.amount, 0n);
+    const largest = events.reduce((max, event) => event.amount > max ? event.amount : max, 0n);
     return {
-      version: 4,
+      version: 5,
       mode: liveEnabled && configured ? (status.paused ? "LIVE_PAUSED" : "LIVE_MAINNET") : "LIVE_LOCKED",
       serverTime: Date.now(),
-      chainId: Number(CHAIN_ID), vaultAddress, tokenAddress,
-      limits: { minWager: status.minWager.toString(), maxWager: status.maxWager.toString(), maxCashoutBps: status.maxCashoutBps.toString() },
-      bankroll: { available: status.bankroll.toString(), unreserved: status.unreserved.toString(), solvent: status.solvent },
+      chainId: Number(CHAIN_ID),
+      vaultAddress,
+      tokenAddress,
+      limits: { minWager: asString(status.minWager), maxWager: asString(status.maxWager), maxCashoutBps: asString(status.maxCashoutBps) },
+      bankroll: { available: asString(status.bankroll), unreserved: asString(status.unreserved), solvent: status.solvent },
       paused: status.paused,
       round: r && view ? {
-        number: r.counter, roundId: r.roundId, phase: view.phase, multiplier: Math.floor(view.multiplier * 100) / 100,
+        number: r.counter,
+        roundId: r.roundId,
+        phase: view.phase,
+        multiplier: Math.floor(view.multiplier * 10_000) / 10_000,
         crashPoint: view.phase === "crashed" ? r.crashPointBps / BPS : null,
-        commitment: r.commitment, seed: view.phase === "crashed" ? r.seed : null,
-        startAt: view.startAt, phaseEndsAt: view.phaseEndsAt
+        commitment: r.commitment,
+        seed: view.phase === "crashed" ? r.seed : null,
+        startAt: view.startAt,
+        phaseEndsAt: view.phaseEndsAt
       } : null,
-      bots: [], history: state.history.slice(0, 18)
+      players,
+      summary: { playerCount: players.length, roundTotal: total.toString(), largestBet: largest.toString() },
+      bots: [],
+      history: state.history.slice(0, 18)
     };
   }
 
@@ -233,7 +304,8 @@ function createCrashContractRouter(options = {}) {
   router.get("/health", async (_req, res) => {
     try {
       const status = await refreshStatus(true);
-      res.json({ ok: configured && liveEnabled && status.solvent, configured, liveEnabled, paused: status.paused, solvent: status.solvent, operator: operator?.address || null, vaultAddress, round: state.current?.counter || null, stage: state.current?.stage || "idle" });
+      const players = state.current ? await wagerEventsForRound(state.current, true) : [];
+      res.json({ ok: configured && liveEnabled && status.solvent, configured, liveEnabled, paused: status.paused, solvent: status.solvent, operator: operator?.address || null, vaultAddress, round: state.current?.counter || null, stage: state.current?.stage || "idle", players: players.length });
     } catch (error) { res.status(503).json({ ok: false, error: String(error.message || error) }); }
   });
   router.get("/account/:wallet", async (req, res) => {
@@ -265,6 +337,7 @@ function createCrashContractRouter(options = {}) {
       if (cashoutBps >= r.crashPointBps) return res.status(409).json({ error: "TOO_LATE" });
       state.cashouts[wagerId] = { wallet, cashoutBps, receivedAt: Date.now() };
       persist();
+      wagerCache.checkedAt = 0;
       res.json({ ok: true, wagerId, cashoutBps, multiplier: cashoutBps / BPS });
     } catch (error) { res.status(400).json({ error: "CASHOUT_REJECTED", message: String(error.shortMessage || error.message || error) }); }
   });
