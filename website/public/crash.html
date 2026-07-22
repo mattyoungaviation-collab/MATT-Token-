@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#05070d">
-  <title>MATT Space Flight | Crash</title>
-  <meta name="description" content="Take the MATT rocket into space, cash out before impact, and verify every shared Crash round.">
+  <title>MATT Space Flight | Live Crash</title>
+  <meta name="description" content="Take the MATT rocket into space, cash out before impact, and verify every mainnet Crash round.">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/crash.css">
 </head>
@@ -20,7 +20,7 @@
     </nav>
     <div class="header-actions">
       <button id="sound-toggle" class="icon-button" type="button" aria-pressed="true">SOUND ON</button>
-      <a class="wallet-button" href="/hub#wallet">CONNECT IN HUB</a>
+      <button id="connect-wallet" class="wallet-button" type="button">CONNECT WALLET</button>
     </div>
   </header>
 
@@ -28,7 +28,7 @@
     <section class="game-shell" aria-labelledby="page-title">
       <div class="game-header">
         <div>
-          <p class="eyebrow">SHARED FREE PLAY • ONE FLIGHT FOR EVERY PLAYER</p>
+          <p class="eyebrow">LIVE RONIN MAINNET • ONE FLIGHT FOR EVERY PLAYER</p>
           <h1 id="page-title">MATT <span>SPACE FLIGHT</span></h1>
         </div>
         <div class="round-meta">
@@ -46,7 +46,7 @@
           <div class="flight-overlay">
             <p id="phase-label">NEXT FLIGHT</p>
             <strong id="multiplier">1.00x</strong>
-            <span id="countdown">Preparing shared round…</span>
+            <span id="countdown">Preparing mainnet round…</span>
           </div>
 
           <div id="rocket" class="rocket" aria-hidden="true">
@@ -74,13 +74,13 @@
 
         <aside class="bet-card">
           <div class="balance-row">
-            <div><span>DEMO BALANCE</span><strong id="demo-balance">10,000,000 MATT</strong></div>
+            <div><span id="balance-label">WALLET BALANCE</span><strong id="demo-balance">CONNECT WALLET</strong></div>
             <button id="reset-balance" type="button">RESET</button>
           </div>
 
           <label class="field-label" for="bet-amount">BET AMOUNT</label>
           <div class="amount-control">
-            <input id="bet-amount" type="number" min="1000" step="1000" value="100000" inputmode="numeric">
+            <input id="bet-amount" type="number" min="1000" max="25000" step="1000" value="1000" inputmode="numeric">
             <span>MATT</span>
           </div>
           <div class="quick-row">
@@ -95,20 +95,20 @@
               <span class="switch"></span>
               AUTO CASH-OUT
             </label>
-            <div class="auto-input"><input id="auto-multiplier" type="number" min="1.01" max="1000" step="0.01" value="2.00"><span>×</span></div>
+            <div class="auto-input"><input id="auto-multiplier" type="number" min="1.01" max="10" step="0.01" value="2.00"><span>×</span></div>
           </div>
 
-          <div class="potential-row"><span>Potential at auto cash-out</span><strong id="potential-payout">200,000 MATT</strong></div>
-          <button id="primary-action" class="primary-action" type="button">PLACE BET</button>
-          <button id="repeat-bet" class="secondary-action" type="button" disabled>REPEAT LAST BET</button>
-          <p class="game-message" id="game-message" role="status" aria-live="polite">Place a demo bet before launch.</p>
-          <p class="prototype-warning">Demo credits only. No wallet approval or real MATT movement.</p>
+          <div class="potential-row"><span>Potential at auto cash-out</span><strong id="potential-payout">2,000 MATT</strong></div>
+          <button id="primary-action" class="primary-action" type="button">CONNECT WALLET</button>
+          <button id="repeat-bet" class="secondary-action" type="button" disabled>NO WINNINGS TO WITHDRAW</button>
+          <p class="game-message" id="game-message" role="status" aria-live="polite">Connect your Ronin wallet to play.</p>
+          <p class="prototype-warning" id="mode-warning">MAINNET VAULT PAUSED • WAGERING LOCKED</p>
         </aside>
       </div>
 
       <div class="lower-grid">
         <section class="panel live-panel">
-          <div class="panel-heading"><div><p class="eyebrow">LIVE FLIGHT</p><h2>Players</h2></div><span id="live-status">BETTING OPEN</span></div>
+          <div class="panel-heading"><div><p class="eyebrow">LIVE FLIGHT</p><h2>Players</h2></div><span id="live-status">CONNECTING</span></div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Player</th><th>Bet</th><th>Cash-out</th><th>Payout</th></tr></thead>
@@ -125,7 +125,7 @@
             <article><span>Best cash-out</span><strong id="stat-best">—</strong></article>
             <article><span>Biggest payout</span><strong id="stat-payout">0 MATT</strong></article>
             <article><span>Current streak</span><strong id="stat-streak">0</strong></article>
-            <article><span>Net demo result</span><strong id="stat-profit">0 MATT</strong></article>
+            <article><span>Net result</span><strong id="stat-profit">0 MATT</strong></article>
           </div>
         </section>
       </div>
@@ -134,8 +134,8 @@
     <section class="fairness" id="fairness">
       <div class="section-heading">
         <p class="eyebrow">VERIFY EVERYTHING</p>
-        <h2>Provably Fair Shared Flight</h2>
-        <p>The commitment is published before launch. After impact, the seed is revealed so the result can be recalculated in your browser.</p>
+        <h2>Provably Fair Mainnet Flight</h2>
+        <p>The commitment is written on-chain before betting closes. After impact, the seed is revealed and the contract calculates the result.</p>
       </div>
       <div class="fair-grid">
         <article><span>Round</span><code id="fair-round">—</code></article>
@@ -143,12 +143,14 @@
         <article><span>Revealed seed</span><code id="fair-seed">Revealed after crash</code><button data-copy="fair-seed" type="button">COPY</button></article>
         <article><span>Calculated result</span><code id="fair-result">Waiting for round</code></article>
       </div>
-      <button id="verify-round" class="verify-button" type="button" disabled>VERIFY LAST ROUND</button>
-      <p id="verify-message" class="verify-message" aria-live="polite">The verification button unlocks after impact.</p>
+      <button id="verify-round" class="verify-button" type="button" disabled>VERIFY ON-CHAIN</button>
+      <p id="verify-message" class="verify-message" aria-live="polite">Connect your wallet. Verification unlocks after impact.</p>
     </section>
   </main>
 
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span><a href="#page-title">Back to top ↑</a></footer>
+  <script src="/vendor/ethers.umd.min.js"></script>
   <script src="/crash.js"></script>
+  <script src="/crash-live.js"></script>
 </body>
 </html>
