@@ -98,6 +98,7 @@ app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "black
 app.get(["/flappy-matt", "/flappy-matt/"], (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.html")));
 app.get("/flappy-matt.css", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.css")));
 app.get("/flappy-matt.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt.js")));
+app.get("/flappy-matt-payment-guard.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-payment-guard.js")));
 app.get("/flappy-matt-engine.js", (_req, res) => res.sendFile(path.join(publicDir, "flappy-matt-engine.js")));
 app.get("/crash-live.js", (_req, res) => res.sendFile(path.join(publicDir, "crash-live.js")));
 app.get("/vendor/ethers.umd.min.js", (_req, res) => { res.set("Cache-Control", "public, max-age=31536000, immutable"); res.type("application/javascript"); res.sendFile(ethersBrowserBundle); });
