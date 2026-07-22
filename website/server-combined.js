@@ -102,6 +102,8 @@ app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
   operatorPrivateKey: process.env.CRASH_OPERATOR_PRIVATE_KEY,
   liveEnabled: true
 }) : createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
+app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
+app.get(["/crash", "/crash/"], (_req, res) => res.sendFile(path.join(publicDir, "crash.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
