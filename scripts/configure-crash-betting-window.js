@@ -111,6 +111,12 @@ const authoritativeFlightClock = "const flightStartedAt = Number(round.flightSta
 if (!client.includes(authoritativeFlightClock)) {
   client = replaceRequired(client, oldFlightClock, authoritativeFlightClock, "client flight clock");
 }
+
+
+if (!backend.includes('router.post("/session/challenge"') || !client.includes("crashSessionToken") || client.includes("signer.signMessage(cashoutText")) {
+  throw new Error("Instant Crash session cash-out code is missing; refusing to start an unsafe build.");
+}
+
 fs.writeFileSync(clientFile, client);
 
 let html = fs.readFileSync(htmlFile, "utf8");

@@ -97,11 +97,11 @@ function createCrashContractRouter(options = {}) {
   const stateFile = options.stateFile || process.env.CRASH_STATE_FILE || "";
   const configured = Boolean(vaultAddress && tokenAddress && privateKey);
 
-  const provider = new ethers.JsonRpcProvider(rpcUrl, Number(CHAIN_ID), { staticNetwork: true });
+  const provider = options.provider || new ethers.JsonRpcProvider(rpcUrl, Number(CHAIN_ID), { staticNetwork: true });
   const operator = configured ? new ethers.Wallet(privateKey, provider) : null;
-  const vaultRead = vaultAddress ? new ethers.Contract(vaultAddress, VAULT_ABI, provider) : null;
-  const vaultWrite = operator && vaultAddress ? vaultRead.connect(operator) : null;
-  const token = tokenAddress ? new ethers.Contract(tokenAddress, TOKEN_ABI, provider) : null;
+  const vaultRead = options.vaultRead || (vaultAddress ? new ethers.Contract(vaultAddress, VAULT_ABI, provider) : null);
+  const vaultWrite = options.vaultWrite || (operator && vaultAddress ? vaultRead.connect(operator) : null);
+  const token = options.token || (tokenAddress ? new ethers.Contract(tokenAddress, TOKEN_ABI, provider) : null);
   const state = loadState(stateFile);
 
   const SESSION_CHALLENGE_MS = 5 * 60 * 1000;
@@ -141,6 +141,7 @@ function createCrashContractRouter(options = {}) {
   }
 
   let ticking = false;
+  let lastKeeperError = null;
   let contractStatus = { checkedAt: 0, paused: true, minWager: 0n, maxWager: 0n, maxCashoutBps: 0n, bankroll: 0n, unreserved: 0n, solvent: false };
   let wagerCache = { roundId: null, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
 
@@ -314,6 +315,7 @@ function createCrashContractRouter(options = {}) {
     if (ticking || !configured || !liveEnabled) return;
     ticking = true;
     try {
+      lastKeeperError = null;
       const status = await refreshStatus();
       if (status.paused || !status.solvent) return;
       await ensureCommitted();
@@ -329,7 +331,8 @@ function createCrashContractRouter(options = {}) {
         persist();
       }
     } catch (error) {
-      console.error("Crash keeper tick failed:", errorText(error));
+      lastKeeperError = { at: Date.now(), stage: state.current?.stage || "idle", message: errorText(error) };
+      console.error("Crash keeper tick failed:", lastKeeperError.message);
       await delay(1_000);
     } finally {
       ticking = false;
@@ -380,7 +383,7 @@ function createCrashContractRouter(options = {}) {
     const total = events.reduce((sum, event) => sum + event.amount, 0n);
     const largest = events.reduce((max, event) => event.amount > max ? event.amount : max, 0n);
     return {
-      version: 6,
+      version: 7,
       mode: liveEnabled && configured ? (status.paused ? "LIVE_PAUSED" : "LIVE_MAINNET") : "LIVE_LOCKED",
       serverTime: Date.now(),
       timing: { bettingMs: BETTING_MS, crashedMs: CRASHED_MS },
@@ -432,6 +435,7 @@ function createCrashContractRouter(options = {}) {
         vaultAddress,
         round: state.current?.counter || null,
         stage: state.current?.stage || "idle",
+        lastKeeperError,
         players: players.length,
         playersStale: Boolean(wagerCache.stale),
         logFromBlock: wagerCache.fromBlock,
@@ -498,17 +502,22 @@ function createCrashContractRouter(options = {}) {
       if (prior) return res.json({ ok: true, wagerId, ...prior, multiplier: Number(prior.cashoutBps) / BPS, duplicate: true });
       const view = phaseView();
       if (!view || view.phase !== "flying") return res.status(409).json({ error: "ROUND_NOT_FLYING" });
-      const wager = await vaultRead.wagers(wagerId);
-      if (normalizeAddress(wager.player) !== wallet || wager.settled) return res.status(409).json({ error: "NO_OPEN_WAGER" });
-      const duplicateAfterRead = state.cashouts[wagerId];
-      if (duplicateAfterRead) return res.json({ ok: true, wagerId, ...duplicateAfterRead, multiplier: Number(duplicateAfterRead.cashoutBps) / BPS, duplicate: true });
-      const status = await refreshStatus();
-      const receivedAt = Date.now();
-      const cashoutBps = Math.min(observedMultiplierBps(r, receivedAt), Number(status.maxCashoutBps));
-      if (cashoutBps >= r.crashPointBps || receivedAt >= crashAt(r)) return res.status(409).json({ error: "TOO_LATE" });
-      const locked = { wallet, cashoutBps, receivedAt };
+      const receivedAt = Number(process.hrtime.bigint() / 1_000_000n);
+      const wallReceivedAt = Date.now();
+      const maxCashoutBps = Number(contractStatus.maxCashoutBps || 0n) || Number.POSITIVE_INFINITY;
+      const cashoutBps = Math.min(observedMultiplierBps(r, wallReceivedAt), maxCashoutBps);
+      if (cashoutBps >= r.crashPointBps || wallReceivedAt >= crashAt(r)) return res.status(409).json({ error: "TOO_LATE" });
+      const locked = { wallet, cashoutBps, receivedAt, wallReceivedAt };
       state.cashouts[wagerId] = locked;
       persist();
+      const wager = await vaultRead.wagers(wagerId);
+      if (normalizeAddress(wager.player) !== wallet || wager.settled) {
+        if (state.cashouts[wagerId] === locked) {
+          delete state.cashouts[wagerId];
+          persist();
+        }
+        return res.status(409).json({ error: "NO_OPEN_WAGER" });
+      }
       wagerCache.checkedAt = 0;
       return res.json({ ok: true, wagerId, ...locked, multiplier: cashoutBps / BPS });
     } catch (error) {
@@ -519,4 +528,4 @@ function createCrashContractRouter(options = {}) {
   return router;
 }
 
-module.exports = { createCrashContractRouter, cashoutMessage };
+module.exports = { createCrashContractRouter, cashoutMessage, crashSessionMessage };
