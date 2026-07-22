@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#0b1624">
-  <title>Flappy MATT | 24 Hour Prize Leaderboard</title>
-  <meta name="description" content="Play Flappy MATT on Ronin. Every paid run grows the 24 hour prize pot, split 50/35/15 between the top three scores.">
+  <title>Flappy MATT | Paid Leaderboard and Free Practice</title>
+  <meta name="description" content="Play paid Flappy MATT for the 24 hour prize pot or practice free on the same page.">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/flappy-matt.css?v=1">
+  <link rel="stylesheet" href="/flappy-matt-practice.css?v=1">
 </head>
 <body id="top">
   <header class="topbar">
@@ -21,7 +22,7 @@
       <div>
         <p class="eyebrow">THE 24 HOUR MATT CHALLENGE</p>
         <h1>FLAPPY<br><span>MATT</span></h1>
-        <p class="lead">Every 50,000 MATT flight sends 1,000 MATT to treasury and adds 49,000 MATT to the contract pot. When the timer hits zero, first place wins 50%, second takes 35%, and third takes 15%.</p>
+        <p class="lead">Every 50,000 MATT paid flight sends 1,000 MATT to treasury and adds 49,000 MATT to the contract pot. Free practice is always available farther down this same page.</p>
       </div>
       <div class="round-card">
         <span>ROUND ENDS IN</span>
@@ -41,21 +42,23 @@
       <article><span>3RD PLACE</span><strong>15%</strong><small id="third-prize">0 MATT</small></article>
     </section>
 
-    <section class="game-layout">
+    <p class="paid-mode-alert" id="paid-mode-alert" hidden></p>
+
+    <section class="game-layout" aria-label="Paid Flappy MATT">
       <article class="game-shell">
         <div class="game-toolbar">
           <div><span>YOUR SCORE</span><strong id="live-score">0</strong></div>
           <div><span>YOUR BEST</span><strong id="personal-best">0</strong></div>
-          <div><span>ENTRY</span><strong id="entry-value">Loading</strong></div>
+          <div><span>PAID ENTRY</span><strong id="entry-value">Loading</strong></div>
         </div>
         <div class="canvas-wrap" id="canvas-wrap">
-          <canvas id="game-canvas" width="420" height="680" aria-label="Flappy MATT game"></canvas>
+          <canvas id="game-canvas" width="420" height="680" aria-label="Paid Flappy MATT game"></canvas>
           <div class="game-overlay" id="game-overlay">
             <img src="/assets/matt-logo-512.png" alt="MATT mascot">
-            <h2 id="overlay-title">FLAPPY MATT</h2>
-            <p id="overlay-copy">Connect your Ronin Wallet, enter the round, then press START GAME when you are ready.</p>
+            <h2 id="overlay-title">PAID FLAPPY MATT</h2>
+            <p id="overlay-copy">Connect your Ronin Wallet, enter the prize round, then press START GAME when you are ready.</p>
             <button id="play-button" type="button">CONNECT TO PLAY</button>
-            <small id="game-status">Scores are verified by a server replay before they reach the leaderboard.</small>
+            <small id="game-status">Paid scores are verified by a server replay before they reach the leaderboard.</small>
           </div>
         </div>
         <div class="controls-note"><strong>TAP, CLICK, OR PRESS SPACE</strong><span>Keep MATT flying through every gap.</span></div>
@@ -63,7 +66,7 @@
 
       <aside class="leaderboard-card">
         <div class="leaderboard-heading">
-          <div><p class="eyebrow">LIVE RANKINGS</p><h2>Top Flights</h2></div>
+          <div><p class="eyebrow">PAID RANKINGS</p><h2>Top Flights</h2></div>
           <button id="refresh-board" type="button">Refresh</button>
         </div>
         <ol id="leaderboard-list" class="leaderboard-list">
@@ -74,9 +77,38 @@
     </section>
 
     <section class="how-it-works">
-      <article><b>01</b><h3>Enter the Flight</h3><p>One contract entry starts one prize-eligible run: 1,000 MATT goes to treasury and 49,000 MATT joins the current pot.</p></article>
+      <article><b>01</b><h3>Enter the Paid Flight</h3><p>One contract entry starts one prize-eligible run: 1,000 MATT goes to treasury and 49,000 MATT joins the current pot.</p></article>
       <article><b>02</b><h3>Start When Ready</h3><p>After your entry confirms, press START GAME. The flight does not begin until you are ready.</p></article>
       <article><b>03</b><h3>Take the Pot</h3><p>After the UTC round closes, the contract pays the verified top three wallets 50%, 35%, and 15% of the final pot.</p></article>
+    </section>
+
+    <section class="practice-zone" id="practice">
+      <article class="practice-card">
+        <div class="practice-heading">
+          <div>
+            <span class="practice-badge">FREE PRACTICE</span>
+            <h2>Practice Flappy MATT</h2>
+          </div>
+          <p>No wallet, no MATT charge, and no leaderboard entry. Train here before risking a paid flight above.</p>
+        </div>
+        <div class="practice-layout">
+          <div class="practice-canvas-wrap">
+            <canvas id="practice-canvas" width="420" height="680" aria-label="Free Flappy MATT practice game"></canvas>
+          </div>
+          <div class="practice-panel">
+            <div class="practice-stats">
+              <div class="practice-stat"><span>PRACTICE SCORE</span><strong id="practice-score">0</strong></div>
+              <div class="practice-stat"><span>PRACTICE BEST</span><strong id="practice-best">0</strong></div>
+            </div>
+            <button class="practice-start" id="practice-start" type="button">START FREE PRACTICE</button>
+            <div class="practice-copy">
+              <strong>Practice does not use the paid leaderboard.</strong>
+              <p>Your practice score stays on this device only. Press the button, then tap, click, or press Space to fly.</p>
+            </div>
+            <p class="practice-status" id="practice-status">Free practice is ready. No MATT will be charged.</p>
+          </div>
+        </div>
+      </article>
     </section>
 
     <section class="previous-round" id="previous-round" hidden>
@@ -84,7 +116,7 @@
       <div id="previous-winners"></div>
     </section>
 
-    <p class="legal-note" id="mode-notice">Loading Flappy MATT configuration.</p>
+    <p class="legal-note" id="mode-notice">Loading paid Flappy MATT configuration.</p>
   </main>
 
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span><a href="#top">Back to top ↑</a></footer>
@@ -92,6 +124,8 @@
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
   <script src="/flappy-matt-payment-guard.js?v=1"></script>
   <script src="/flappy-matt-engine.js?v=2"></script>
-  <script src="/flappy-matt.js?v=3"></script>
+  <script src="/flappy-matt.js?v=4"></script>
+  <script src="/flappy-matt-mode-refresh.js?v=1"></script>
+  <script src="/flappy-matt-practice.js?v=1"></script>
 </body>
 </html>
