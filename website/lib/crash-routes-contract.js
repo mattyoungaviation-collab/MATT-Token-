@@ -62,6 +62,26 @@ function normalizeAddress(value) { try { return ethers.getAddress(value); } catc
 function cashoutMessage({ vault, roundId, wallet, timestamp }) {
   return `MATT SPACE FLIGHT CASHOUT\nVault:${ethers.getAddress(vault)}\nRound:${roundId}\nWallet:${ethers.getAddress(wallet)}\nTimestamp:${timestamp}`;
 }
+function crashSessionMessage({ vault, wallet, nonce, issuedAt, expiresAt }) {
+  return `MATT SPACE FLIGHT SESSION\nVault:${ethers.getAddress(vault)}\nWallet:${ethers.getAddress(wallet)}\nNonce:${nonce}\nIssuedAt:${issuedAt}\nExpiresAt:${expiresAt}`;
+}
+function parseCrashSessionMessage(message) {
+  const lines = String(message || "").split("\n");
+  if (lines.length !== 6 || lines[0] !== "MATT SPACE FLIGHT SESSION") return null;
+  const values = {};
+  for (const line of lines.slice(1)) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) return null;
+    values[line.slice(0, separator)] = line.slice(separator + 1);
+  }
+  const vault = normalizeAddress(values.Vault);
+  const wallet = normalizeAddress(values.Wallet);
+  const nonce = String(values.Nonce || "");
+  const issuedAt = Number(values.IssuedAt);
+  const expiresAt = Number(values.ExpiresAt);
+  if (!vault || !wallet || !/^[0-9a-f]{32}$/i.test(nonce) || !Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) return null;
+  return { vault, wallet, nonce, issuedAt, expiresAt };
+}
 function asString(value) { return typeof value === "bigint" ? value.toString() : String(value); }
 function errorText(error) { return String(error?.shortMessage || error?.message || error || "unknown error").slice(0, 500); }
 
@@ -83,6 +103,42 @@ function createCrashContractRouter(options = {}) {
   const vaultWrite = operator && vaultAddress ? vaultRead.connect(operator) : null;
   const token = tokenAddress ? new ethers.Contract(tokenAddress, TOKEN_ABI, provider) : null;
   const state = loadState(stateFile);
+
+  const SESSION_CHALLENGE_MS = 5 * 60 * 1000;
+  const SESSION_LIFETIME_MS = 12 * 60 * 60 * 1000;
+  const sessionSecret = configured
+    ? crypto.createHash("sha256").update(`MATT_CRASH_SESSION:${privateKey}:${vaultAddress}`).digest()
+    : null;
+
+  function signSessionPayload(encodedPayload) {
+    return crypto.createHmac("sha256", sessionSecret).update(encodedPayload).digest("base64url");
+  }
+  function issueSession(wallet) {
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + SESSION_LIFETIME_MS;
+    const payload = Buffer.from(JSON.stringify({ version: 1, wallet, issuedAt, expiresAt, nonce: crypto.randomBytes(16).toString("hex") })).toString("base64url");
+    return { token: `${payload}.${signSessionPayload(payload)}`, expiresAt };
+  }
+  function authenticatedSessionWallet(req) {
+    if (!sessionSecret) return null;
+    const authorization = String(req.get("authorization") || "");
+    if (!authorization.toLowerCase().startsWith("bearer ")) return null;
+    const token = authorization.slice(7).trim();
+    const pieces = token.split(".");
+    if (pieces.length !== 2) return null;
+    const [encodedPayload, suppliedMac] = pieces;
+    let expectedMac;
+    try { expectedMac = signSessionPayload(encodedPayload); } catch { return null; }
+    const supplied = Buffer.from(suppliedMac, "base64url");
+    const expected = Buffer.from(expectedMac, "base64url");
+    if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null;
+    try {
+      const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+      const wallet = normalizeAddress(payload.wallet);
+      if (payload.version !== 1 || !wallet || !Number.isSafeInteger(payload.expiresAt) || payload.expiresAt <= Date.now()) return null;
+      return wallet;
+    } catch { return null; }
+  }
 
   let ticking = false;
   let contractStatus = { checkedAt: 0, paused: true, minWager: 0n, maxWager: 0n, maxCashoutBps: 0n, bankroll: 0n, unreserved: 0n, solvent: false };
@@ -126,6 +182,22 @@ function createCrashContractRouter(options = {}) {
       persist();
       return;
     }
+    if (Date.now() >= r.bettingClosesAt * 1000) {
+
+      console.warn(`Crash round ${r.counter} was never committed before its betting deadline; replacing the empty stale round.`);
+
+      state.current = null;
+
+      state.cashouts = {};
+
+      wagerCache = { roundId: null, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
+
+      persist();
+
+      return;
+
+    }
+
     const tx = await vaultWrite.commitRound(r.roundId, r.commitment, r.bettingClosesAt);
     const receipt = await tx.wait();
     r.commitBlock = Number(receipt.blockNumber);
@@ -311,6 +383,7 @@ function createCrashContractRouter(options = {}) {
       version: 6,
       mode: liveEnabled && configured ? (status.paused ? "LIVE_PAUSED" : "LIVE_MAINNET") : "LIVE_LOCKED",
       serverTime: Date.now(),
+      timing: { bettingMs: BETTING_MS, crashedMs: CRASHED_MS },
       chainId: Number(CHAIN_ID),
       vaultAddress,
       tokenAddress,
@@ -326,6 +399,7 @@ function createCrashContractRouter(options = {}) {
         commitment: r.commitment,
         seed: view.phase === "crashed" ? r.seed : null,
         startAt: view.startAt,
+        flightStartedAt: r.flightStartedAt || null,
         phaseEndsAt: view.phaseEndsAt
       } : null,
       players,
@@ -381,31 +455,64 @@ function createCrashContractRouter(options = {}) {
       res.status(503).json({ error: "ACCOUNT_UNAVAILABLE", message: errorText(error) });
     }
   });
+  router.post("/session/challenge", (req, res) => {
+    const wallet = normalizeAddress(req.body?.wallet);
+    if (!wallet) return res.status(400).json({ error: "INVALID_WALLET" });
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + SESSION_CHALLENGE_MS;
+    const nonce = crypto.randomBytes(16).toString("hex");
+    const message = crashSessionMessage({ vault: vaultAddress, wallet, nonce, issuedAt, expiresAt });
+    res.set("Cache-Control", "no-store");
+    return res.json({ wallet, nonce, issuedAt, expiresAt, message });
+  });
+
+  router.post("/session", (req, res) => {
+    try {
+      if (!configured || !sessionSecret) return res.status(503).json({ error: "CRASH_SESSION_UNAVAILABLE" });
+      const requestedWallet = normalizeAddress(req.body?.wallet);
+      const message = String(req.body?.message || "");
+      const signature = String(req.body?.signature || "");
+      const parsed = parseCrashSessionMessage(message);
+      const now = Date.now();
+      if (!requestedWallet || !parsed || parsed.wallet !== requestedWallet || parsed.vault !== vaultAddress) return res.status(400).json({ error: "INVALID_SESSION_CHALLENGE" });
+      if (parsed.issuedAt > now + 30_000 || parsed.expiresAt <= now || parsed.expiresAt - parsed.issuedAt > SESSION_CHALLENGE_MS) return res.status(400).json({ error: "EXPIRED_SESSION_CHALLENGE" });
+      const recovered = normalizeAddress(ethers.verifyMessage(message, signature));
+      if (recovered !== requestedWallet) return res.status(401).json({ error: "INVALID_SESSION_SIGNATURE" });
+      const session = issueSession(requestedWallet);
+      res.set("Cache-Control", "no-store");
+      return res.json({ wallet: requestedWallet, token: session.token, expiresAt: session.expiresAt });
+    } catch (error) {
+      return res.status(400).json({ error: "SESSION_REJECTED", message: errorText(error) });
+    }
+  });
+
   router.post("/cashout", async (req, res) => {
     try {
+      const wallet = authenticatedSessionWallet(req);
+      if (!wallet) return res.status(401).json({ error: "CRASH_SESSION_REQUIRED", message: "Reconnect before placing the next wager." });
       const r = state.current;
-      const view = phaseView();
-      const wallet = normalizeAddress(req.body?.wallet);
       const roundId = String(req.body?.roundId || "");
-      const timestamp = Number(req.body?.timestamp || 0);
-      const signature = String(req.body?.signature || "");
-      if (!wallet || !r || !view || view.phase !== "flying" || roundId !== r.roundId) return res.status(409).json({ error: "ROUND_NOT_FLYING" });
-      if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 20_000) return res.status(400).json({ error: "STALE_CASHOUT" });
-      const recovered = normalizeAddress(ethers.verifyMessage(cashoutMessage({ vault: vaultAddress, roundId, wallet, timestamp }), signature));
-      if (recovered !== wallet) return res.status(401).json({ error: "INVALID_SIGNATURE" });
+      if (!r || roundId !== r.roundId) return res.status(409).json({ error: "ROUND_NOT_CURRENT" });
       const wagerId = ethers.keccak256(ethers.solidityPacked(["uint256", "address", "bytes32", "address"], [CHAIN_ID, vaultAddress, roundId, wallet]));
+      const prior = state.cashouts[wagerId];
+      if (prior) return res.json({ ok: true, wagerId, ...prior, multiplier: Number(prior.cashoutBps) / BPS, duplicate: true });
+      const view = phaseView();
+      if (!view || view.phase !== "flying") return res.status(409).json({ error: "ROUND_NOT_FLYING" });
       const wager = await vaultRead.wagers(wagerId);
       if (normalizeAddress(wager.player) !== wallet || wager.settled) return res.status(409).json({ error: "NO_OPEN_WAGER" });
-      if (state.cashouts[wagerId]) return res.json({ ok: true, wagerId, ...state.cashouts[wagerId], duplicate: true });
+      const duplicateAfterRead = state.cashouts[wagerId];
+      if (duplicateAfterRead) return res.json({ ok: true, wagerId, ...duplicateAfterRead, multiplier: Number(duplicateAfterRead.cashoutBps) / BPS, duplicate: true });
       const status = await refreshStatus();
-      const cashoutBps = Math.min(observedMultiplierBps(r), Number(status.maxCashoutBps));
-      if (cashoutBps >= r.crashPointBps) return res.status(409).json({ error: "TOO_LATE" });
-      state.cashouts[wagerId] = { wallet, cashoutBps, receivedAt: Date.now() };
+      const receivedAt = Date.now();
+      const cashoutBps = Math.min(observedMultiplierBps(r, receivedAt), Number(status.maxCashoutBps));
+      if (cashoutBps >= r.crashPointBps || receivedAt >= crashAt(r)) return res.status(409).json({ error: "TOO_LATE" });
+      const locked = { wallet, cashoutBps, receivedAt };
+      state.cashouts[wagerId] = locked;
       persist();
       wagerCache.checkedAt = 0;
-      res.json({ ok: true, wagerId, cashoutBps, multiplier: cashoutBps / BPS });
+      return res.json({ ok: true, wagerId, ...locked, multiplier: cashoutBps / BPS });
     } catch (error) {
-      res.status(400).json({ error: "CASHOUT_REJECTED", message: errorText(error) });
+      return res.status(400).json({ error: "CASHOUT_REJECTED", message: errorText(error) });
     }
   });
 

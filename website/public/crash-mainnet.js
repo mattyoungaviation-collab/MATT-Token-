@@ -50,6 +50,8 @@
   let currentWagerRoundId = null;
   let syncedRoundId = null;
   let cashoutSentForRound = null;
+  let crashSessionToken = null;
+  let crashSessionExpiresAt = 0;
   let displayedMultiplier = 1;
   let displayedProgress = 0;
   let lastRoundNumber = null;
@@ -138,6 +140,54 @@
     if (!response.ok) throw new Error(body.message || body.error || `HTTP ${response.status}`);
     return body;
   }
+  function crashSessionStorageKey() {
+    return `matt-crash-session:${String(liveState?.vaultAddress || "pending").toLowerCase()}:${String(wallet || "guest").toLowerCase()}`;
+  }
+  function restoreCrashSession() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(crashSessionStorageKey()) || "{}");
+      if (saved.token && Number(saved.expiresAt) > Date.now() + 60_000) {
+        crashSessionToken = String(saved.token);
+        crashSessionExpiresAt = Number(saved.expiresAt);
+        return true;
+      }
+    } catch {}
+    crashSessionToken = null;
+    crashSessionExpiresAt = 0;
+    return false;
+  }
+  function saveCrashSession(token, expiresAt) {
+    crashSessionToken = String(token || "");
+    crashSessionExpiresAt = Number(expiresAt || 0);
+    localStorage.setItem(crashSessionStorageKey(), JSON.stringify({ token: crashSessionToken, expiresAt: crashSessionExpiresAt }));
+  }
+  function cashoutAttemptKey(roundId) {
+    return `matt-crash-cashout-attempt:${String(liveState?.vaultAddress || "").toLowerCase()}:${String(wallet || "").toLowerCase()}:${roundId}`;
+  }
+  function hasCashoutAttempt(roundId) {
+    try { return Boolean(localStorage.getItem(cashoutAttemptKey(roundId))); } catch { return false; }
+  }
+  function markCashoutAttempt(roundId) {
+    try { localStorage.setItem(cashoutAttemptKey(roundId), String(Date.now())); } catch {}
+  }
+  async function ensureCrashSession(force = false) {
+    if (!wallet || !signer || !liveState?.vaultAddress) throw new Error("Connect Ronin Wallet before activating Crash.");
+    if (!force && ((crashSessionToken && crashSessionExpiresAt > Date.now() + 60_000) || restoreCrashSession())) return crashSessionToken;
+    const challenge = await fetchJson("/api/crash/session/challenge", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ wallet })
+    });
+    say("Sign once to activate instant cash-outs for the next 12 hours.");
+    const signature = await signer.signMessage(challenge.message);
+    const session = await fetchJson("/api/crash/session", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ wallet, message: challenge.message, signature })
+    });
+    saveCrashSession(session.token, session.expiresAt);
+    return crashSessionToken;
+  }
   async function ensureRoninChain() {
     const provider = roninProvider();
     if (!provider) throw new Error("Ronin Wallet was not detected. Install Ronin Wallet or open this page inside the Ronin mobile app.");
@@ -163,12 +213,14 @@
     signer = await browserProvider.getSigner(checksum);
     wallet = await signer.getAddress();
     stats = loadStats(); renderStats();
+    if (!liveState?.vaultAddress) await pollState(true);
     ensureContracts();
     els.connect.textContent = shortAddress(wallet);
     syncedRoundId = null;
+    await ensureCrashSession();
     await refreshAccount(true);
     await syncWagerForCurrentRound(true);
-    say("Ronin Wallet connected. Real MATT mode is active.", "win");
+    say("Ronin Wallet connected. Instant cash-outs are active for 12 hours.", "win");
   }
   async function restoreRonin() {
     const provider = roninProvider();
@@ -194,6 +246,8 @@
   function disconnectLocal() {
     browserProvider = signer = vault = token = null;
     wallet = account = currentWagerId = currentWagerRoundId = null;
+    crashSessionToken = null;
+    crashSessionExpiresAt = 0;
     syncedRoundId = null;
     stats = loadStats(); renderStats();
     els.connect.textContent = "CONNECT RONIN";
@@ -225,6 +279,7 @@
       const matches = String(data.player).toLowerCase() === wallet.toLowerCase();
       currentWagerId = matches && !data.settled ? id : null;
       currentWagerRoundId = currentWagerId ? roundId : null;
+      if (currentWagerId && hasCashoutAttempt(roundId)) cashoutSentForRound = roundId;
     } catch (error) {
       syncedRoundId = null;
       console.warn("Crash wager sync failed", error);
@@ -247,6 +302,7 @@
     const amount = parsedBet();
     pendingAction = "bet";
     try {
+      await ensureCrashSession();
       ensureContracts();
       const allowance = await token.allowance(wallet, liveState.vaultAddress);
       if (allowance < amount) {
@@ -264,21 +320,30 @@
       await Promise.all([refreshAccount(true), pollState(true)]);
     } finally { pendingAction = ""; }
   }
-  function cashoutText(timestamp) {
-    return `MATT SPACE FLIGHT CASHOUT\nVault:${window.ethers.getAddress(liveState.vaultAddress)}\nRound:${liveState.round.roundId}\nWallet:${window.ethers.getAddress(wallet)}\nTimestamp:${timestamp}`;
-  }
   async function cashOut(auto = false) {
     const round = liveState?.round;
-    if (!wallet || !signer || !currentWagerId || currentWagerRoundId !== round?.roundId || round?.phase !== "flying") throw new Error("No active wager to cash out.");
-    if (cashoutSentForRound === round.roundId || pendingAction) return;
-    pendingAction = "cashout";
-    try {
-      const timestamp = Date.now();
-      const signature = await signer.signMessage(cashoutText(timestamp));
-      const result = await fetchJson("/api/crash/cashout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet, roundId: round.roundId, timestamp, signature }) });
+    if (!wallet || !currentWagerId || currentWagerRoundId !== round?.roundId || round?.phase !== "flying") throw new Error("No active wager to cash out.");
+    if (cashoutSentForRound === round.roundId || pendingAction || hasCashoutAttempt(round.roundId)) return;
+    if (!crashSessionToken || crashSessionExpiresAt <= Date.now()) {
       cashoutSentForRound = round.roundId;
+      markCashoutAttempt(round.roundId);
+      throw new Error("Crash session expired. This wager cannot be retried; reconnect before the next wager.");
+    }
+    cashoutSentForRound = round.roundId;
+    markCashoutAttempt(round.roundId);
+    pendingAction = "cashout";
+    say(`${auto ? "Auto cash-out" : "Cash-out"} sent. Locking the server multiplier now…`);
+    try {
+      const result = await fetchJson("/api/crash/cashout", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${crashSessionToken}` },
+        body: JSON.stringify({ roundId: round.roundId })
+      });
       say(`${auto ? "Auto cash-out" : "Cash-out"} locked at ${Number(result.multiplier).toFixed(2)}x. Settlement follows impact.`, "win");
       await pollState(true);
+    } catch (error) {
+      say(`Cash-out was not accepted: ${error.message}. This round remains locked and cannot be retried.`, "loss");
+      throw error;
     } finally { pendingAction = ""; }
   }
   async function withdraw() {
@@ -404,7 +469,7 @@
     const now = Date.now() + clockOffset;
     let multiplier = Number(round.multiplier || 1);
     if (round.phase === "flying") {
-      const flightStartedAt = Number(round.startAt || now) + BETTING_MS;
+      const flightStartedAt = Number(round.flightStartedAt || (Number(round.startAt || now) + Number(liveState?.timing?.bettingMs || BETTING_MS)));
       multiplier = Math.max(1, elapsedToMultiplier(now - flightStartedAt));
     } else if (["preparing", "betting", "launching"].includes(round.phase)) multiplier = 1;
     else if (round.phase === "crashed") multiplier = Number(round.crashPoint || round.multiplier || 1);
@@ -447,7 +512,7 @@
     }
     if (pendingAction) {
       els.action.disabled = true;
-      els.action.textContent = pendingAction === "cashout" ? "SIGN CASH-OUT IN RONIN" : pendingAction === "bet" ? "CONFIRM IN RONIN" : "WAITING FOR RONIN";
+      els.action.textContent = pendingAction === "cashout" ? "LOCKING CASH-OUT" : pendingAction === "bet" ? "CONFIRM IN RONIN" : "WAITING FOR RONIN";
       return;
     }
     if (!round || liveState?.mode !== "LIVE_MAINNET" || liveState?.paused) {
