@@ -3,108 +3,161 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MATT Token | Built by Matt. Backed by Matt.</title>
-  <meta name="description" content="MATT is a verified, fixed-supply community token trading on Ronin through Katana.">
+  <meta name="theme-color" content="#08090d">
+  <title>MATT | Use It. Play It. Burn It.</title>
+  <meta name="description" content="MATT is a live Ronin ecosystem token built to move between economies, power games, reward communities, and be permanently burned.">
   <meta property="og:title" content="MATT Token on Ronin">
-  <meta property="og:description" content="Built by Matt. Backed by Matt.">
+  <meta property="og:description" content="Use MATT. Play with MATT. Burn MATT.">
   <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
   <meta property="og:type" content="website">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/styles.css">
-  <style>
-    .blackjack-banner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:22px;margin:28px;max-width:1124px;margin-left:auto;margin-right:auto;padding:22px 26px;background:linear-gradient(120deg,#071b14,#123c2c 55%,#18120a);border:1px solid #42d68a;border-radius:22px;box-shadow:0 24px 70px #0008;overflow:hidden;position:relative}.blackjack-banner:before{content:"♠  ♥  ♦  ♣";position:absolute;right:180px;top:50%;transform:translateY(-50%);font-size:3.8rem;letter-spacing:.18em;color:#ffffff0d;white-space:nowrap}.blackjack-mark{width:72px;height:72px;display:grid;place-items:center;background:#07110d;border:2px solid #f3bd3e;border-radius:18px;color:#f3bd3e;font-size:2.4rem;font-weight:1000;box-shadow:inset 0 0 24px #f3bd3e22}.blackjack-copy{position:relative;z-index:1}.blackjack-copy span{display:block;color:#65e89a;font-size:.75rem;font-weight:950;letter-spacing:.2em}.blackjack-copy strong{display:block;font-size:clamp(1.55rem,3.5vw,2.7rem);line-height:1.05;letter-spacing:-.035em}.blackjack-copy small{display:block;margin-top:6px;color:#c2d2c9}.blackjack-banner a{position:relative;z-index:1;display:inline-block;padding:13px 20px;background:#f3bd3e;border-radius:11px;color:#161006;text-decoration:none;font-weight:950;white-space:nowrap}.blackjack-banner a:hover{transform:translateY(-2px)}@media(max-width:720px){.blackjack-banner{grid-template-columns:auto 1fr;margin:18px;padding:18px}.blackjack-banner a{grid-column:1/-1;text-align:center}.blackjack-banner:before{display:none}.blackjack-mark{width:58px;height:58px;font-size:2rem}}
-  </style>
+  <link rel="stylesheet" href="/home.css?v=20260722">
 </head>
 <body>
-  <header>
-    <a class="brand" href="#top">MATT</a>
-    <nav><a href="#about">About</a><a href="#tokenomics">Tokenomics</a><a href="#buy">Buy</a><a href="#contract">Contract</a><a href="/hub">MATT Hub</a></nav>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="MATT home">
+      <img src="/assets/matt-logo-512.png" alt="">
+      <span>MATT</span>
+      <small>RONIN ECOSYSTEM TOKEN</small>
+    </a>
+    <nav class="game-tabs" aria-label="MATT games">
+      <a href="/burnflip">BURNFLIP</a>
+      <a href="/blackjack">BLACKJACK</a>
+      <a href="/flappy-matt">FLAPPY MATT</a>
+      <a href="/crash">SPACE FLIGHT</a>
+    </nav>
+    <button class="wallet-button" id="connect-wallet" type="button">
+      <span id="wallet-label">CONNECT RONIN</span>
+      <small id="wallet-balance">WALLET</small>
+    </button>
   </header>
 
-  <a class="blackjack-banner" href="/blackjack" aria-label="Play MATT Live Blackjack">
-    <span class="blackjack-mark">21</span>
-    <span class="blackjack-copy"><span>NOW LIVE ON RONIN</span><strong>BLACKJACK POWERED BY MATT</strong><small>Five seats. Live cards. On-chain wagers and settlement.</small></span>
-    <span style="padding:13px 20px;background:#f3bd3e;border-radius:11px;color:#161006;font-weight:950;white-space:nowrap">PLAY LIVE →</span>
-  </a>
-
   <main id="top">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">LIVE ON RONIN</p>
-        <h1>Built by Matt.<br>Backed by Matt.</h1>
-        <p class="lead">A community token supporting the awesomeness of simply being a Matt.</p>
-        <div class="actions">
-          <a class="button primary" href="https://app.roninchain.com/swap" target="_blank" rel="noopener">Buy on Katana</a>
-          <a class="button" href="/hub">Open MATT Hub</a>
-          <a class="button" href="https://explorer.roninchain.com/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener">Verified contract</a>
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="live-dot"></span> LIVE AND TRADING ON RONIN</p>
+        <h1>USE MATT.<br><span>PLAY WITH MATT.</span><br>BURN MATT.</h1>
+        <p class="hero-lead">MATT is more than a coin sitting in a wallet. It is an ecosystem token made to move through other economies, power real experiences, reward participation, and leave circulation forever through burns.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://app.roninchain.com/swap" target="_blank" rel="noopener">BUY MATT ON KATANA</a>
+          <a class="button secondary" href="https://discord.gg/yBhjyPbtz" target="_blank" rel="noopener">JOIN THE DISCORD</a>
+          <a class="button ghost" href="/hub">OPEN MATT HUB</a>
         </div>
-        <p class="status">Verified contract · Live liquidity · Successful swaps</p>
+        <p class="microcopy">Always verify the official contract before swapping.</p>
       </div>
-      <img src="/assets/matt-logo.gif" alt="Pixel-art MATT mascot">
-    </section>
-
-    <section id="about">
-      <p class="eyebrow">WHAT IS MATT?</p>
-      <h2>Simple on purpose.</h2>
-      <p>MATT is a community token built on Ronin. Its contract has a fixed supply, no taxes, no blacklist, no transfer limits, and no owner controls. Holders may burn their own tokens, and ERC-2612 Permit support provides modern approval compatibility.</p>
-    </section>
-
-    <section id="tokenomics">
-      <p class="eyebrow">TOKENOMICS</p>
-      <h2>Ten billion. Never more.</h2>
-      <div class="grid">
-        <article><b>10,000,000,000</b><span>Fixed total supply</span></article>
-        <article><b>8,000,000,000</b><span>Initial liquidity allocation</span></article>
-        <article><b>2,000,000,000</b><span>Remaining treasury allocation</span></article>
-        <article><b>0%</b><span>Buy and sell tax</span></article>
+      <div class="hero-art">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <img src="/assets/matt-logo.gif" alt="Animated MATT mascot">
+        <div class="hero-chip">BUILT ON RONIN</div>
       </div>
-      <p class="warning">MATT launched with shallow RON-side liquidity. Trades can cause major price movement, slippage, and loss. Always verify the contract address and review the swap before confirming.</p>
     </section>
 
-    <section id="buy">
-      <p class="eyebrow">HOW TO BUY</p>
-      <h2>Import the verified contract.</h2>
-      <ol>
-        <li>Open Katana through the official Ronin app and connect Ronin Wallet.</li>
-        <li>Import MATT using the verified contract address below.</li>
-        <li>Confirm the token name, symbol, and seed-token warning.</li>
-        <li>Enter the RON amount, review price impact and slippage, then approve the swap.</li>
-      </ol>
+    <section class="stats-strip shell" aria-label="Live MATT statistics">
+      <article><span>PRICE</span><strong id="stat-price">LOADING</strong><small id="stat-change">LIVE MARKET DATA</small></article>
+      <article><span>MARKET CAP</span><strong id="stat-market-cap">LOADING</strong><small>ESTIMATED LIVE VALUE</small></article>
+      <article><span>HOLDERS</span><strong id="stat-holders">LOADING</strong><small>ON-CHAIN ADDRESSES</small></article>
+      <article class="burn-stat"><span>TOTAL BURNED</span><strong id="stat-burned">LOADING</strong><small>REMOVED FROM CIRCULATION</small></article>
     </section>
 
-    <section id="contract" class="contract-card">
-      <p class="eyebrow">OFFICIAL CONTRACT</p>
-      <h2>Verify before every swap.</h2>
-      <code id="contract-address">0xa5450417BDCa0BDfB058ffE41205400FfDA1174d</code>
-      <button id="copy-contract" type="button">Copy address</button>
-      <p id="copy-status" aria-live="polite"></p>
+    <section class="contract-zone shell" id="contract">
+      <p class="eyebrow">THE ONLY OFFICIAL MATT CONTRACT</p>
+      <h2>VERIFY IT. COPY IT. BUY THE RIGHT MATT.</h2>
+      <div class="contract-line">
+        <code id="contract-address">0xa5450417BDCa0BDfB058ffE41205400FfDA1174d</code>
+        <button id="copy-contract" type="button">COPY ADDRESS</button>
+        <a href="https://app.roninchain.com/swap" target="_blank" rel="noopener">BUY MATT</a>
+      </div>
+      <p id="copy-status" class="copy-status" aria-live="polite"></p>
     </section>
 
-    <section id="roadmap">
-      <p class="eyebrow">NEXT</p>
-      <h2>Community first.</h2>
-      <div class="steps">
-        <article><b>01</b><h3>Visibility</h3><p>Publish the site, logo, metadata, GitHub source, and verified links.</p></article>
-        <article><b>02</b><h3>Community</h3><p>Giveaways, memes, transparent updates, and community-led activities.</p></article>
-        <article><b>03</b><h3>Growth</h3><p>Explore responsible Ronin ecosystem integrations without promising financial returns.</p></article>
+    <section class="activity shell" id="activity">
+      <div class="section-heading">
+        <div><p class="eyebrow">THE ECOSYSTEM IS MOVING</p><h2>LIVE MATT ACTIVITY</h2></div>
+        <a href="/hub">VIEW THE FULL HUB →</a>
+      </div>
+      <div class="activity-grid" id="activity-grid">
+        <article class="activity-card"><span class="pulse"></span><div><b>Connecting to Ronin</b><small>Loading current MATT activity…</small></div></article>
+      </div>
+    </section>
+
+    <section class="story shell" id="about">
+      <div class="section-heading"><div><p class="eyebrow">THE ORIGIN OF MATT</p><h2>IT STARTED SIMPLE. IT DID NOT STAY SMALL.</h2></div></div>
+      <div class="story-layout">
+        <div class="story-copy">
+          <p>I created MATT with a simple idea: build something that could represent care, community, and action while still being useful inside Web3. I did not want another token whose entire purpose was to exist on a chart. I wanted a token people could actually do something with.</p>
+          <p>MATT launched on Ronin and immediately began becoming more than its contract. Games followed. Burns became part of the economy. Rewards, competitions, giveaways, and community activity gave the token motion. Every new use showed the same thing: MATT could become a bridge between people, games, and existing digital economies.</p>
+          <p>The long-term vision is not limited to one website or one type of utility. MATT is being built to move through other economies, support new experiences, reward contribution, and create systems where use matters. Some MATT can be played. Some can be rewarded. Some can enter another economy. Some can be permanently destroyed. All of those paths give the token a reason to move.</p>
+          <p>The future of MATT will be built carefully, one working product and one real integration at a time. No empty promises. No pretending an idea is finished before it exists. The goal is a sustainable ecosystem people return to because there is always something to do, something to build, and someone worth helping.</p>
+          <p class="signature">— Matt</p>
+        </div>
+        <div class="pillars">
+          <article><span>01</span><h3>USE IT</h3><p>Bring MATT into rewards, community systems, digital economies, and future integrations.</p></article>
+          <article><span>02</span><h3>PLAY IT</h3><p>Use MATT across live games and experiences built directly into the ecosystem.</p></article>
+          <article><span>03</span><h3>BURN IT</h3><p>Remove MATT permanently from circulation through supported burns and gameplay mechanics.</p></article>
+          <article><span>04</span><h3>BUILD WITH IT</h3><p>Create new utilities that give holders and partner communities a reason to participate.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="games shell" id="games">
+      <div class="section-heading"><div><p class="eyebrow">LIVE NOW</p><h2>CHOOSE YOUR MATT EXPERIENCE</h2></div></div>
+      <div class="game-grid">
+        <a class="game-card burn" href="/burnflip"><span>HEADS OR TAILS</span><h3>BURNFLIP</h3><p>Call the coin. Win the flip or send MATT into the burn economy.</p><b>PLAY →</b></a>
+        <a class="game-card blackjack" href="/blackjack"><span>LIVE TABLE</span><h3>BLACKJACK</h3><p>Five seats, live cards, real MATT wagers, and on-chain settlement.</p><b>TAKE A SEAT →</b></a>
+        <a class="game-card flappy" href="/flappy-matt"><span>SKILL GAME</span><h3>FLAPPY MATT</h3><p>Fly, score, compete, and fight for leaderboard rewards.</p><b>START FLYING →</b></a>
+        <a class="game-card crash" href="/crash"><span>REAL-TIME MULTIPLIER</span><h3>SPACE FLIGHT</h3><p>Launch at 1.00x, cash out before impact, and survive the flight.</p><b>LAUNCH →</b></a>
+      </div>
+      <p class="age-note">Real-MATT wagering experiences are intended for adults 18+ only. Participation involves financial risk.</p>
+    </section>
+
+    <section class="roadmap shell" id="roadmap">
+      <div class="section-heading"><div><p class="eyebrow">CONFIRMED DIRECTION</p><h2>WHERE MATT GOES NEXT</h2></div></div>
+      <div class="roadmap-grid">
+        <article><span>NOW</span><h3>STABILIZE THE CORE</h3><p>Continue improving the live games, wallet experience, public data, reliability, and mobile performance.</p></article>
+        <article><span>NEXT</span><h3>EXPAND REAL UTILITY</h3><p>Add useful ways to spend, earn, reward, compete with, and burn MATT beyond a single game type.</p></article>
+        <article><span>GROWTH</span><h3>ENTER MORE ECONOMIES</h3><p>Develop responsible integrations that allow MATT to participate in other communities and digital economies.</p></article>
+        <article><span>FUTURE</span><h3>BUILD DAILY REASONS TO RETURN</h3><p>Create a sustainable ecosystem of games, tools, events, and community systems people choose to use every day.</p></article>
+      </div>
+      <p class="roadmap-note">The roadmap lists direction, not guaranteed dates or financial outcomes. New items are announced when they become real commitments.</p>
+    </section>
+
+    <section class="trust shell" id="trust">
+      <div class="section-heading"><div><p class="eyebrow">VERIFY EVERYTHING</p><h2>TRANSPARENCY BEFORE HYPE</h2></div></div>
+      <div class="trust-grid">
+        <a href="https://explorer.roninchain.com/address/0xa5450417BDCa0BDfB058ffE41205400FfDA1174d" target="_blank" rel="noopener"><b>VERIFIED TOKEN</b><span>Inspect MATT on Ronin Explorer →</span></a>
+        <a href="https://github.com/mattyoungaviation-collab/MATT-Token-" target="_blank" rel="noopener"><b>OPEN SOURCE</b><span>Review the public GitHub repository →</span></a>
+        <a href="/hub"><b>PUBLIC ECOSYSTEM</b><span>View holders, games, leaderboards, and tools →</span></a>
+        <a href="#contract"><b>OFFICIAL ADDRESS</b><span>Copy the contract directly from this site →</span></a>
+      </div>
+      <div class="risk-box">
+        <h3>KNOW THE RISK</h3>
+        <p>MATT is a volatile crypto asset. Its price can rise or fall quickly, liquidity may be limited, and users can lose money. Games involving real MATT carry additional financial risk. Never risk funds you cannot afford to lose. Never buy from an unverified contract, accept suspicious OTC offers, or share your seed phrase or private key.</p>
+      </div>
+    </section>
+
+    <section class="community shell" id="community">
+      <img src="/assets/matt-logo-512.png" alt="MATT logo">
+      <p class="eyebrow">DYNOS. MATTS. LEGENDS.</p>
+      <h2>THE TOKEN IS LIVE.<br>THE COMMUNITY IS BUILDING.</h2>
+      <p>Join the MATT Discord for launches, competitions, rewards, support, community votes, and the next chapter of the ecosystem.</p>
+      <div class="hero-actions centered">
+        <a class="button primary" href="https://discord.gg/yBhjyPbtz" target="_blank" rel="noopener">JOIN THE MATT DISCORD</a>
+        <a class="button secondary" href="https://x.com/Crafting_skill" target="_blank" rel="noopener">FOLLOW MATT ON X</a>
       </div>
     </section>
   </main>
 
-  <footer><img src="/assets/matt-logo-512.png" alt=""><div><b>MATT</b><span>Built by Matt. Backed by Matt.</span></div><a href="https://x.com/Crafting_skill" target="_blank" rel="noopener">@Crafting_skill</a></footer>
+  <footer class="shell">
+    <div><b>MATT</b><span>Use it. Play it. Burn it.</span></div>
+    <p>Built by Matt. Backed by Matt.</p>
+    <div class="footer-links"><a href="#trust">Safety</a><a href="#contract">Contract</a><a href="/hub">Hub</a></div>
+  </footer>
 
-  <script>
-    const address = document.getElementById('contract-address').textContent;
-    document.getElementById('copy-contract').addEventListener('click', async () => {
-      const status = document.getElementById('copy-status');
-      try {
-        await navigator.clipboard.writeText(address);
-        status.textContent = 'Contract address copied.';
-      } catch {
-        status.textContent = 'Copy failed. Select the address manually.';
-      }
-    });
-  </script>
+  <script src="/vendor/ethers.umd.min.js"></script>
+  <script src="/home.js?v=20260722"></script>
 </body>
 </html>
