@@ -11,6 +11,7 @@ const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createFlappyMattRouter } = require("./lib/flappy-matt-routes-contract");
+const { createCrashRouter } = require("./lib/crash-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -80,6 +81,7 @@ app.use("/api/flappy", createFlappyMattRouter({
   stateFile: flappyMattStateFile,
   operatorPrivateKey: process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY
 }));
+app.use("/api/crash", createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
