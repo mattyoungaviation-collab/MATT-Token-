@@ -3,9 +3,7 @@
   if (!window.ethers) return;
 
   const CHAIN_ID = 2020;
-  const RPC_URL = "https://api.roninchain.com/rpc";
-  const WALLETCONNECT_PROJECT_ID = "10907bb3eaa077bbb82e0559005400d7";
-  const WALLETCONNECT_MODULE_URL = "https://esm.sh/@walletconnect/ethereum-provider@2?bundle";
+  const CHAIN_HEX = "0x7e4";
   const $ = id => document.getElementById(id);
   const els = {
     connect: $("connect-wallet"), action: $("primary-action"), withdraw: $("repeat-bet"),
@@ -27,7 +25,6 @@
     "function approve(address,uint256) returns (bool)"
   ];
 
-  let walletConnectProvider = null;
   let browserProvider = null;
   let signer = null;
   let wallet = null;
@@ -39,11 +36,9 @@
   let cashoutSentForRound = null;
   let currentWagerId = null;
 
-  function say(text, type = "") {
-    els.message.textContent = text;
-    els.message.className = `game-message ${type}`;
-  }
-  function shortAddress(address) { return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "CONNECT WALLET"; }
+  function roninProvider() { return window.ronin?.provider || null; }
+  function say(text, type = "") { els.message.textContent = text; els.message.className = `game-message ${type}`; }
+  function shortAddress(address) { return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "CONNECT RONIN"; }
   function formatUnits(value) {
     try { return `${Math.floor(Number(window.ethers.formatEther(value))).toLocaleString()} MATT`; }
     catch { return "0 MATT"; }
@@ -54,70 +49,47 @@
     if (!response.ok) throw new Error(body.message || body.error || `HTTP ${response.status}`);
     return body;
   }
-  function accountFromSession() {
-    const namespaces = walletConnectProvider?.session?.namespaces || {};
-    const accounts = Object.values(namespaces).flatMap(namespace => namespace?.accounts || []);
-    const account = accounts.find(value => String(value).toLowerCase().startsWith(`eip155:${CHAIN_ID}:`));
-    return account ? account.split(":").pop() : null;
+  async function ensureRoninChain() {
+    const provider = roninProvider();
+    if (!provider) throw new Error("Ronin Wallet was not detected. Install Ronin Wallet or open this page in the Ronin mobile app.");
+    const chain = await provider.request({ method: "eth_chainId" });
+    const normalized = typeof chain === "number" ? chain : Number.parseInt(String(chain), 16);
+    if (normalized !== CHAIN_ID) await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX }] });
   }
-  async function initializeWalletConnect() {
-    if (walletConnectProvider) return walletConnectProvider;
-    const module = await import(WALLETCONNECT_MODULE_URL);
-    const EthereumProvider = module.EthereumProvider || module.default;
-    if (!EthereumProvider?.init) throw new Error("WalletConnect provider did not load");
-    walletConnectProvider = await EthereumProvider.init({
-      projectId: WALLETCONNECT_PROJECT_ID,
-      metadata: {
-        name: "MATT Hub",
-        description: "Connect to MATT Hub on Ronin Mainnet.",
-        url: window.location.origin,
-        icons: [`${window.location.origin}/assets/matt-logo-512.png`]
-      },
-      showQrModal: true,
-      optionalChains: [CHAIN_ID],
-      optionalMethods: ["eth_accounts", "eth_requestAccounts", "eth_sendTransaction", "personal_sign", "eth_signTypedData", "eth_signTypedData_v4", "wallet_switchEthereumChain"],
-      optionalEvents: ["accountsChanged", "chainChanged", "disconnect", "connect"],
-      rpcMap: { [CHAIN_ID]: RPC_URL },
-      qrModalOptions: { themeMode: "dark" }
-    });
-    walletConnectProvider.on("accountsChanged", () => restoreHubWallet().catch(error => say(error.message, "loss")));
-    walletConnectProvider.on("chainChanged", () => restoreHubWallet().catch(error => say(error.message, "loss")));
-    walletConnectProvider.on("disconnect", () => {
-      wallet = signer = browserProvider = vault = token = null;
-      els.connect.textContent = "CONNECT IN MATT HUB";
-      say("WalletConnect disconnected. Connect again through MATT Hub.");
-    });
-    return walletConnectProvider;
-  }
-  async function activateProvider(provider, expectedAccount = null) {
+  async function activate(address) {
+    const provider = roninProvider();
+    if (!provider) throw new Error("Ronin Wallet was not detected.");
+    await ensureRoninChain();
     browserProvider = new window.ethers.BrowserProvider(provider);
-    signer = expectedAccount ? await browserProvider.getSigner(expectedAccount) : await browserProvider.getSigner();
+    signer = await browserProvider.getSigner(address);
     wallet = await signer.getAddress();
     if (!liveState?.vaultAddress || !liveState?.tokenAddress) throw new Error("Live contract configuration is not available yet.");
     vault = new window.ethers.Contract(liveState.vaultAddress, VAULT_ABI, signer);
     token = new window.ethers.Contract(liveState.tokenAddress, TOKEN_ABI, signer);
     els.connect.textContent = shortAddress(wallet);
-    say("MATT Hub wallet session restored. Real MATT mode is active.", "win");
+    say("Ronin Wallet connected. Real MATT mode is active.", "win");
     await refreshAccount(true);
   }
-  async function restoreHubWallet() {
-    await initializeWalletConnect();
-    const sessionAccount = accountFromSession();
-    if (!walletConnectProvider.session || !sessionAccount) return false;
-    await activateProvider(walletConnectProvider, sessionAccount);
+  async function restoreRonin() {
+    const provider = roninProvider();
+    if (!provider) return false;
+    const accounts = await provider.request({ method: "eth_accounts" });
+    if (!accounts?.[0]) return false;
+    await activate(accounts[0]);
     return true;
   }
   async function connect() {
+    pending = true;
     try {
-      pending = true;
-      if (await restoreHubWallet()) return;
-      say("No active MATT Hub wallet session. Opening the same WalletConnect flow…");
-      await walletConnectProvider.connect();
-      const sessionAccount = accountFromSession();
-      if (!sessionAccount) throw new Error("The wallet did not approve a Ronin Mainnet account");
-      await activateProvider(walletConnectProvider, sessionAccount);
-    } catch (error) { say(error.shortMessage || error.message || "Wallet connection failed.", "loss"); }
-    finally { pending = false; }
+      const provider = roninProvider();
+      if (!provider) throw new Error("Ronin Wallet was not detected. Install Ronin Wallet or open this page in the Ronin mobile app.");
+      await ensureRoninChain();
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      if (!accounts?.[0]) throw new Error("No Ronin account was approved.");
+      await activate(accounts[0]);
+    } catch (error) {
+      say(error.shortMessage || error.message || "Ronin Wallet connection failed.", "loss");
+    } finally { pending = false; }
   }
   async function refreshAccount(force = false) {
     if (!wallet || (!force && pending)) return;
@@ -156,10 +128,10 @@
     try {
       const allowance = await token.allowance(wallet, liveState.vaultAddress);
       if (allowance < amount) {
-        say("Approve MATT in your connected Hub wallet, then confirm the wager.");
+        say("Approve MATT in Ronin Wallet, then confirm the wager.");
         await (await token.approve(liveState.vaultAddress, amount)).wait();
       }
-      say("Confirming your mainnet wager…");
+      say("Confirming your mainnet wager in Ronin Wallet…");
       await (await vault.openWager(liveState.round.roundId, amount)).wait();
       currentWagerId = wagerId(liveState.round.roundId);
       say(`${formatUnits(amount)} locked for flight #${liveState.round.number}.`, "win");
@@ -186,14 +158,14 @@
     if (!account || BigInt(account.claimable || "0") === 0n) throw new Error("There are no settled winnings to withdraw.");
     pending = true;
     try {
-      say("Confirm the withdrawal in your connected Hub wallet…");
+      say("Confirm the withdrawal in Ronin Wallet…");
       await (await vault.withdraw()).wait();
-      say("Winnings withdrawn to your wallet.", "win");
+      say("Winnings withdrawn to your Ronin Wallet.", "win");
       await refreshAccount(true);
     } finally { pending = false; }
   }
   async function verifyRound() {
-    if (!liveState?.round?.seed || !liveState?.round?.roundId || !vault) return say("Connect your MATT Hub wallet to verify this round.");
+    if (!liveState?.round?.seed || !liveState?.round?.roundId || !vault) return say("Connect Ronin Wallet to verify this round.");
     const bps = await vault.calculateCrashPointBps(liveState.round.seed, liveState.round.roundId);
     const calculated = Number(bps) / 10000;
     const matches = Math.abs(calculated - Number(liveState.round.crashPoint)) < 0.0001;
@@ -204,8 +176,8 @@
     els.balanceLabel.textContent = "WALLET BALANCE";
     els.warning.textContent = liveState?.mode === "LIVE_MAINNET" ? "LIVE RONIN MAINNET • REAL MATT • WAGERS CANNOT BE REVERSED" : liveState?.paused ? "MAINNET VAULT PAUSED • WAGERING LOCKED" : "LIVE MODE IS NOT CONFIGURED";
     const round = liveState?.round;
-    if (!wallet) { els.action.disabled = false; els.action.textContent = "USE MATT HUB WALLET"; return; }
-    if (pending) { els.action.disabled = true; els.action.textContent = "WAITING FOR WALLET"; return; }
+    if (!wallet) { els.action.disabled = false; els.action.textContent = "CONNECT RONIN"; return; }
+    if (pending) { els.action.disabled = true; els.action.textContent = "WAITING FOR RONIN"; return; }
     if (!round || liveState.mode !== "LIVE_MAINNET") { els.action.disabled = true; els.action.textContent = "WAGERING LOCKED"; return; }
     if (round.phase === "betting") {
       els.action.disabled = Boolean(currentWagerId);
@@ -237,6 +209,7 @@
     }, true);
   }
 
+  els.connect.textContent = "CONNECT RONIN";
   els.connect.addEventListener("click", connect);
   capture(els.action, () => liveState?.round?.phase === "flying" ? cashOut(false) : placeBet());
   capture(els.withdraw, withdraw);
@@ -254,8 +227,11 @@
       if (button.dataset.betAction === "max") els.betAmount.value = "25000";
     }, true);
   });
+  const injected = roninProvider();
+  injected?.on?.("accountsChanged", accounts => accounts?.[0] ? activate(accounts[0]).catch(error => say(error.message, "loss")) : location.reload());
+  injected?.on?.("chainChanged", () => location.reload());
   poll();
-  restoreHubWallet().catch(error => console.warn("No reusable MATT Hub wallet session", error));
+  setTimeout(() => restoreRonin().catch(error => console.warn("No approved Ronin account", error)), 300);
   setInterval(poll, 250);
   setInterval(() => refreshAccount(), 3_000);
   setInterval(enforceLiveUi, 80);
