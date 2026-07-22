@@ -13,6 +13,7 @@
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/home.css?v=20260722">
+  <link rel="stylesheet" href="/dyno-raffle.css?v=20260722">
 </head>
 <body>
   <div class="ambient ambient-a" aria-hidden="true"></div>
@@ -116,6 +117,42 @@
       <p class="age-note">Real-MATT wagering experiences are intended for adults 18+ only. Participation involves financial risk.</p>
     </section>
 
+    <section class="dyno-raffle shell" id="water-dyno-raffle">
+      <div class="section-heading"><div><p class="eyebrow">30-DAY HOLDER RAFFLE</p><h2>WIN WATER DYNO #1154</h2></div></div>
+      <div class="raffle-feature">
+        <div class="raffle-visual">
+          <img src="/assets/water-dyno-1154.svg" alt="Water Dyno number 1154 raffle prize">
+          <span class="raffle-prize-label">PERSONALLY FUNDED BY MATT</span>
+          <div class="raffle-prize-card"><span>CRAFT WORLD PRIZE</span><strong>#1154</strong><small>Water Dyno · one winner</small></div>
+        </div>
+        <div class="raffle-copy">
+          <p class="eyebrow">ONE VERIFIED PERSON · ONE ENTRY PER DAY</p>
+          <h2>HOLD MATT.<br>COME BACK DAILY.<br>STACK TICKETS.</h2>
+          <p class="raffle-lead">I am funding this prize from my own wallet. The goal is simple: give people a reason to become MATT holders, stay involved for the next month, and reward real participation—not a pile of throwaway wallets.</p>
+          <div class="raffle-countdown" aria-label="Raffle countdown">
+            <div><strong id="raffle-days">30</strong><span>DAYS</span></div><div><strong id="raffle-hours">00</strong><span>HOURS</span></div><div><strong id="raffle-minutes">00</strong><span>MINUTES</span></div><div><strong id="raffle-seconds">00</strong><span>SECONDS</span></div>
+          </div>
+          <div class="raffle-facts">
+            <article><span>HOLDER TICKETS</span><b>10M = 1 · 20M = 2 · 50M+ = 3</b><small>Your live wallet balance is checked when you enter each day.</small></article>
+            <article><span>BURN BONUS</span><b>Burn 1,000,000 MATT = +1</b><small>Verified from on-chain transfers completed during the current UTC day.</small></article>
+            <article><span>WAGER BONUS</span><b>Wager 1,000,000 MATT = +1</b><small id="raffle-wager-note">Verified from supported MATT game vaults.</small></article>
+          </div>
+          <div class="raffle-actions">
+            <button id="raffle-connect" type="button">1. CONNECT RONIN</button>
+            <button id="raffle-verify-x" type="button">2. VERIFY X / TWITTER</button>
+            <button class="raffle-enter" id="raffle-enter" type="button">3. SIGN & ENTER TODAY</button>
+          </div>
+          <div class="raffle-status-grid"><p><span>WALLET</span><b id="raffle-wallet-status">NOT CONNECTED</b></p><p><span>SOCIAL ID</span><b id="raffle-x-status">NOT VERIFIED</b></p><p><span>DAILY LIMIT</span><b>ONE ENTRY</b></p></div>
+          <p class="raffle-message" id="raffle-message" aria-live="polite">Connect your wallet, verify X, then sign a free message. No transaction is sent to enter.</p>
+        </div>
+      </div>
+      <div class="raffle-entries-panel">
+        <div class="raffle-entries-heading"><div><p class="eyebrow">PUBLIC ENTRY LOG</p><h3>DAILY RAFFLE ENTRIES</h3></div><div class="raffle-entry-stats"><span><b id="raffle-entry-count">0</b> ENTRIES</span><span><b id="raffle-ticket-count">0</b> TICKETS</span></div></div>
+        <div class="raffle-entry-list" id="raffle-entry-list"><p class="raffle-empty">Loading verified entries…</p></div>
+        <p class="raffle-rules">Eligibility is checked fresh each day. A verified X account and signed Ronin wallet must match. One social identity and one wallet can enter once per UTC day. You must hold at least 10,000,000 MATT. Tickets are based on the balance and qualifying on-chain activity visible at entry time. The winner will be selected from the final ticket pool after the countdown ends. Holding MATT does not guarantee a prize and MATT remains a volatile crypto asset.</p>
+      </div>
+    </section>
+
     <section class="roadmap shell" id="roadmap">
       <div class="section-heading"><div><p class="eyebrow">CONFIRMED DIRECTION</p><h2>WHERE MATT GOES NEXT</h2></div></div>
       <div class="roadmap-grid">
@@ -161,5 +198,6 @@
 
   <script src="/vendor/ethers.umd.min.js"></script>
   <script src="/home.js?v=20260722"></script>
+  <script src="/dyno-raffle.js?v=20260722"></script>
 </body>
 </html>
