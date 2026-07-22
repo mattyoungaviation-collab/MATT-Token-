@@ -8,6 +8,7 @@ const BETTING_MS = 15_000;
 const CRASHED_MS = 6_000;
 const CHAIN_ID = 2020n;
 const BPS = 10_000;
+const MAX_LOG_BLOCKS = 10_000;
 const DEFAULT_VAULT = "0x2b7d130Bb4B026B9EAF045AcAc4E69238f2d2Fd3";
 const DEFAULT_TOKEN = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
 
@@ -49,7 +50,8 @@ function loadState(filename) {
 }
 function multiplierToElapsed(multiplier) {
   const target = Math.log(Math.max(1, multiplier));
-  const a = 0.0028, b = 0.055;
+  const a = 0.0028;
+  const b = 0.055;
   return Math.max(700, ((-b + Math.sqrt(b * b + 4 * a * target)) / (2 * a)) * 1000);
 }
 function elapsedToMultiplier(milliseconds) {
@@ -61,6 +63,7 @@ function cashoutMessage({ vault, roundId, wallet, timestamp }) {
   return `MATT SPACE FLIGHT CASHOUT\nVault:${ethers.getAddress(vault)}\nRound:${roundId}\nWallet:${ethers.getAddress(wallet)}\nTimestamp:${timestamp}`;
 }
 function asString(value) { return typeof value === "bigint" ? value.toString() : String(value); }
+function errorText(error) { return String(error?.shortMessage || error?.message || error || "unknown error").slice(0, 500); }
 
 function createCrashContractRouter(options = {}) {
   const router = express.Router();
@@ -83,7 +86,7 @@ function createCrashContractRouter(options = {}) {
 
   let ticking = false;
   let contractStatus = { checkedAt: 0, paused: true, minWager: 0n, maxWager: 0n, maxCashoutBps: 0n, bankroll: 0n, unreserved: 0n, solvent: false };
-  let wagerCache = { roundId: null, checkedAt: 0, entries: [] };
+  let wagerCache = { roundId: null, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
 
   function persist() { atomicWrite(stateFile, state); }
   async function refreshStatus(force = false) {
@@ -107,7 +110,7 @@ function createCrashContractRouter(options = {}) {
     if (state.current) return;
     state.current = newRoundRecord();
     state.cashouts = {};
-    wagerCache = { roundId: state.current.roundId, checkedAt: 0, entries: [] };
+    wagerCache = { roundId: state.current.roundId, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
     persist();
   }
   async function commitCurrent() {
@@ -116,12 +119,16 @@ function createCrashContractRouter(options = {}) {
     if (chainRound.commitment !== ethers.ZeroHash) {
       r.stage = "betting";
       r.bettingClosesAt = Number(chainRound.bettingClosesAt);
+      if (!Number(r.commitBlock || 0)) {
+        const latest = await provider.getBlockNumber();
+        r.commitBlock = Math.max(0, latest - 256);
+      }
       persist();
       return;
     }
     const tx = await vaultWrite.commitRound(r.roundId, r.commitment, r.bettingClosesAt);
     const receipt = await tx.wait();
-    r.commitBlock = receipt.blockNumber;
+    r.commitBlock = Number(receipt.blockNumber);
     r.stage = "betting";
     persist();
     console.log(`Crash round ${r.counter} committed: ${r.roundId}`);
@@ -132,8 +139,7 @@ function createCrashContractRouter(options = {}) {
     if (!chainRound.revealed) {
       r.stage = "revealing";
       persist();
-      const tx = await vaultWrite.revealRound(r.roundId, r.seed);
-      await tx.wait();
+      await (await vaultWrite.revealRound(r.roundId, r.seed)).wait();
     }
     const revealed = await vaultRead.rounds(r.roundId);
     r.crashPointBps = Number(revealed.crashPointBps);
@@ -151,28 +157,58 @@ function createCrashContractRouter(options = {}) {
     const raw = Math.floor(elapsedToMultiplier(now - r.flightStartedAt) * BPS);
     return Math.max(BPS, Math.min(raw, r.crashPointBps || raw));
   }
-  async function wagerEventsForRound(r, force = false) {
+
+  async function wagerEventsForRound(r, force = false, strict = false) {
     if (!r || !vaultRead) return [];
-    if (wagerCache.roundId !== r.roundId) wagerCache = { roundId: r.roundId, checkedAt: 0, entries: [] };
-    if (!force && Date.now() - wagerCache.checkedAt < 1_000) return wagerCache.entries;
-    const filter = vaultRead.filters.WagerOpened(null, r.roundId);
-    const logs = await vaultRead.queryFilter(filter, r.commitBlock || 0, "latest");
-    const deduped = new Map();
-    for (const log of logs) {
-      const wagerId = String(log.args.wagerId);
-      deduped.set(wagerId, {
-        wagerId,
-        wallet: normalizeAddress(log.args.player) || String(log.args.player),
-        amount: BigInt(log.args.amount),
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || null
-      });
+    if (wagerCache.roundId !== r.roundId) {
+      wagerCache = { roundId: r.roundId, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
     }
-    wagerCache = { roundId: r.roundId, checkedAt: Date.now(), entries: [...deduped.values()] };
-    return wagerCache.entries;
+    if (!force && Date.now() - wagerCache.checkedAt < 1_000) return wagerCache.entries;
+
+    try {
+      const latestBlock = Number(await provider.getBlockNumber());
+      const minimumAllowedBlock = Math.max(0, latestBlock - (MAX_LOG_BLOCKS - 1));
+      const savedCommitBlock = Number(r.commitBlock || 0);
+      const fromBlock = savedCommitBlock > 0 ? Math.max(savedCommitBlock, minimumAllowedBlock) : minimumAllowedBlock;
+
+      if (!savedCommitBlock) {
+        r.commitBlock = fromBlock;
+        persist();
+      }
+
+      const filter = vaultRead.filters.WagerOpened(null, r.roundId);
+      const logs = await vaultRead.queryFilter(filter, fromBlock, latestBlock);
+      const deduped = new Map();
+      for (const log of logs) {
+        const wagerId = String(log.args.wagerId);
+        deduped.set(wagerId, {
+          wagerId,
+          wallet: normalizeAddress(log.args.player) || String(log.args.player),
+          amount: BigInt(log.args.amount),
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || null
+        });
+      }
+      wagerCache = {
+        roundId: r.roundId,
+        checkedAt: Date.now(),
+        entries: [...deduped.values()],
+        stale: false,
+        error: null,
+        fromBlock,
+        toBlock: latestBlock
+      };
+      return wagerCache.entries;
+    } catch (error) {
+      const message = errorText(error);
+      if (strict) throw error;
+      console.warn(`Crash wager log refresh failed; serving cached players: ${message}`);
+      wagerCache = { ...wagerCache, checkedAt: Date.now(), stale: true, error: message };
+      return wagerCache.entries;
+    }
   }
   async function openWagersForRound(r) {
-    const events = await wagerEventsForRound(r, true);
+    const events = await wagerEventsForRound(r, true, true);
     const wagers = [];
     for (const event of events) {
       const data = await vaultRead.wagers(event.wagerId);
@@ -217,13 +253,15 @@ function createCrashContractRouter(options = {}) {
       else if (r.stage === "crashed" && Date.now() >= r.crashedAt + CRASHED_MS) {
         state.current = null;
         state.cashouts = {};
-        wagerCache = { roundId: null, checkedAt: 0, entries: [] };
+        wagerCache = { roundId: null, checkedAt: 0, entries: [], stale: false, error: null, fromBlock: null, toBlock: null };
         persist();
       }
     } catch (error) {
-      console.error("Crash keeper tick failed:", error?.shortMessage || error?.message || error);
+      console.error("Crash keeper tick failed:", errorText(error));
       await delay(1_000);
-    } finally { ticking = false; }
+    } finally {
+      ticking = false;
+    }
   }
 
   const timer = setInterval(tick, 500);
@@ -270,7 +308,7 @@ function createCrashContractRouter(options = {}) {
     const total = events.reduce((sum, event) => sum + event.amount, 0n);
     const largest = events.reduce((max, event) => event.amount > max ? event.amount : max, 0n);
     return {
-      version: 5,
+      version: 6,
       mode: liveEnabled && configured ? (status.paused ? "LIVE_PAUSED" : "LIVE_MAINNET") : "LIVE_LOCKED",
       serverTime: Date.now(),
       chainId: Number(CHAIN_ID),
@@ -291,6 +329,7 @@ function createCrashContractRouter(options = {}) {
         phaseEndsAt: view.phaseEndsAt
       } : null,
       players,
+      playersStale: Boolean(wagerCache.stale),
       summary: { playerCount: players.length, roundTotal: total.toString(), largestBet: largest.toString() },
       bots: [],
       history: state.history.slice(0, 18)
@@ -298,23 +337,49 @@ function createCrashContractRouter(options = {}) {
   }
 
   router.get("/state", async (_req, res) => {
-    try { res.set("Cache-Control", "no-store"); res.json(await publicState()); }
-    catch (error) { res.status(503).json({ error: "CRASH_STATE_UNAVAILABLE", message: String(error.message || error) }); }
+    try {
+      res.set("Cache-Control", "no-store");
+      res.json(await publicState());
+    } catch (error) {
+      res.status(503).json({ error: "CRASH_STATE_UNAVAILABLE", message: errorText(error) });
+    }
   });
   router.get("/health", async (_req, res) => {
     try {
       const status = await refreshStatus(true);
-      const players = state.current ? await wagerEventsForRound(state.current, true) : [];
-      res.json({ ok: configured && liveEnabled && status.solvent, configured, liveEnabled, paused: status.paused, solvent: status.solvent, operator: operator?.address || null, vaultAddress, round: state.current?.counter || null, stage: state.current?.stage || "idle", players: players.length });
-    } catch (error) { res.status(503).json({ ok: false, error: String(error.message || error) }); }
+      const players = state.current ? await wagerEventsForRound(state.current, true, false) : [];
+      res.json({
+        ok: configured && liveEnabled && status.solvent,
+        configured,
+        liveEnabled,
+        paused: status.paused,
+        solvent: status.solvent,
+        operator: operator?.address || null,
+        vaultAddress,
+        round: state.current?.counter || null,
+        stage: state.current?.stage || "idle",
+        players: players.length,
+        playersStale: Boolean(wagerCache.stale),
+        logFromBlock: wagerCache.fromBlock,
+        logToBlock: wagerCache.toBlock
+      });
+    } catch (error) {
+      res.status(503).json({ ok: false, error: errorText(error) });
+    }
   });
   router.get("/account/:wallet", async (req, res) => {
     const wallet = normalizeAddress(req.params.wallet);
     if (!wallet) return res.status(400).json({ error: "INVALID_WALLET" });
     try {
-      const [balance, allowance, claimable] = await Promise.all([token.balanceOf(wallet), token.allowance(wallet, vaultAddress), vaultRead.claimable(wallet)]);
+      const [balance, allowance, claimable] = await Promise.all([
+        token.balanceOf(wallet),
+        token.allowance(wallet, vaultAddress),
+        vaultRead.claimable(wallet)
+      ]);
       res.json({ wallet, balance: balance.toString(), allowance: allowance.toString(), claimable: claimable.toString() });
-    } catch (error) { res.status(503).json({ error: "ACCOUNT_UNAVAILABLE", message: String(error.message || error) }); }
+    } catch (error) {
+      res.status(503).json({ error: "ACCOUNT_UNAVAILABLE", message: errorText(error) });
+    }
   });
   router.post("/cashout", async (req, res) => {
     try {
@@ -339,7 +404,9 @@ function createCrashContractRouter(options = {}) {
       persist();
       wagerCache.checkedAt = 0;
       res.json({ ok: true, wagerId, cashoutBps, multiplier: cashoutBps / BPS });
-    } catch (error) { res.status(400).json({ error: "CASHOUT_REJECTED", message: String(error.shortMessage || error.message || error) }); }
+    } catch (error) {
+      res.status(400).json({ error: "CASHOUT_REJECTED", message: errorText(error) });
+    }
   });
 
   return router;
