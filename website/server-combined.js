@@ -13,6 +13,7 @@ const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createFlappyMattRouter } = require("./lib/flappy-matt-routes-contract");
 const { createCrashRouter } = require("./lib/crash-routes");
 const { createCrashContractRouter } = require("./lib/crash-routes-contract");
+const { installDynoRaffle } = require("./dyno-raffle-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -30,6 +31,7 @@ const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDi
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 const flappyMattStateFile = process.env.FLAPPY_MATT_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-flappy-state.json") : "");
 const crashStateFile = process.env.CRASH_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-crash-mainnet-state.json") : "");
+const dynoRaffleStateFile = process.env.DYNO_RAFFLE_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-dyno-raffle.json") : path.join(__dirname, ".dyno-raffle.json"));
 const crashLiveEnabled = String(process.env.CRASH_LIVE_ENABLED || "false").toLowerCase() === "true";
 
 let statsRpcId = 0;
@@ -82,6 +84,7 @@ async function statsRpcRequest(method, params = []) {
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 installXFollowVerifier(app);
+installDynoRaffle(app, { rpcRequest: statsRpcRequest, stateFile: dynoRaffleStateFile });
 installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
@@ -138,6 +141,7 @@ const server = app.listen(publicPort, () => {
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
   console.log(flappyMattStateFile ? `Persistent Flappy MATT state: ${flappyMattStateFile}` : "Persistent Flappy MATT state: no Render disk detected; using memory only.");
+  console.log(`Persistent Water Dyno raffle entries: ${dynoRaffleStateFile}`);
   console.log(process.env.FLAPPY_MATT_OPERATOR_PRIVATE_KEY ? "Flappy MATT keeper key: configured in backend environment." : "Flappy MATT keeper key: missing; paid mode remains locked.");
   console.log(crashStateFile ? `Persistent Crash state: ${crashStateFile}` : "Persistent Crash state: no Render disk detected; do not enable mainnet mode.");
   console.log(crashLiveEnabled && process.env.CRASH_OPERATOR_PRIVATE_KEY ? "Crash mainnet keeper: enabled and operator key configured." : "Crash mainnet keeper: locked until CRASH_LIVE_ENABLED and CRASH_OPERATOR_PRIVATE_KEY are configured.");
