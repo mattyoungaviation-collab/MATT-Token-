@@ -138,20 +138,8 @@
       await refreshAccount(true);
     } finally { pending = false; }
   }
-  function cashoutText(timestamp) {
-    return `MATT SPACE FLIGHT CASHOUT\nVault:${window.ethers.getAddress(liveState.vaultAddress)}\nRound:${liveState.round.roundId}\nWallet:${window.ethers.getAddress(wallet)}\nTimestamp:${timestamp}`;
-  }
-  async function cashOut(auto = false) {
-    if (!wallet || !signer || !currentWagerId || !liveState?.round || liveState.round.phase !== "flying") throw new Error("No active wager to cash out.");
-    if (cashoutSentForRound === liveState.round.roundId) return;
-    pending = true;
-    try {
-      const timestamp = Date.now();
-      const signature = await signer.signMessage(cashoutText(timestamp));
-      const result = await fetchJson("/api/crash/cashout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet, roundId: liveState.round.roundId, timestamp, signature }) });
-      cashoutSentForRound = liveState.round.roundId;
-      say(`${auto ? "Auto cash-out" : "Cash-out"} locked at ${Number(result.multiplier).toFixed(2)}x. Settlement follows impact.`, "win");
-    } finally { pending = false; }
+  async function cashOut() {
+    throw new Error("This legacy Crash client is disabled because it used a cash-out signature flow. Refresh /crash to load the instant-session client.");
   }
   async function withdraw() {
     if (!wallet) return connect();

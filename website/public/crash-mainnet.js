@@ -323,26 +323,43 @@
   async function cashOut(auto = false) {
     const round = liveState?.round;
     if (!wallet || !currentWagerId || currentWagerRoundId !== round?.roundId || round?.phase !== "flying") throw new Error("No active wager to cash out.");
-    if (cashoutSentForRound === round.roundId || pendingAction || hasCashoutAttempt(round.roundId)) return;
-    if (!crashSessionToken || crashSessionExpiresAt <= Date.now()) {
-      cashoutSentForRound = round.roundId;
-      markCashoutAttempt(round.roundId);
-      throw new Error("Crash session expired. This wager cannot be retried; reconnect before the next wager.");
-    }
-    cashoutSentForRound = round.roundId;
-    markCashoutAttempt(round.roundId);
+    if (cashoutSentForRound === round.roundId || pendingAction) return;
+    if (!crashSessionToken || crashSessionExpiresAt <= Date.now()) throw new Error("Crash session expired. Sign once to reactivate instant cash-outs before placing another wager.");
+    const cashoutRoundId = round.roundId;
+    cashoutSentForRound = cashoutRoundId;
     pendingAction = "cashout";
-    say(`${auto ? "Auto cash-out" : "Cash-out"} sent. Locking the server multiplier now…`);
+    say(`${auto ? "Auto cash-out" : "Cash-out"} sent. Cashing Out…`);
     try {
-      const result = await fetchJson("/api/crash/cashout", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${crashSessionToken}` },
-        body: JSON.stringify({ roundId: round.roundId })
-      });
-      say(`${auto ? "Auto cash-out" : "Cash-out"} locked at ${Number(result.multiplier).toFixed(2)}x. Settlement follows impact.`, "win");
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const result = await fetchJson("/api/crash/cashout", {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: `Bearer ${crashSessionToken}` },
+            body: JSON.stringify({ roundId: cashoutRoundId })
+          });
+          markCashoutAttempt(cashoutRoundId);
+          say(`${auto ? "Auto cash-out" : "Cash-out"} locked at ${Number(result.multiplier).toFixed(2)}x. Settlement follows impact.`, "win");
+          await pollState(true);
+          return;
+        } catch (error) {
+          lastError = error;
+          if (/CRASH_SESSION_REQUIRED|ROUND_NOT_CURRENT|ROUND_NOT_FLYING|TOO_LATE|NO_OPEN_WAGER/.test(String(error.message))) throw error;
+          say(`Cash-out response was unclear. Retrying the same server-idempotent request…`);
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
       await pollState(true);
+      throw lastError || new Error("Cash-out request failed.");
     } catch (error) {
-      say(`Cash-out was not accepted: ${error.message}. This round remains locked and cannot be retried.`, "loss");
+      const player = ownPlayer();
+      if (player?.status === "won") {
+        markCashoutAttempt(cashoutRoundId);
+        say(`${auto ? "Auto cash-out" : "Cash-out"} recovered at ${Number(player.cashout || 0).toFixed(2)}x.`, "win");
+        return;
+      }
+      cashoutSentForRound = null;
+      say(`Cash-out was not accepted: ${error.message}. You may retry while the round is still flying.`, "loss");
       throw error;
     } finally { pendingAction = ""; }
   }
@@ -512,7 +529,7 @@
     }
     if (pendingAction) {
       els.action.disabled = true;
-      els.action.textContent = pendingAction === "cashout" ? "LOCKING CASH-OUT" : pendingAction === "bet" ? "CONFIRM IN RONIN" : "WAITING FOR RONIN";
+      els.action.textContent = pendingAction === "cashout" ? "CASHING OUT…" : pendingAction === "bet" ? "CONFIRM IN RONIN" : "WAITING FOR RONIN";
       return;
     }
     if (!round || liveState?.mode !== "LIVE_MAINNET" || liveState?.paused) {
