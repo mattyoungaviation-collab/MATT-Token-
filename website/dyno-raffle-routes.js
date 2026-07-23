@@ -9,6 +9,7 @@ const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a
 const BALANCE_OF = "0x70a08231";
 const ONE_MATT = 10n ** 18n;
 const DAY_MS = 86_400_000;
+const MAX_LOG_BLOCK_RANGE = 10_000;
 const addressPattern = /^0x[a-fA-F0-9]{40}$/;
 const nonces = new Map();
 
@@ -150,11 +151,21 @@ async function utcDayStartBlock(rpcRequest) {
 }
 async function transferredToTargets(rpcRequest, wallet, targets, fromBlock) {
   let total = 0n;
+  const latest = Number.parseInt(await rpcRequest("eth_blockNumber", []), 16);
+  if (!Number.isFinite(latest) || fromBlock > latest) return total;
   const fromTopic = zeroPadValue(wallet, 32);
   for (const target of targets) {
     const toTopic = zeroPadValue(target, 32);
-    const logs = await rpcRequest("eth_getLogs", [{ address: TOKEN, fromBlock: toBeHex(fromBlock), toBlock: "latest", topics: [TRANSFER_TOPIC, fromTopic, toTopic] }]);
-    for (const log of logs || []) total += BigInt(log.data || "0x0");
+    for (let chunkStart = fromBlock; chunkStart <= latest; chunkStart += MAX_LOG_BLOCK_RANGE) {
+      const chunkEnd = Math.min(latest, chunkStart + MAX_LOG_BLOCK_RANGE - 1);
+      const logs = await rpcRequest("eth_getLogs", [{
+        address: TOKEN,
+        fromBlock: toBeHex(chunkStart),
+        toBlock: toBeHex(chunkEnd),
+        topics: [TRANSFER_TOPIC, fromTopic, toTopic],
+      }]);
+      for (const log of logs || []) total += BigInt(log.data || "0x0");
+    }
   }
   return total;
 }
