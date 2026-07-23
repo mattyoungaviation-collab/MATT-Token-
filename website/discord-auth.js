@@ -48,13 +48,13 @@ function getDiscordSession(req) {
 }
 
 function installDiscordAuth(app) {
-  const cfg = config();
-
   app.get("/api/discord/config", (_req, res) => {
+    const cfg = config();
     res.set("Cache-Control", "no-store").json({ enabled: cfg.enabled });
   });
 
   app.get("/api/discord/start", (req, res) => {
+    const cfg = config();
     if (!cfg.enabled) return res.status(503).send("Discord verification is not configured.");
     const wallet = String(req.query.wallet || "").toLowerCase();
     if (!/^0x[a-f0-9]{40}$/.test(wallet)) return res.status(400).send("Valid wallet required.");
@@ -70,6 +70,7 @@ function installDiscordAuth(app) {
   });
 
   app.get("/api/discord/callback", async (req, res) => {
+    const cfg = config();
     const state = String(req.query.state || "");
     const flow = flows.get(state);
     flows.delete(state);
@@ -102,13 +103,14 @@ function installDiscordAuth(app) {
         expiresAt: Date.now() + 24 * 60 * 60_000,
       });
       res.cookie(COOKIE, id, { httpOnly: true, secure: true, sameSite: "lax", maxAge: 24 * 60 * 60_000, path: "/" });
-      res.redirect("/?discord_verified=1#dyno-raffle");
+      res.redirect("/?discord_verified=1#water-dyno-raffle");
     } catch (error) {
       res.status(502).send(`Discord verification failed: ${String(error?.message || error).slice(0, 220)}`);
     }
   });
 
   app.get("/api/discord/status", (req, res) => {
+    const cfg = config();
     const session = currentSession(req);
     res.set("Cache-Control", "no-store").json(session ? {
       enabled: cfg.enabled,
