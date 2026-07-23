@@ -4,6 +4,7 @@ const http = require("http");
 const path = require("path");
 const { fork } = require("child_process");
 const { installXFollowVerifier } = require("./x-follow-verifier-v2");
+const { installDiscordAuth } = require("./discord-auth");
 const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
 const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
@@ -84,6 +85,7 @@ async function statsRpcRequest(method, params = []) {
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 installXFollowVerifier(app);
+installDiscordAuth(app);
 installDynoRaffle(app, { rpcRequest: statsRpcRequest, stateFile: dynoRaffleStateFile });
 installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
