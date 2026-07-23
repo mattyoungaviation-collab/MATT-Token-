@@ -99,7 +99,7 @@ function installXFollowVerifier(app) {
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", cfg.clientId);
     url.searchParams.set("redirect_uri", cfg.redirectUri);
-    url.searchParams.set("scope", "users.read follows.read offline.access");
+    url.searchParams.set("scope", "tweet.read users.read follows.read offline.access");
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", challenge(verifier));
     url.searchParams.set("code_challenge_method", "S256");
