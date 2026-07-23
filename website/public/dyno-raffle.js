@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
-  const state = { wallet: "", endAt: 0, xVerified: false };
+  const state = { wallet: "", endAt: 0, discordVerified: false };
   const short = value => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "—";
   const message = (text, kind = "") => { const el = $("raffle-message"); if (!el) return; el.textContent = text; el.className = `raffle-message ${kind}`.trim(); };
 
@@ -40,18 +40,23 @@
     for (const [id, value] of units) if ($(id)) $(id).textContent = String(value).padStart(2, "0");
   }
 
-  async function loadXStatus() {
-    const status = await json("/api/x/status");
-    state.xVerified = status.verified === true;
+  async function loadDiscordStatus() {
+    const status = await json("/api/discord/status");
+    state.discordVerified = status.verified === true;
     if (status.wallet) state.wallet = status.wallet;
-    $("raffle-x-status").textContent = status.verified ? `@${status.username}` : "NOT VERIFIED";
+    $("raffle-discord-status").textContent = status.verified ? status.username : status.enabled ? "NOT VERIFIED" : "NOT CONFIGURED";
     if (status.wallet) $("raffle-wallet-status").textContent = short(status.wallet);
+    const button = $("raffle-verify-discord");
+    if (button) {
+      button.disabled = status.enabled === false;
+      button.textContent = status.verified ? "2. DISCORD VERIFIED" : status.enabled === false ? "2. DISCORD NOT CONFIGURED" : "2. VERIFY DISCORD";
+    }
   }
 
-  async function verifyX() {
+  async function verifyDiscord() {
     try {
       const wallet = state.wallet || await walletAddress();
-      location.href = `/api/x/start?wallet=${encodeURIComponent(wallet)}`;
+      location.href = `/api/discord/start?wallet=${encodeURIComponent(wallet)}`;
     } catch (error) { message(error.message, "error"); }
   }
 
@@ -60,8 +65,8 @@
     button.disabled = true;
     try {
       const wallet = state.wallet || await walletAddress();
-      await loadXStatus();
-      if (!state.xVerified) throw new Error("Verify your X account first so one person cannot enter through multiple wallets.");
+      await loadDiscordStatus();
+      if (!state.discordVerified) throw new Error("Verify your Discord account first so one person cannot enter through multiple wallets.");
       message("Check Ronin Wallet and sign the raffle message…");
       const nonce = await json("/api/dyno-raffle/nonce", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet }) });
       const provider = new window.ethers.BrowserProvider(window.ronin.provider);
@@ -86,7 +91,7 @@
       const bonuses = [entry.burnBonus ? "burn +1" : "", entry.wagerBonus ? "wager +1" : ""].filter(Boolean).join(" · ") || "holder tickets";
       row.innerHTML = `<span class="ticket"></span><div><b></b><small></small></div><span class="wallet"></span><small class="entry-time"></small>`;
       row.querySelector(".ticket").textContent = `${entry.tickets} TICKET${entry.tickets === 1 ? "" : "S"}`;
-      row.querySelector("b").textContent = `@${entry.username}`;
+      row.querySelector("b").textContent = entry.username;
       row.querySelector("div small").textContent = bonuses;
       row.querySelector(".wallet").textContent = short(entry.wallet);
       row.querySelector(".entry-time").textContent = new Date(entry.enteredAt).toLocaleString();
@@ -95,10 +100,10 @@
   }
 
   $("raffle-connect")?.addEventListener("click", () => walletAddress().catch(error => message(error.message, "error")));
-  $("raffle-verify-x")?.addEventListener("click", verifyX);
+  $("raffle-verify-discord")?.addEventListener("click", verifyDiscord);
   $("raffle-enter")?.addEventListener("click", enter);
   loadConfig().catch(error => message(error.message, "error"));
-  loadXStatus().catch(() => {});
+  loadDiscordStatus().catch(() => {});
   loadEntries().catch(error => message(error.message, "error"));
   setInterval(tick, 1000);
   setInterval(loadEntries, 30_000);
