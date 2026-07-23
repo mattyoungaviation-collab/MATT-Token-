@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { verifyMessage, getAddress, zeroPadValue, toBeHex } = require("ethers");
-const { getXSession } = require("./x-follow-verifier-v2");
+const { getDiscordSession } = require("./discord-auth");
 
 const TOKEN = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
 const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -35,7 +35,7 @@ function installDynoRaffle(app, options = {}) {
       startAt: new Date(startAt).toISOString(),
       endAt: new Date(endAt).toISOString(),
       thresholds: { one: "10000000", two: "20000000", three: "50000000", bonus: "1000000" },
-      xRequired: true,
+      discordRequired: true,
       wagerBonusEnabled: wagerContracts.length > 0,
     });
   });
@@ -43,11 +43,11 @@ function installDynoRaffle(app, options = {}) {
   app.get("/api/dyno-raffle/entries", (_req, res) => {
     const entries = [...state.entries].sort((a, b) => b.enteredAt.localeCompare(a.enteredAt));
     res.set("Cache-Control", "no-store").json({
-      entries: entries.slice(0, 250),
+      entries: entries.slice(0, 250).map(publicEntry),
       summary: {
         entryCount: entries.length,
         totalTickets: entries.reduce((sum, entry) => sum + entry.tickets, 0),
-        uniqueEntrants: new Set(entries.map(entry => entry.xUserHash)).size,
+        uniqueEntrants: new Set(entries.map(identityKey)).size,
       },
     });
   });
@@ -68,9 +68,9 @@ function installDynoRaffle(app, options = {}) {
       const signature = String(req.body?.signature || "");
       if (!wallet || !signature) return res.status(400).json({ error: "Wallet and signature are required." });
 
-      const session = getXSession(req);
-      if (!session?.verified || !session.xUserId) return res.status(401).json({ error: "Verify your X account before entering." });
-      if (session.wallet !== wallet) return res.status(400).json({ error: "The verified X session belongs to a different wallet." });
+      const session = getDiscordSession(req);
+      if (!session?.verified || !session.discordUserId) return res.status(401).json({ error: "Verify your Discord account before entering." });
+      if (session.wallet !== wallet) return res.status(400).json({ error: "The verified Discord session belongs to a different wallet." });
 
       const nonceRecord = nonces.get(wallet);
       nonces.delete(wallet);
@@ -79,8 +79,8 @@ function installDynoRaffle(app, options = {}) {
       if (recovered !== wallet) return res.status(403).json({ error: "Wallet signature did not match the connected wallet." });
 
       const day = new Date().toISOString().slice(0, 10);
-      const xUserHash = crypto.createHash("sha256").update(String(session.xUserId)).digest("hex");
-      if (state.entries.some(entry => entry.day === day && entry.xUserHash === xUserHash)) return res.status(409).json({ error: "This X account has already entered today." });
+      const identityHash = crypto.createHash("sha256").update(`discord:${session.discordUserId}`).digest("hex");
+      if (state.entries.some(entry => entry.day === day && identityKey(entry) === identityHash)) return res.status(409).json({ error: "This Discord account has already entered today." });
       if (state.entries.some(entry => entry.day === day && entry.wallet === wallet)) return res.status(409).json({ error: "This wallet has already entered today." });
 
       const balanceRaw = await tokenBalance(rpcRequest, wallet);
@@ -94,8 +94,8 @@ function installDynoRaffle(app, options = {}) {
       const wagerBonus = wageredRaw >= 1_000_000n * ONE_MATT ? 1 : 0;
       const tickets = baseTickets + burnBonus + wagerBonus;
       const entry = {
-        id: crypto.randomUUID(), day, wallet, username: session.username || "verified",
-        xUserHash, balanceRaw: balanceRaw.toString(), baseTickets, burnBonus, wagerBonus, tickets,
+        id: crypto.randomUUID(), day, wallet, username: session.username || "Discord user",
+        identityProvider: "discord", identityHash, balanceRaw: balanceRaw.toString(), baseTickets, burnBonus, wagerBonus, tickets,
         burnedRaw: burnedRaw.toString(), wageredRaw: wageredRaw.toString(), enteredAt: new Date().toISOString(),
       };
       state.entries.push(entry);
@@ -116,6 +116,7 @@ function installDynoRaffle(app, options = {}) {
 function normalizeAddress(value) {
   try { return getAddress(String(value || "")).toLowerCase(); } catch { return ""; }
 }
+function identityKey(entry) { return entry.identityHash || entry.xUserHash || entry.wallet; }
 function signatureMessage(wallet, nonce) { return `MATT Water Dyno #1154 daily raffle\nWallet: ${wallet}\nNonce: ${nonce}\nThis signature does not authorize a transaction.`; }
 function loadState(file) {
   try { const value = JSON.parse(fs.readFileSync(file, "utf8")); return { entries: Array.isArray(value.entries) ? value.entries : [] }; }
@@ -128,7 +129,7 @@ function saveState(file, state) {
   fs.renameSync(temp, file);
 }
 function publicEntry(entry) {
-  return { id: entry.id, day: entry.day, wallet: entry.wallet, username: entry.username, baseTickets: entry.baseTickets, burnBonus: entry.burnBonus, wagerBonus: entry.wagerBonus, tickets: entry.tickets, enteredAt: entry.enteredAt };
+  return { id: entry.id, day: entry.day, wallet: entry.wallet, username: entry.username, identityProvider: entry.identityProvider || "x", baseTickets: entry.baseTickets, burnBonus: entry.burnBonus, wagerBonus: entry.wagerBonus, tickets: entry.tickets, enteredAt: entry.enteredAt };
 }
 async function tokenBalance(rpcRequest, wallet) {
   if (typeof rpcRequest !== "function") throw new Error("Raffle RPC is unavailable.");
