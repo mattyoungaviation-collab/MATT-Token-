@@ -49,6 +49,11 @@ for (let slot = 0; slot < engine.SLOT_COUNT; slot += 1) {
 
 assert.equal(engine.payoutForSlot(0), 2_000_000);
 assert.equal(engine.payoutForSlot(8), 1_000);
+assert.equal(
+  engine.revealedClaimableWei(25_000n * 10n ** 18n, 11_000),
+  36_000n * 10n ** 18n
+);
+assert.throws(() => engine.revealedClaimableWei(0n, -1), RangeError);
 assert.throws(() => engine.stepsForSlot(17, "bad"), RangeError);
 assert.throws(() => engine.slotForSteps([1, -1]), RangeError);
 assert.throws(() => engine.pathFrame([], 0), RangeError);
