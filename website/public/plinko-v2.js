@@ -598,13 +598,14 @@
   }
 
   function ballFrame(ball, now) {
-    const progress = Math.min(1, (now - ball.startedAt) / ball.duration);
-    const segmentCount = ball.path.points.length - 1;
-    const rawSegment = progress * segmentCount;
-    const segment = Math.min(segmentCount - 1, Math.floor(rawSegment));
-    const local = Math.min(1, rawSegment - segment);
-    const from = ball.path.points[segment];
-    const to = ball.path.points[segment + 1];
+    // A queued animation frame can carry a timestamp from just before a
+    // rapid-fire ball was created. Clamp that negative progress so it samples
+    // the first path segment instead of indexing points[-1].
+    const pathFrame = engine.pathFrame(
+      ball.path.points,
+      (now - ball.startedAt) / ball.duration
+    );
+    const { progress, segment, local, from, to } = pathFrame;
     const eased = local * local * (3 - 2 * local);
     const bounce = segment < engine.ROWS
       ? Math.sin(local * Math.PI) * (5 + (engine.hash32(`${ball.index}:${segment}`) % 5))
