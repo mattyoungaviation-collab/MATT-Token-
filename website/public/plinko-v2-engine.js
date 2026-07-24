@@ -16,6 +16,7 @@
     1, 16, 120, 560, 1820, 4368, 8008, 11440, 12870,
     11440, 8008, 4368, 1820, 560, 120, 16, 1
   ]);
+  const MATT_WEI = 10n ** 18n;
 
   function assertSlot(slot) {
     if (!Number.isInteger(slot) || slot < 0 || slot >= SLOT_COUNT) {
@@ -82,6 +83,14 @@
     return COIN_PRICE * multiplierForSlot(slot);
   }
 
+  function revealedClaimableWei(baseClaimableWei, revealedMatt) {
+    const amount = Number(revealedMatt);
+    if (!Number.isSafeInteger(amount) || amount < 0) {
+      throw new RangeError("Revealed MATT must be a non-negative safe integer.");
+    }
+    return BigInt(baseClaimableWei) + BigInt(amount) * MATT_WEI;
+  }
+
   function boardRtp() {
     const weighted = COMBINATIONS.reduce(
       (sum, combinations, slot) => sum + combinations * MULTIPLIERS[slot],
@@ -139,6 +148,7 @@
     slotOffset,
     multiplierForSlot,
     payoutForSlot,
+    revealedClaimableWei,
     boardRtp,
     pathForSlot,
     pathFrame
