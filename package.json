@@ -49,7 +49,12 @@
     "inspect:rewards:saigon": "hardhat run scripts/inspect-daily-rewards.js --network saigon",
     "inspect:rewards:ronin": "hardhat run scripts/inspect-daily-rewards.js --network ronin",
     "inspect:rewards-v2:saigon": "hardhat run scripts/inspect-daily-rewards-v2.js --network saigon",
-    "inspect:rewards-v2:ronin": "hardhat run scripts/inspect-daily-rewards-v2.js --network ronin"
+    "inspect:rewards-v2:ronin": "hardhat run scripts/inspect-daily-rewards-v2.js --network ronin",
+    "test:plinko-v4": "hardhat test test/MattPlinkoV4.test.js",
+    "deploy:plinko-v4:saigon": "hardhat run scripts/deploy-plinko-v4.js --network saigon",
+    "deploy:plinko-v4:ronin": "hardhat run scripts/deploy-plinko-v4.js --network ronin",
+    "inspect:plinko-v4:ronin": "hardhat run scripts/inspect-plinko-v4.js --network ronin",
+    "test:plinko-v4-ui": "node website/lib/plinko-v4-engine.test.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
