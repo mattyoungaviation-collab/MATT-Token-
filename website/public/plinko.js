@@ -6,6 +6,9 @@
   const RPC_URL = "https://api.roninchain.com/rpc";
   const MATT_ADDRESS = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
   const PLINKO_ADDRESS = "0xFAefDD57E2C04EdEc6e33fA006702DaB5E194Cb2";
+  const VRF_FEE_BUFFER_BPS = 12_500n;
+  const BPS_SCALE = 10_000n;
+  const TX_GAS_BUFFER_BPS = 12_000n;
   const BETS = [10000, 25000, 50000, 75000, 100000];
   const MULTIPLIERS = [20, 8, 3, 1.5, 0.25, 0.25, 0.25, 1.5, 3, 8, 20];
   const PLINKO_ABI = [
@@ -61,7 +64,24 @@
   }
 
   function errorMessage(error) {
+    const revertData = error?.data || error?.info?.error?.data || error?.error?.data;
+    if (typeof revertData === "string" && revertData.startsWith("0x025dbdd4")) {
+      return "Ronin VRF fee changed before the drop was submitted. Please try again.";
+    }
     return error?.shortMessage || error?.reason || error?.message || "Transaction failed.";
+  }
+
+  function withBuffer(amount, basisPoints) {
+    return (amount * basisPoints + BPS_SCALE - 1n) / BPS_SCALE;
+  }
+
+  async function waitForAllowance(amount) {
+    const readToken = new ethers.Contract(MATT_ADDRESS, TOKEN_ABI, state.readProvider);
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      if (await readToken.allowance(state.account, PLINKO_ADDRESS) >= amount) return;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    throw new Error("MATT approval is confirmed but Ronin RPC has not updated yet. Please wait a few seconds and try Drop again.");
   }
 
   function roninProvider() {
@@ -161,11 +181,21 @@
         setStatus(`Approve exactly ${state.bet.toLocaleString()} MATT for this drop.`);
         const approval = await state.token.approve(PLINKO_ADDRESS, amount);
         await approval.wait(1);
+        await waitForAllowance(amount);
       }
 
-      const fee = await state.contract.quoteRandomFee();
-      setStatus("Confirm the MATT drop and Ronin VRF fee in your wallet.");
-      const tx = await state.contract.play(amount, { value: fee });
+      const quotedFee = await state.readContract.quoteRandomFee();
+      // Ronin estimates the transaction against its pending block, whose VRF
+      // fee can be higher than the latest-block quote. Excess RON is refunded
+      // by the coordinator to the connected player.
+      const fee = withBuffer(quotedFee, VRF_FEE_BUFFER_BPS);
+      const estimatedGas = await state.readContract.play.estimateGas(amount, {
+        from: state.account,
+        value: fee
+      });
+      const gasLimit = withBuffer(estimatedGas, TX_GAS_BUFFER_BPS);
+      setStatus("Confirm the MATT drop and refundable Ronin VRF fee in your wallet.");
+      const tx = await state.contract.play(amount, { value: fee, gasLimit });
       setStatus(`Drop submitted. Waiting for Ronin VRF… ${short(tx.hash)}`);
       const receipt = await tx.wait(1);
       const event = receipt.logs
