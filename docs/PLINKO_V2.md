@@ -62,10 +62,10 @@ and frontend address configuration are complete.
 4. Fund at least 199,000,000 MATT; 250,000,000 MATT is the recommended starting
    bankroll.
 5. Put the verified V2 address in `website/public/plinko-v2.js`.
-6. Publish `/plinko-v2` without replacing the live V1 link.
+6. Publish `/plinko-v2`.
 7. Run one controlled small batch while V2 remains isolated from V1.
 8. Unpause V2 only after the complete onchain and visual result match is
    independently confirmed.
-9. Replace the public `/plinko` link only after that test passes.
+9. Redirect the public `/plinko` route to `/plinko-v2` only after that test passes.
 
 V1 must not be redeployed or modified as part of the V2 release.
