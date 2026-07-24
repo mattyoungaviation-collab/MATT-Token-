@@ -8,6 +8,10 @@ node_modules/
 artifacts/
 cache/
 coverage/
+.npm-cache/
+.tmp-cache/
+.tmp-config/
+.tmp-data/
 
 # Runtime caches
 website/.holder-index-cache.json
