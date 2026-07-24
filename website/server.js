@@ -59,7 +59,10 @@ let holderProgress = {
 };
 
 app.disable("x-powered-by");
-app.get(["/plinko", "/plinko/", "/plinko-v2", "/plinko-v2/"], (_req, res) => res.redirect(302, "/plinko-v3"));
+app.get(
+  ["/plinko", "/plinko/", "/plinko-v2", "/plinko-v2/", "/plinko-v3", "/plinko-v3/"],
+  (_req, res) => res.redirect(302, "/plinko-v4")
+);
 app.use(express.static(publicDir, { extensions: ["html"], maxAge: "1h" }));
 
 app.get("/health", (_req, res) => {
