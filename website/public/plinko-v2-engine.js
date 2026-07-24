@@ -91,6 +91,14 @@
     return BigInt(baseClaimableWei) + BigInt(amount) * MATT_WEI;
   }
 
+  function isBatchRevealComplete(revealedCount, totalCoins) {
+    if (!Number.isInteger(revealedCount) || !Number.isInteger(totalCoins)
+      || revealedCount < 0 || totalCoins < 1 || revealedCount > totalCoins) {
+      throw new RangeError("Invalid Plinko reveal progress.");
+    }
+    return revealedCount === totalCoins;
+  }
+
   function boardRtp() {
     const weighted = COMBINATIONS.reduce(
       (sum, combinations, slot) => sum + combinations * MULTIPLIERS[slot],
@@ -149,6 +157,7 @@
     multiplierForSlot,
     payoutForSlot,
     revealedClaimableWei,
+    isBatchRevealComplete,
     boardRtp,
     pathForSlot,
     pathFrame
