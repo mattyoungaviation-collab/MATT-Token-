@@ -52,6 +52,7 @@
     slots: [],
     nextIndex: 0,
     completed: 0,
+    revealedIndexes: new Set(),
     displayedReturn: 0,
     onchainClaimable: 0n,
     revealBase: 0n,
@@ -273,6 +274,7 @@
     state.slots = [];
     state.nextIndex = 0;
     state.completed = 0;
+    state.revealedIndexes.clear();
     state.displayedReturn = 0;
     state.revealBase = await state.contract.claimable(state.account);
     state.onchainClaimable = state.revealBase;
@@ -340,6 +342,9 @@
         state.practice = false;
         state.nextIndex = Math.min(state.nextIndex, slots.length);
         state.completed = Math.min(state.completed, state.nextIndex);
+        state.revealedIndexes = new Set(
+          Array.from({ length: state.completed }, (_, index) => index)
+        );
         if (!state.revealBaseKnown && state.account) {
           const claimable = await contract.claimable(state.account);
           const payout = BigInt(batch.payout);
@@ -390,6 +395,7 @@
     state.slots = [];
     state.nextIndex = 0;
     state.completed = 0;
+    state.revealedIndexes.clear();
     state.displayedReturn = 0;
     state.revealBase = 0n;
     state.revealBaseKnown = false;
@@ -418,6 +424,9 @@
     state.requestHash = saved.requestHash;
     state.nextIndex = Number(saved.nextIndex) || 0;
     state.completed = Number(saved.completed) || 0;
+    state.revealedIndexes = new Set(
+      Array.from({ length: state.completed }, (_, index) => index)
+    );
     state.displayedReturn = Number(saved.displayedReturn) || 0;
     state.revealActive = true;
     if (saved.revealBase !== undefined && saved.revealBase !== null) {
@@ -447,6 +456,7 @@
     state.slots = practiceSlots(state.quantity);
     state.nextIndex = 0;
     state.completed = 0;
+    state.revealedIndexes.clear();
     state.displayedReturn = 0;
     state.revealActive = false;
     state.practice = true;
@@ -491,9 +501,11 @@
   }
 
   function completeCoin(slot, index) {
+    if (state.revealedIndexes.has(index)) return;
+    state.revealedIndexes.add(index);
     const multiplier = engine.multiplierForSlot(slot);
     const payout = engine.payoutForSlot(slot);
-    state.completed = Math.max(state.completed, index + 1);
+    state.completed = state.revealedIndexes.size;
     state.displayedReturn += payout;
     state.lastLandedSlot = slot;
     state.landedCoins.push({ slot, order: state.landedCoins.length });
@@ -508,7 +520,7 @@
     updateControls();
     drawBoard();
 
-    if (!hasInventory() && state.activeBalls.length === 0) {
+    if (engine.isBatchRevealComplete(state.completed, state.slots.length)) {
       setStatus(
         `Batch complete: ${state.displayedReturn.toLocaleString()} MATT total return across ${state.slots.length} coins.`,
         "good"
