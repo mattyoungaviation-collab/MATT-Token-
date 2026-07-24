@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#080705">
   <title>MATT Plinko V2 | Load. Drop. Let It Bounce.</title>
-  <meta name="description" content="Low-cost batch Plinko on Ronin. Load 1–100 MATT coins, then drop them one at a time or rapid fire.">
+  <meta name="description" content="Low-cost batch Plinko on Ronin. Load 1–100 MATT coins and watch verified results rapid fire as winnings build with every landing.">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/plinko-v2.css?v=1">
 </head>
@@ -20,7 +20,7 @@
       <div>
         <p class="eyebrow">16 ROWS • ONE VRF SEED PER BATCH • 97.39% RTP</p>
         <h1>LOAD.<br>DROP. <span>BOUNCE.</span></h1>
-        <p>Every MATT coin costs 10,000 MATT. Load up to 100, then click them out one by one or send the whole stack rapid fire.</p>
+        <p>Every MATT coin costs 10,000 MATT. Load up to 100, then watch the verified coins rapid fire while your revealed winnings build with every landing.</p>
       </div>
       <div class="hero-stats">
         <article><span>OUTSIDE SLOTS</span><strong>200×</strong></article>
@@ -99,7 +99,7 @@
         <div class="vault-grid">
           <div><span>COINS REMAINING</span><strong id="coins-remaining">0</strong></div>
           <div><span>BATCH RETURN</span><strong id="batch-return">0 MATT</strong></div>
-          <div><span>YOUR WINNINGS</span><strong id="claimable-balance">—</strong></div>
+          <div><span>REVEALED WINNINGS</span><strong id="claimable-balance">—</strong></div>
           <div><span>AVAILABLE BANKROLL</span><strong id="bankroll-balance">—</strong></div>
         </div>
       </aside>
@@ -107,7 +107,7 @@
 
     <section class="rules">
       <article><b>01</b><h3>Load One Batch</h3><p>Select 1–100 coins. Approve the total once, then purchase the batch with one VRF request instead of paying for randomness on every ball.</p></article>
-      <article><b>02</b><h3>Drop Your Way</h3><p>Click one at a time or rapid fire. Clicking controls only the timing. Every slot is already locked by Ronin before the first ball moves.</p></article>
+      <article><b>02</b><h3>Watch It Drop</h3><p>As soon as Ronin verifies the batch, the coins automatically rapid fire. Your visible winnings increase only when each matching coin lands.</p></article>
       <article><b>03</b><h3>Visual Equals Payout</h3><p>Each ball path is built for its exact onchain slot. A ball that lands on 38× is always a paid 38× result. Animation can never select or change it.</p></article>
     </section>
 
@@ -120,7 +120,7 @@
 
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span></footer>
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
-  <script src="/plinko-v2-engine.js?v=2"></script>
-  <script src="/plinko-v2.js?v=2"></script>
+  <script src="/plinko-v2-engine.js?v=3"></script>
+  <script src="/plinko-v2.js?v=3"></script>
 </body>
 </html>
