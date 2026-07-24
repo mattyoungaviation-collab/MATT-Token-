@@ -151,7 +151,7 @@ app.get("/api/holders", async (req, res) => {
 });
 
 app.get(["/hub", "/hub/"], (_req, res) => res.sendFile(path.join(publicDir, "hub.html")));
-app.get(["/plinko", "/plinko/"], (_req, res) => res.redirect(302, "/plinko-v2"));
+app.get(["/plinko", "/plinko/", "/plinko-v2", "/plinko-v2/"], (_req, res) => res.redirect(302, "/plinko-v3"));
 app.use((req, res, next) => {
   if (req.path === "/flappy-matt" || req.path.startsWith("/flappy-matt/") || req.path.startsWith("/flappy-matt.")) {
     return res.status(404).send("Not found");
