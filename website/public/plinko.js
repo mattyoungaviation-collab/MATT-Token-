@@ -5,7 +5,7 @@
   const CHAIN_HEX = "0x7e4";
   const RPC_URL = "https://api.roninchain.com/rpc";
   const MATT_ADDRESS = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
-  const PLINKO_ADDRESS = "0x0000000000000000000000000000000000000000";
+  const PLINKO_ADDRESS = "0xFAefDD57E2C04EdEc6e33fA006702DaB5E194Cb2";
   const BETS = [10000, 25000, 50000, 75000, 100000];
   const MULTIPLIERS = [20, 8, 3, 1.5, 0.25, 0.25, 0.25, 1.5, 3, 8, 20];
   const PLINKO_ABI = [
@@ -33,6 +33,7 @@
     readProvider: null,
     readContract: null,
     bet: 100000,
+    paused: true,
     busy: false,
     animation: null,
     lastResult: null
@@ -119,27 +120,25 @@
     }
     state.readProvider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID);
     state.readContract = new ethers.Contract(PLINKO_ADDRESS, PLINKO_ABI, state.readProvider);
-    const [code, paused] = await Promise.all([
-      state.readProvider.getCode(PLINKO_ADDRESS),
-      state.readContract.paused()
-    ]);
+    const code = await state.readProvider.getCode(PLINKO_ADDRESS);
     if (code === "0x") throw new Error("No Plinko contract was found at the configured address.");
-    $("#mode-pill").textContent = paused ? "CONTRACT PAUSED" : "LIVE ON RONIN";
+    state.paused = await state.readContract.paused();
+    $("#mode-pill").textContent = state.paused ? "CONTRACT PAUSED" : "LIVE ON RONIN";
     $("#contract-link").href = `https://explorer.roninchain.com/address/${PLINKO_ADDRESS}`;
     $("#contract-link").textContent = "VERIFY PLINKO CONTRACT";
     $("#contract-link").removeAttribute("aria-disabled");
-    updateButtons(paused);
+    updateButtons();
   }
 
-  function updateButtons(paused = false) {
+  function updateButtons() {
     const drop = $("#drop-button");
     if (!deployed) {
       drop.disabled = true;
       drop.textContent = "CONTRACT DEPLOYMENT PENDING";
       return;
     }
-    drop.disabled = !state.account || paused || state.busy;
-    drop.textContent = paused ? "PLINKO IS PAUSED" : state.busy ? "DROP IN PROGRESS…" : `DROP ${state.bet.toLocaleString()} MATT`;
+    drop.disabled = !state.account || state.paused || state.busy;
+    drop.textContent = state.paused ? "PLINKO IS PAUSED" : state.busy ? "DROP IN PROGRESS…" : `DROP ${state.bet.toLocaleString()} MATT`;
     $("#practice-button").disabled = state.busy;
   }
 
