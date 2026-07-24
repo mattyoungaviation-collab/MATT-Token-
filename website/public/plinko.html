@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#090805">
+  <title>MATT Plinko | Drop MATT. Hit the Edge.</title>
+  <meta name="description" content="Provably fair MATT Plinko on Ronin with five fixed wagers and a maximum 20x payout.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/plinko.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/hub"><img src="/assets/matt-logo-512.png" alt="">MATT <span>PLINKO</span></a>
+    <button id="wallet-button" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">PROVABLY FAIR • POWERED BY RONIN VRF</p>
+        <h1>DROP<br>THE <span>MATT.</span></h1>
+        <p>Send a MATT coin through ten rows of chaos. Hit either edge for 20×. The three center slots pay 0.25×.</p>
+      </div>
+      <div class="hero-stats">
+        <article><span>MAX MULTIPLIER</span><strong>20×</strong></article>
+        <article><span>MAX PAYOUT</span><strong>2M MATT</strong></article>
+        <article><span>EDGE SLOTS</span><strong>2</strong></article>
+      </div>
+    </section>
+
+    <section class="game-shell">
+      <article class="board-card">
+        <div class="board-head">
+          <div><p class="eyebrow">LIVE DROP BOARD</p><h2>Pick a bet. Chase the edge.</h2></div>
+          <span id="mode-pill">DEPLOYMENT PENDING</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="plinko-board" aria-label="Ten-row MATT Plinko board with eleven multiplier slots"></canvas>
+          <div id="drop-overlay" class="drop-overlay">READY TO DROP</div>
+        </div>
+        <div class="multiplier-key" aria-label="Plinko multipliers">
+          <span class="jackpot">20×</span><span>8×</span><span>3×</span><span>1.5×</span>
+          <span class="loss">.25×</span><span class="loss">.25×</span><span class="loss">.25×</span>
+          <span>1.5×</span><span>3×</span><span>8×</span><span class="jackpot">20×</span>
+        </div>
+      </article>
+
+      <aside class="control-card">
+        <div class="wallet-panel">
+          <span>CONNECTED WALLET</span>
+          <strong id="wallet-address">Not connected</strong>
+          <small id="matt-balance">— MATT</small>
+        </div>
+
+        <div class="control-group">
+          <label>BET AMOUNT</label>
+          <div class="bet-grid" id="bet-grid">
+            <button data-bet="10000" type="button">10K</button>
+            <button data-bet="25000" type="button">25K</button>
+            <button data-bet="50000" type="button">50K</button>
+            <button data-bet="75000" type="button">75K</button>
+            <button data-bet="100000" class="active" type="button">100K</button>
+          </div>
+        </div>
+
+        <div class="payout-preview">
+          <span>EDGE HIT PAYS</span>
+          <strong id="payout-preview">2,000,000 MATT</strong>
+        </div>
+
+        <button id="drop-button" class="drop-button" type="button" disabled>CONTRACT DEPLOYMENT PENDING</button>
+        <button id="practice-button" class="practice-button" type="button">TRY A PRACTICE DROP</button>
+        <button id="withdraw-button" class="withdraw-button" type="button" disabled>WITHDRAW WINNINGS</button>
+        <p id="game-status" class="status" role="status" aria-live="polite">The production contract is ready for deployment and funding. Practice drops do not move tokens.</p>
+
+        <div class="vault-grid">
+          <div><span>YOUR WINNINGS</span><strong id="claimable-balance">—</strong></div>
+          <div><span>AVAILABLE BANKROLL</span><strong id="bankroll-balance">—</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="rules">
+      <article><b>01</b><h3>Choose a MATT Bet</h3><p>Drop 10,000, 25,000, 50,000, 75,000, or 100,000 MATT. The maximum possible payout is 2,000,000 MATT.</p></article>
+      <article><b>02</b><h3>Ronin Picks the Path</h3><p>The official Ronin VRF service supplies verifiable randomness. Ten random left-or-right decisions determine the landing slot.</p></article>
+      <article><b>03</b><h3>Claim Your MATT</h3><p>Winning payouts are credited by the funded contract. Losing wagers route to the MATT treasury at 0xF799…f984.</p></article>
+    </section>
+
+    <section class="fairness">
+      <div><p class="eyebrow">THE MATT RECEIPT</p><h2>Fairness you can verify.</h2></div>
+      <p>The browser only animates the result after the Plinko contract receives a verified random seed. It cannot select or change your slot. Every request, multiplier, payout, and treasury transfer is recorded on Ronin.</p>
+      <a id="contract-link" href="#" aria-disabled="true">CONTRACT DEPLOYMENT PENDING</a>
+    </section>
+  </main>
+
+  <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span></footer>
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/plinko.js?v=1"></script>
+</body>
+</html>
