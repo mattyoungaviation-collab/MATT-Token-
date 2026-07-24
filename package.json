@@ -28,6 +28,7 @@
     "deploy:crash:ronin": "hardhat run scripts/deploy-crash-vault.js --network ronin",
     "deploy:plinko:saigon": "hardhat run scripts/deploy-plinko.js --network saigon",
     "deploy:plinko:ronin": "hardhat run scripts/deploy-plinko.js --network ronin",
+    "fund:plinko:ronin": "hardhat run scripts/fund-plinko.js --network ronin",
     "inspect:plinko:ronin": "hardhat run scripts/inspect-plinko.js --network ronin",
     "test:plinko": "hardhat test test/MattPlinko.test.js",
     "test:crash": "hardhat test test/MattCrashVault.test.js",
