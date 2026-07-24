@@ -19,6 +19,64 @@ function requireMainnetAddress(name, actual, expected) {
   }
 }
 
+function delay(milliseconds) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+async function waitForRuntimeCode(address, transactionHash) {
+  for (let attempt = 1; attempt <= 15; attempt++) {
+    const code = await hre.ethers.provider.getCode(address);
+    if (code !== "0x") return code;
+
+    if (attempt < 15) {
+      console.warn(
+        `Deployment receipt exists but RPC bytecode is not available yet `
+        + `(attempt ${attempt}/15). Transaction: ${transactionHash}`
+      );
+      await delay(2_000);
+    }
+  }
+
+  throw new Error(
+    `No runtime bytecode is visible at ${address} after confirmation. `
+    + `Do not redeploy until transaction ${transactionHash} is inspected.`
+  );
+}
+
+async function readVerifiedConfiguration(contract, transactionHash) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      return {
+        owner: await contract.owner(),
+        paused: await contract.paused(),
+        deployedMatt: await contract.matt(),
+        deployedTreasury: await contract.treasury(),
+        deployedCoordinator: await contract.vrfCoordinator(),
+        coinPrice: await contract.COIN_PRICE(),
+        maximumBatch: await contract.MAX_BATCH_SIZE(),
+        maximumPayout: await contract.maxPayout(100)
+      };
+    } catch (error) {
+      lastError = error;
+      if (attempt < 10) {
+        console.warn(
+          `RPC post-deployment read is not ready (attempt ${attempt}/10). `
+          + `Transaction: ${transactionHash}`
+        );
+        await delay(2_000);
+      }
+    }
+  }
+
+  throw new Error(
+    `Post-deployment reads failed for transaction ${transactionHash}. `
+    + `Do not redeploy; inspect the printed address and transaction hash.`,
+    { cause: lastError }
+  );
+}
+
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
   if (!deployer) throw new Error("DEPLOYER_PRIVATE_KEY is not configured.");
@@ -62,11 +120,21 @@ async function main() {
   });
   const feeData = await hre.ethers.provider.getFeeData();
   const gasPrice = feeData.gasPrice || feeData.maxFeePerGas;
+  const deploymentNonce = await hre.ethers.provider.getTransactionCount(
+    deployer.address,
+    "pending"
+  );
+  const predictedAddress = hre.ethers.getCreateAddress({
+    from: deployer.address,
+    nonce: deploymentNonce
+  });
 
   console.log("Plinko V3 deployment preflight:", {
     network: isMainnet ? "Ronin mainnet" : "Saigon testnet",
     chainId: network.chainId.toString(),
     deployer: deployer.address,
+    deploymentNonce,
+    predictedAddress,
     matt,
     treasury,
     coordinator,
@@ -80,18 +148,53 @@ async function main() {
   });
 
   const contract = await factory.deploy(matt, treasury, coordinator);
-  await contract.waitForDeployment();
-  const address = await contract.getAddress();
-  const receipt = await contract.deploymentTransaction().wait();
+  const deploymentTransaction = contract.deploymentTransaction();
+  if (!deploymentTransaction) {
+    throw new Error("The deployment transaction was not created.");
+  }
 
-  const owner = await contract.owner();
-  const paused = await contract.paused();
-  const deployedMatt = await contract.matt();
-  const deployedTreasury = await contract.treasury();
-  const deployedCoordinator = await contract.vrfCoordinator();
-  const coinPrice = await contract.COIN_PRICE();
-  const maximumBatch = await contract.MAX_BATCH_SIZE();
-  const maximumPayout = await contract.maxPayout(100);
+  console.log("Plinko V3 deployment broadcast:", {
+    transactionHash: deploymentTransaction.hash,
+    nonce: deploymentTransaction.nonce,
+    predictedAddress
+  });
+
+  const receipt = await deploymentTransaction.wait(2);
+  if (!receipt || receipt.status !== 1) {
+    throw new Error(
+      `V3 deployment did not succeed. Transaction: ${deploymentTransaction.hash}. `
+      + "Do not redeploy until the receipt is inspected."
+    );
+  }
+
+  const address = receipt.contractAddress || predictedAddress;
+  console.log("Plinko V3 deployment confirmed:", {
+    address,
+    transactionHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    gasUsed: receipt.gasUsed.toString(),
+    status: receipt.status
+  });
+
+  if (hre.ethers.getAddress(address) !== hre.ethers.getAddress(predictedAddress)) {
+    throw new Error(
+      `Receipt contract address ${address} does not match predicted address ${predictedAddress}. `
+      + `Do not fund or redeploy. Transaction: ${receipt.hash}`
+    );
+  }
+
+  await waitForRuntimeCode(address, receipt.hash);
+  const deployedContract = factory.attach(address);
+  const {
+    owner,
+    paused,
+    deployedMatt,
+    deployedTreasury,
+    deployedCoordinator,
+    coinPrice,
+    maximumBatch,
+    maximumPayout
+  } = await readVerifiedConfiguration(deployedContract, receipt.hash);
 
   if (
     owner !== treasury
@@ -103,7 +206,9 @@ async function main() {
     || maximumBatch !== 100n
     || maximumPayout !== hre.ethers.parseEther("50000000")
   ) {
-    throw new Error("V3 post-deployment verification failed. Leave it paused and inspect it.");
+    throw new Error(
+      `V3 post-deployment verification failed. Leave it paused and inspect transaction ${receipt.hash}.`
+    );
   }
 
   console.log("MattPlinkoV3 deployed and verified paused:", {
