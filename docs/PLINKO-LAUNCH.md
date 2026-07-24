@@ -30,7 +30,15 @@
 4. Mainnet deployment completed in transaction
    `0x5d26a6bade0b6eeee35d748655cd877723bea67de6aca76a10f0273f7c97b6e7`.
 5. `PLINKO_ADDRESS` is set in `website/public/plinko.js`.
-6. From the treasury wallet, approve the Plinko contract and call `fundBankroll`.
+6. From the treasury wallet, fund the default 100,000,000 MATT bankroll:
+
+   ```powershell
+   $env:CONFIRM_PLINKO_FUNDING="YES"
+   npm run fund:plinko:ronin
+   ```
+
+   The script verifies Ronin mainnet, the treasury signer, contract code, owner, MATT token,
+   treasury, VRF coordinator, paused state, and treasury balance before approving and funding.
 7. Run `PLINKO_ADDRESS=0x... npm run inspect:plinko:ronin`.
 8. Confirm `solvent: true` and the intended unreserved bankroll.
 9. Open `/plinko`, connect a non-treasury test wallet, and verify the quoted VRF fee.
