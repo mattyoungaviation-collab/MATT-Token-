@@ -113,13 +113,14 @@ async function main() {
   await contract.waitForDeployment();
   const address = await contract.getAddress();
   const deploymentReceipt = await contract.deploymentTransaction().wait();
-  const [owner, paused, deployedMatt, deployedTreasury, deployedCoordinator] = await Promise.all([
-    contract.owner(),
-    contract.paused(),
-    contract.matt(),
-    contract.treasury(),
-    contract.vrfCoordinator()
-  ]);
+  // Ronin public RPC occasionally returns an empty result for concurrent reads
+  // immediately after deployment. Verify sequentially so a healthy deployment
+  // is not reported as failed after its transaction has already confirmed.
+  const owner = await contract.owner();
+  const paused = await contract.paused();
+  const deployedMatt = await contract.matt();
+  const deployedTreasury = await contract.treasury();
+  const deployedCoordinator = await contract.vrfCoordinator();
   if (
     owner !== treasury
     || !paused
