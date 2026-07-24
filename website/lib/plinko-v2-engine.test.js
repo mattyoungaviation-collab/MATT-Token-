@@ -31,6 +31,19 @@ for (let slot = 0; slot < engine.SLOT_COUNT; slot += 1) {
     assert.ok(path.points[1].y < 70);
     assert.equal(path.points.at(-1).x, 500 + engine.slotOffset(slot) * 40);
     assert.equal(path.points.at(-1).y, 520);
+
+    const earlyFrame = engine.pathFrame(path.points, -0.01);
+    assert.equal(earlyFrame.progress, 0);
+    assert.equal(earlyFrame.segment, 0);
+    assert.equal(earlyFrame.local, 0);
+    assert.equal(earlyFrame.from, path.points[0]);
+    assert.equal(earlyFrame.to, path.points[1]);
+
+    const finalFrame = engine.pathFrame(path.points, 1.01);
+    assert.equal(finalFrame.progress, 1);
+    assert.equal(finalFrame.segment, path.points.length - 2);
+    assert.equal(finalFrame.local, 1);
+    assert.equal(finalFrame.to, path.points.at(-1));
   }
 }
 
@@ -38,5 +51,6 @@ assert.equal(engine.payoutForSlot(0), 2_000_000);
 assert.equal(engine.payoutForSlot(8), 1_000);
 assert.throws(() => engine.stepsForSlot(17, "bad"), RangeError);
 assert.throws(() => engine.slotForSteps([1, -1]), RangeError);
+assert.throws(() => engine.pathFrame([], 0), RangeError);
 
 console.log("Plinko V2 visual/result engine tests passed.");
