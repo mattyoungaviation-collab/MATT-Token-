@@ -93,7 +93,12 @@
   function pathForSlot(slot, key, geometry) {
     const { center, top, rowGap, slotGap, landingY } = geometry;
     const steps = stepsForSlot(slot, key);
-    const points = [{ x: center, y: Math.max(22, top - rowGap * 0.85) }];
+    // Every coin begins completely above the canvas, then enters through the
+    // same centered launch chute before making its first peg decision.
+    const points = [
+      { x: center, y: -24 },
+      { x: center, y: Math.max(12, top - rowGap * 0.72) }
+    ];
     let x = center;
     for (let row = 0; row < ROWS; row += 1) {
       x += steps[row] * slotGap / 2;
