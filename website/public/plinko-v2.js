@@ -53,6 +53,10 @@
     nextIndex: 0,
     completed: 0,
     displayedReturn: 0,
+    onchainClaimable: 0n,
+    revealBase: 0n,
+    revealBaseKnown: false,
+    revealActive: false,
     practice: false,
     activeBalls: [],
     landedCoins: [],
@@ -130,6 +134,7 @@
 
     $("#wallet-button").textContent = short(state.account);
     $("#wallet-address").textContent = state.account;
+    restoreSavedRevealState();
     await refreshAccount();
     await resumeSavedBatch();
     updateControls();
@@ -144,10 +149,30 @@
       claimable = await state.contract.claimable(state.account);
       bankroll = await state.contract.unreservedBankroll();
     }
+    state.onchainClaimable = claimable;
     $("#matt-balance").textContent = `${formatMatt(balance)} MATT`;
-    $("#claimable-balance").textContent = deployed ? `${formatMatt(claimable)} MATT` : "V2 PENDING";
+    renderClaimable();
     $("#bankroll-balance").textContent = deployed ? `${formatMatt(bankroll)} MATT` : "V2 PENDING";
-    $("#withdraw-button").disabled = !state.contract || claimable === 0n || state.purchasing;
+    updateWithdrawControl();
+  }
+
+  function updateWithdrawControl() {
+    $("#withdraw-button").disabled = !state.contract
+      || state.onchainClaimable === 0n
+      || state.purchasing
+      || state.revealActive
+      || state.activeBalls.length > 0;
+  }
+
+  function renderClaimable() {
+    if (!deployed) {
+      $("#claimable-balance").textContent = "V2 PENDING";
+      return;
+    }
+    const visible = state.revealActive && !state.practice
+      ? engine.revealedClaimableWei(state.revealBase, state.displayedReturn)
+      : state.onchainClaimable;
+    $("#claimable-balance").textContent = `${formatMatt(visible)} MATT`;
   }
 
   async function initContract() {
@@ -200,6 +225,7 @@
     const remaining = Math.max(0, state.slots.length - state.nextIndex);
     $("#coins-remaining").textContent = String(remaining);
     $("#batch-return").textContent = `${state.displayedReturn.toLocaleString()} MATT`;
+    renderClaimable();
     $("#inventory-pill").textContent = `${remaining} COIN${remaining === 1 ? "" : "S"} LOADED`;
     $("#inventory-pill").classList.toggle("ready", remaining > 0);
     if (!remaining && state.slots.length) {
@@ -227,6 +253,7 @@
     $("#coin-count").disabled = state.purchasing || inventory;
     $$("[data-count]").forEach(button => { button.disabled = state.purchasing || inventory; });
     updateInventory();
+    updateWithdrawControl();
   }
 
   async function waitForAllowance(amount) {
@@ -247,6 +274,10 @@
     state.nextIndex = 0;
     state.completed = 0;
     state.displayedReturn = 0;
+    state.revealBase = await state.contract.claimable(state.account);
+    state.onchainClaimable = state.revealBase;
+    state.revealBaseKnown = true;
+    state.revealActive = true;
     state.practice = false;
     state.landedCoins = [];
     state.purchasing = true;
@@ -282,6 +313,12 @@
       state.requestHash = event.args.requestHash;
       saveBatchState();
       await waitForBatch(state.requestHash);
+    } catch (error) {
+      if (!state.requestHash) {
+        state.revealActive = false;
+        state.revealBaseKnown = false;
+      }
+      throw error;
     } finally {
       state.purchasing = false;
       updateControls();
@@ -303,9 +340,19 @@
         state.practice = false;
         state.nextIndex = Math.min(state.nextIndex, slots.length);
         state.completed = Math.min(state.completed, state.nextIndex);
-        setStatus(`${slots.length} MATT coins loaded. Click the board or choose rapid fire.`, "good");
+        if (!state.revealBaseKnown && state.account) {
+          const claimable = await contract.claimable(state.account);
+          const payout = BigInt(batch.payout);
+          state.onchainClaimable = claimable;
+          state.revealBase = claimable >= payout ? claimable - payout : 0n;
+          state.revealBaseKnown = true;
+        }
+        state.revealActive = true;
+        state.purchasing = false;
+        setStatus(`VRF verified. Dropping ${slots.length} MATT coins now…`, "good");
         saveBatchState();
         updateControls();
+        await rapidFire();
         return;
       }
       if (Number(batch.status) === 3) {
@@ -330,7 +377,9 @@
       // replayed after refresh instead of being skipped.
       nextIndex: state.completed,
       completed: state.completed,
-      displayedReturn: state.displayedReturn
+      displayedReturn: state.displayedReturn,
+      revealBase: state.revealBase.toString(),
+      revealBaseKnown: state.revealBaseKnown
     }));
   }
 
@@ -342,6 +391,9 @@
     state.nextIndex = 0;
     state.completed = 0;
     state.displayedReturn = 0;
+    state.revealBase = 0n;
+    state.revealBaseKnown = false;
+    state.revealActive = false;
     state.practice = false;
     state.landedCoins = [];
     updateControls();
@@ -354,12 +406,29 @@
     try { saved = JSON.parse(localStorage.getItem(key)); } catch { saved = null; }
     if (!saved?.requestHash) return;
 
+    setStatus("Restoring your saved V2 batch…");
+    await waitForBatch(saved.requestHash);
+  }
+
+  function restoreSavedRevealState() {
+    const key = storageKey();
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(key)); } catch { saved = null; }
+    if (!saved?.requestHash) return;
     state.requestHash = saved.requestHash;
     state.nextIndex = Number(saved.nextIndex) || 0;
     state.completed = Number(saved.completed) || 0;
     state.displayedReturn = Number(saved.displayedReturn) || 0;
-    setStatus("Restoring your saved V2 batch…");
-    await waitForBatch(saved.requestHash);
+    state.revealActive = true;
+    if (saved.revealBase !== undefined && saved.revealBase !== null) {
+      try {
+        state.revealBase = BigInt(saved.revealBase);
+        state.revealBaseKnown = saved.revealBaseKnown !== false;
+      } catch {
+        state.revealBase = 0n;
+        state.revealBaseKnown = false;
+      }
+    }
   }
 
   function practiceSlots(count) {
@@ -379,6 +448,7 @@
     state.nextIndex = 0;
     state.completed = 0;
     state.displayedReturn = 0;
+    state.revealActive = false;
     state.practice = true;
     state.landedCoins = [];
     setStatus(`${state.quantity} preview coins loaded. No MATT will move.`);
@@ -444,6 +514,16 @@
         "good"
       );
       if (!state.practice) localStorage.removeItem(storageKey());
+      if (!state.practice) {
+        refreshAccount()
+          .then(() => {
+            state.revealActive = false;
+            state.revealBaseKnown = false;
+            renderClaimable();
+            updateControls();
+          })
+          .catch(() => {});
+      }
     }
   }
 
