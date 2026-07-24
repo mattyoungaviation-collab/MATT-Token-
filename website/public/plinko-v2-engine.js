@@ -108,6 +108,23 @@
     return { steps, points, slot };
   }
 
+  function pathFrame(points, progress) {
+    if (!Array.isArray(points) || points.length < 2) {
+      throw new RangeError("A Plinko animation path must contain at least two points.");
+    }
+    const boundedProgress = Math.max(0, Math.min(1, Number(progress) || 0));
+    const segmentCount = points.length - 1;
+    const rawSegment = boundedProgress * segmentCount;
+    const segment = Math.max(0, Math.min(segmentCount - 1, Math.floor(rawSegment)));
+    return {
+      progress: boundedProgress,
+      segment,
+      local: Math.max(0, Math.min(1, rawSegment - segment)),
+      from: points[segment],
+      to: points[segment + 1]
+    };
+  }
+
   return Object.freeze({
     ROWS,
     SLOT_COUNT,
@@ -123,6 +140,7 @@
     multiplierForSlot,
     payoutForSlot,
     boardRtp,
-    pathForSlot
+    pathForSlot,
+    pathFrame
   });
 });
