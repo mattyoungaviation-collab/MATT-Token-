@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080705">
+  <title>MATT Plinko V4 | Load. Drop. Let It Bounce.</title>
+  <meta name="description" content="Low-cost batch Plinko on Ronin. Load 1–100 MATT coins and watch verified results rapid fire as winnings build with every landing.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/plinko-v3.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/hub"><img src="/assets/matt-logo-512.png" alt="">MATT <span>PLINKO V4</span></a>
+    <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">16 ROWS • ONE VRF SEED PER BATCH • 98.2% RTP</p>
+        <h1>LOAD.<br>DROP. <span>BOUNCE.</span></h1>
+        <p>Every MATT coin costs 10,000 MATT. Load up to 100, then watch the verified coins rapid fire while your revealed winnings build with every landing.</p>
+      </div>
+      <div class="hero-stats">
+        <article><span>OUTSIDE SLOTS</span><strong>50×</strong></article>
+        <article><span>COIN PRICE</span><strong>10K</strong></article>
+        <article><span>BATCH LIMIT</span><strong>100</strong></article>
+      </div>
+    </section>
+
+    <section class="game-shell">
+      <article class="board-card">
+        <div class="board-head">
+          <div>
+            <p class="eyebrow">LIVE 16-ROW BOARD</p>
+            <h2 id="board-title">Your result. Its exact path.</h2>
+          </div>
+          <div class="board-pills">
+            <span id="mode-pill">V4 PREVIEW</span>
+            <span id="inventory-pill">0 COINS LOADED</span>
+          </div>
+        </div>
+
+        <div id="canvas-wrap" class="canvas-wrap" tabindex="0" role="button" aria-label="Click to drop one loaded MATT coin">
+          <canvas id="plinko-board" aria-label="Sixteen-row MATT Plinko board with seventeen payout slots"></canvas>
+          <div id="drop-overlay" class="drop-overlay">LOAD MATT COINS TO START</div>
+          <button id="canvas-drop-button" class="canvas-drop-button" type="button" disabled>DROP ONE</button>
+        </div>
+
+        <div id="multiplier-key" class="multiplier-key" aria-label="Plinko multiplier slots">
+          <span class="jackpot">50×</span><span class="jackpot">25×</span><span class="high">10.0174×</span>
+          <span>5×</span><span>2×</span><span>1.5×</span><span class="loss">.8×</span>
+          <span class="loss">.7×</span><span class="danger">0.4848×</span><span class="loss">.7×</span>
+          <span class="loss">.8×</span><span>1.5×</span><span>2×</span><span>5×</span>
+          <span class="high">10.0174×</span><span class="jackpot">25×</span><span class="jackpot">50×</span>
+        </div>
+      </article>
+
+      <aside class="control-card">
+        <div class="wallet-panel">
+          <span>CONNECTED WALLET</span>
+          <strong id="wallet-address">Not connected</strong>
+          <small id="matt-balance">— MATT</small>
+        </div>
+
+        <div class="control-group">
+          <div class="label-row">
+            <label for="coin-count">PLINKO COINS</label>
+            <output id="coin-count-output" for="coin-count">10</output>
+          </div>
+          <input id="coin-count" type="range" min="1" max="100" step="1" value="10">
+          <div class="quantity-grid">
+            <button data-count="1" type="button">1</button>
+            <button data-count="10" class="active" type="button">10</button>
+            <button data-count="25" type="button">25</button>
+            <button data-count="50" type="button">50</button>
+            <button data-count="100" type="button">100</button>
+          </div>
+        </div>
+
+        <div class="purchase-summary">
+          <div><span>PRICE PER COIN</span><strong>10,000 MATT</strong></div>
+          <div><span>TOTAL</span><strong id="purchase-total">100,000 MATT</strong></div>
+          <div><span>MAX BATCH PAYOUT</span><strong id="max-batch-payout">5,000,000 MATT</strong></div>
+        </div>
+
+        <button id="purchase-button" class="primary-button" type="button" disabled>V4 CONTRACT DEPLOYMENT PENDING</button>
+
+        <div class="drop-controls">
+          <button id="drop-one-button" type="button" disabled>DROP ONE COIN</button>
+          <button id="rapid-fire-button" type="button" disabled>RAPID FIRE ALL</button>
+        </div>
+        <button id="practice-button" class="practice-button" type="button">PREVIEW 10 COINS</button>
+        <button id="withdraw-button" class="withdraw-button" type="button" disabled>WITHDRAW WINNINGS</button>
+
+        <p id="game-status" class="status" role="status" aria-live="polite">V4 is built in deployment-safe mode. Preview the realistic result-locked motion without moving tokens.</p>
+
+        <div class="vault-grid">
+          <div><span>COINS REMAINING</span><strong id="coins-remaining">0</strong></div>
+          <div><span>BATCH RETURN</span><strong id="batch-return">0 MATT</strong></div>
+          <div><span>REVEALED WINNINGS</span><strong id="claimable-balance">—</strong></div>
+          <div><span>AVAILABLE BANKROLL</span><strong id="bankroll-balance">—</strong></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="rules">
+      <article><b>01</b><h3>Load One Batch</h3><p>Select 1–100 coins. Approve the total once, then purchase the batch with one VRF request instead of paying for randomness on every ball.</p></article>
+      <article><b>02</b><h3>Watch It Drop</h3><p>As soon as Ronin verifies the batch, the coins automatically rapid fire. Your visible winnings increase only when each matching coin lands.</p></article>
+      <article><b>03</b><h3>Visual Equals Payout</h3><p>Each ball path is built for its exact onchain slot. A ball that lands on 50× is always a paid 50× result. Animation can never select or change it.</p></article>
+    </section>
+
+    <section class="fairness">
+      <div><p class="eyebrow">THE MATT RECEIPT</p><h2>Publicly verifiable. Visually exact.</h2></div>
+      <p>The contract derives every coin from one official Ronin VRF seed, stores compact slot results, and credits the exact payout. The interface reveals each stored result only when its matching ball lands.</p>
+      <a id="contract-link" href="#" aria-disabled="true">V4 CONTRACT PENDING</a>
+    </section>
+  </main>
+
+  <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span></footer>
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/plinko-v4-engine.js?v=4"></script>
+  <script src="/plinko-v4.js?v=4"></script>
+</body>
+</html>
