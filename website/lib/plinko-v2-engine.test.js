@@ -54,6 +54,10 @@ assert.equal(
   36_000n * 10n ** 18n
 );
 assert.throws(() => engine.revealedClaimableWei(0n, -1), RangeError);
+assert.equal(engine.isBatchRevealComplete(1, 100), false);
+assert.equal(engine.isBatchRevealComplete(99, 100), false);
+assert.equal(engine.isBatchRevealComplete(100, 100), true);
+assert.throws(() => engine.isBatchRevealComplete(101, 100), RangeError);
 assert.throws(() => engine.stepsForSlot(17, "bad"), RangeError);
 assert.throws(() => engine.slotForSteps([1, -1]), RangeError);
 assert.throws(() => engine.pathFrame([], 0), RangeError);
