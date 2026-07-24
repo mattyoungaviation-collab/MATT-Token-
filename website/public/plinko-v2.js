@@ -9,7 +9,7 @@
   const RPC_URL = "https://api.roninchain.com/rpc";
   const MATT_ADDRESS = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
   // Deployment-safe placeholder. Set only after the V2 contract is independently verified.
-  const PLINKO_V2_ADDRESS = "0x0000000000000000000000000000000000000000";
+  const PLINKO_V2_ADDRESS = "0x76c226908b7C1f075669d5448ADA135d73088307";
   const VRF_FEE_BUFFER_BPS = 12_500n;
   const TX_GAS_BUFFER_BPS = 12_000n;
   const BPS_SCALE = 10_000n;
