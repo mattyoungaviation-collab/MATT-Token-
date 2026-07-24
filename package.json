@@ -35,6 +35,7 @@
     "deploy:plinko-v3:saigon": "hardhat run scripts/deploy-plinko-v3.js --network saigon",
     "deploy:plinko-v3:ronin": "hardhat run scripts/deploy-plinko-v3.js --network ronin",
     "inspect:plinko-v3:ronin": "hardhat run scripts/inspect-plinko-v3.js --network ronin",
+    "test:plinko-v3-ui": "node website/lib/plinko-v3-engine.test.js",
     "test:crash": "hardhat test test/MattCrashVault.test.js",
     "verify:saigon": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
     "verify:ronin": "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network ronin",
