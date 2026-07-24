@@ -6,6 +6,7 @@
 - MATT: `0xa5450417BDCa0BDfB058ffE41205400FfDA1174d`
 - Treasury: `0xF79913cB83Cc9CABD95D0ba9250103fbb939f984`
 - Ronin VRF coordinator: `0x16a62a921e7fec5bf867ff5c805b662db757b778`
+- Plinko: `0xFAefDD57E2C04EdEc6e33fA006702DaB5E194Cb2`
 - Bets: 10,000 / 25,000 / 50,000 / 75,000 / 100,000 MATT
 - Slots: 20x / 8x / 3x / 1.5x / .25x / .25x / .25x / 1.5x / 3x / 8x / 20x
 - Maximum payout: 2,000,000 MATT
@@ -26,8 +27,9 @@
    Never paste the deployer private key into chat. The script refuses unsupported chains, verifies
    the official mainnet MATT and VRF contracts, locks the production treasury address, estimates the
    deployment cost, and confirms the deployed contract is paused and owned by the treasury.
-4. Verify the source through Ronin Sourcify.
-5. Set `PLINKO_ADDRESS` in `website/public/plinko.js`.
+4. Mainnet deployment completed in transaction
+   `0x5d26a6bade0b6eeee35d748655cd877723bea67de6aca76a10f0273f7c97b6e7`.
+5. `PLINKO_ADDRESS` is set in `website/public/plinko.js`.
 6. From the treasury wallet, approve the Plinko contract and call `fundBankroll`.
 7. Run `PLINKO_ADDRESS=0x... npm run inspect:plinko:ronin`.
 8. Confirm `solvent: true` and the intended unreserved bankroll.
