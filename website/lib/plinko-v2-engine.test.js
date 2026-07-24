@@ -24,7 +24,11 @@ for (let slot = 0; slot < engine.SLOT_COUNT; slot += 1) {
       landingY: 520
     });
     assert.equal(path.slot, slot);
-    assert.equal(path.points.length, 18);
+    assert.equal(path.points.length, 19);
+    assert.equal(path.points[0].x, 500);
+    assert.ok(path.points[0].y < 0);
+    assert.equal(path.points[1].x, 500);
+    assert.ok(path.points[1].y < 70);
     assert.equal(path.points.at(-1).x, 500 + engine.slotOffset(slot) * 40);
     assert.equal(path.points.at(-1).y, 520);
   }
