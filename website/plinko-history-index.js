@@ -152,21 +152,25 @@ function installPlinkoHistoryIndex(app, options = {}) {
   }
 
   app.get("/api/plinko/history/:wallet", async (req, res) => {
-    await refresh(String(req.query.fresh || "") === "1");
+    const force = String(req.query.fresh || "") === "1";
+    if (force) await refresh(true);
+    else refresh(false);
     const wallet = normalizeWallet(req.params.wallet);
     if (!wallet) return res.status(400).json({ error: "INVALID_WALLET" });
     const player = state.players[wallet] || newPlayer(wallet);
     const limit = clampInteger(req.query.limit, 1, 250, 100);
     res.set("Cache-Control", "public, max-age=5, stale-while-revalidate=20");
     return res.json({
-      status: "READY",
+      status: refreshPromise ? "INDEXING" : "READY",
       indexedThroughBlock: state.throughBlock,
       player: publicPlayer(player, true, limit, usernameFor(profiles, wallet))
     });
   });
 
   app.get("/api/plinko/leaderboard", async (req, res) => {
-    await refresh(String(req.query.fresh || "") === "1");
+    const force = String(req.query.fresh || "") === "1";
+    if (force) await refresh(true);
+    else refresh(false);
     const sort = String(req.query.sort || "net-desc");
     const search = String(req.query.search || "").trim().toLowerCase();
     const minCoins = clampInteger(req.query.minCoins, 0, 1_000_000, 0);
@@ -185,7 +189,7 @@ function installPlinkoHistoryIndex(app, options = {}) {
     }));
     res.set("Cache-Control", "public, max-age=5, stale-while-revalidate=20");
     return res.json({
-      status: "READY",
+      status: refreshPromise ? "INDEXING" : "READY",
       sort,
       totalPlayers: rows.length,
       totalBatches: state.totalBatches,
@@ -206,6 +210,7 @@ function installPlinkoHistoryIndex(app, options = {}) {
       players: Object.keys(state.players).length,
       totalBatches: state.totalBatches,
       totalCoins: state.totalCoins,
+      indexing: Boolean(refreshPromise),
       lastError
     })
   };
