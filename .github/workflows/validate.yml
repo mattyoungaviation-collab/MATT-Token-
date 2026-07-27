@@ -27,6 +27,12 @@ jobs:
           node --check website/public/blackjack.js
           node -e "require('ethers'); require('./website/lib/blackjack-chain'); require('./website/lib/blackjack-routes')"
       - run: npm run compile
+      - name: Validate Plinko history and leaderboard
+        run: |
+          node --check website/plinko-history-index.js
+          node --check website/public/plinko-history.js
+          node --check website/public/plinko-v4.js
+          npm run test:plinko-history
       - name: Run contract tests
         id: contract-tests
         shell: bash

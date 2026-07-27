@@ -54,7 +54,8 @@
     "deploy:plinko-v4:saigon": "hardhat run scripts/deploy-plinko-v4.js --network saigon",
     "deploy:plinko-v4:ronin": "hardhat run scripts/deploy-plinko-v4.js --network ronin",
     "inspect:plinko-v4:ronin": "hardhat run scripts/inspect-plinko-v4.js --network ronin",
-    "test:plinko-v4-ui": "node website/lib/plinko-v4-engine.test.js"
+    "test:plinko-v4-ui": "node website/lib/plinko-v4-engine.test.js",
+    "test:plinko-history": "node --test website/lib/plinko-history-index.test.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

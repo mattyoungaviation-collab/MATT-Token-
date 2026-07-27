@@ -8,6 +8,7 @@
   <meta name="description" content="Low-cost batch Plinko on Ronin. Load 1–100 MATT coins and watch verified results rapid fire as winnings build with every landing.">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/plinko-v3.css?v=1">
+  <link rel="stylesheet" href="/plinko-history.css?v=1">
 </head>
 <body>
   <header class="topbar">
@@ -116,11 +117,76 @@
       <p>The contract derives every coin from one official Ronin VRF seed, stores compact slot results, and credits the exact payout. The interface reveals each stored result only when its matching ball lands.</p>
       <a id="contract-link" href="#" aria-disabled="true">V4 CONTRACT PENDING</a>
     </section>
+
+    <section class="plinko-records" id="plinko-records">
+      <div class="plinko-records-heading">
+        <p class="eyebrow">PLINKO V4 RECORDS</p>
+        <h2>Your History & Leaderboard</h2>
+        <p>Every result is reconstructed from confirmed Plinko V4 settlement events on Ronin, beginning at deployment block 58,730,944.</p>
+      </div>
+
+      <div class="plinko-player-panel">
+        <div class="plinko-panel-heading">
+          <div><span>SIGNED-IN WALLET</span><strong id="pl-player-wallet">Connect Ronin Wallet</strong></div>
+          <button id="pl-refresh-player" class="plinko-secondary-button" type="button">Refresh</button>
+        </div>
+        <div class="plinko-stat-grid">
+          <article><span>Batches</span><strong id="pl-player-batches">—</strong></article>
+          <article><span>Coin drops</span><strong id="pl-player-coins">—</strong></article>
+          <article><span>Winning drops</span><strong id="pl-player-wins">—</strong></article>
+          <article><span>Losing drops</span><strong id="pl-player-losses">—</strong></article>
+          <article><span>Total wagered</span><strong id="pl-player-volume">—</strong></article>
+          <article><span>Net result</span><strong id="pl-player-net">—</strong></article>
+        </div>
+        <div class="plinko-history-wrap">
+          <table class="plinko-table">
+            <thead><tr><th>Batch</th><th class="numeric">Coins</th><th>Batch result</th><th>Drop results</th><th class="numeric">Wager</th><th class="numeric">Payout</th><th class="numeric">Net</th><th>Ronin</th></tr></thead>
+            <tbody id="pl-history-body"><tr><td colspan="8">Connect Ronin Wallet to load your past Plinko drops.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="plinko-leaderboard-panel">
+        <div class="plinko-panel-heading">
+          <div><span>ALL PLAYERS</span><strong>Plinko V4 Leaderboard</strong></div>
+          <span id="pl-index-status">Loading index…</span>
+        </div>
+        <div class="plinko-filter-row">
+          <label><span>Rank by</span><select id="pl-sort">
+            <option value="net-desc">Biggest winners</option>
+            <option value="net-asc">Biggest losers</option>
+            <option value="volume-desc">Total accumulated wagers</option>
+            <option value="biggest-win">Biggest single batch win</option>
+            <option value="biggest-loss">Biggest single batch loss</option>
+            <option value="batches-desc">Most batches</option>
+            <option value="coins-desc">Most coin drops</option>
+            <option value="wins-desc">Most winning drops</option>
+            <option value="losses-desc">Most losing drops</option>
+            <option value="winrate-desc">Best drop win rate</option>
+          </select></label>
+          <label><span>Minimum drops</span><select id="pl-min-coins">
+            <option value="0">Any</option><option value="5">5+</option><option value="10">10+</option>
+            <option value="25">25+</option><option value="50">50+</option><option value="100">100+</option>
+          </select></label>
+          <label class="plinko-search"><span>Player search</span><input id="pl-search" type="search" placeholder="Username or 0x wallet"></label>
+          <button id="pl-refresh-board" class="plinko-secondary-button" type="button">Refresh</button>
+        </div>
+        <div class="plinko-history-wrap">
+          <table class="plinko-table">
+            <thead><tr><th>#</th><th>Player</th><th class="numeric">Batches</th><th class="numeric">Drops</th><th class="numeric">W</th><th class="numeric">L</th><th class="numeric">Wagered</th><th class="numeric">Net</th><th class="numeric">Win rate</th></tr></thead>
+            <tbody id="pl-leaderboard-body"><tr><td colspan="9">Loading Plinko players…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="plinko-pagination"><span id="pl-page-summary">—</span><button id="pl-load-more" class="plinko-secondary-button" type="button" hidden>Load more</button></div>
+      </div>
+    </section>
   </main>
 
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by Matt.</span></footer>
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
   <script src="/plinko-v4-engine.js?v=4"></script>
   <script src="/plinko-v4.js?v=4"></script>
+  <script src="/wallet-profiles.js?v=2"></script>
+  <script src="/plinko-history.js?v=1"></script>
 </body>
 </html>
