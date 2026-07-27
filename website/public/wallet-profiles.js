@@ -13,11 +13,12 @@
   function short(wallet) { return wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Not connected'; }
   function currentWallet() {
     return normalize(window.MattRoninConnect?.account) ||
+      normalize(window.MattPlinkoV4?.account) ||
       normalize(typeof window.currentAccount === 'string' ? window.currentAccount : null) ||
       normalize(localStorage.getItem('mattBlackjackWallet')) || activeWallet;
   }
   function provider() {
-    return window.MattRoninConnect?.provider || window.ronin?.provider || window.ronin || window.walletConnectProvider || null;
+    return window.MattRoninConnect?.provider || window.MattPlinkoV4?.provider || window.ronin?.provider || window.ronin || window.walletConnectProvider || null;
   }
   async function signMessage(wallet, message) {
     const source = provider();

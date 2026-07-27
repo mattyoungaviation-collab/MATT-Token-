@@ -37,6 +37,7 @@
 
   const state = {
     account: null,
+    walletProvider: null,
     browserProvider: null,
     signer: null,
     contract: null,
@@ -127,6 +128,7 @@
     await ensureRonin(injected);
 
     state.browserProvider = new ethers.BrowserProvider(injected);
+    state.walletProvider = injected;
     state.signer = await state.browserProvider.getSigner();
     state.account = await state.signer.getAddress();
     state.token = new ethers.Contract(MATT_ADDRESS, TOKEN_ABI, state.signer);
@@ -139,6 +141,11 @@
     await resumeSavedBatch();
     updateControls();
   }
+
+  window.MattPlinkoV4 = {
+    get account() { return state.account; },
+    get provider() { return state.walletProvider; }
+  };
 
   async function refreshAccount() {
     if (!state.account || !state.token) return;

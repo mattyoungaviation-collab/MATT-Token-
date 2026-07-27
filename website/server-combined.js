@@ -9,6 +9,7 @@ const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
 const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
+const { installPlinkoHistoryIndex } = require("./plinko-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createCrashRouter } = require("./lib/crash-routes");
@@ -28,6 +29,7 @@ const burnFlipStatsFile = process.env.BURNFLIP_STATS_FILE || (persistentDiskPath
 const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-history.json") : "");
 const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
+const plinkoHistoryFile = process.env.PLINKO_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-plinko-v4-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 const crashStateFile = process.env.CRASH_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-crash-mainnet-state.json") : "");
 const dynoRaffleStateFile = process.env.DYNO_RAFFLE_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-dyno-raffle.json") : path.join(__dirname, ".dyno-raffle.json"));
@@ -75,11 +77,16 @@ app.set("trust proxy", 1);
 installXFollowVerifier(app);
 installDiscordAuth(app);
 installDynoRaffle(app, { rpcRequest: statsRpcRequest, stateFile: dynoRaffleStateFile });
-installWalletProfiles(app, { stateFile: walletProfilesFile });
+const walletProfiles = installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
 installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
 installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
+installPlinkoHistoryIndex(app, {
+  rpcRequest: statsRpcRequest,
+  stateFile: plinkoHistoryFile,
+  profiles: walletProfiles
+});
 app.use("/api/blackjack", createBlackjackRouter());
 app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
   rpcUrl: roninRpcUrl,
@@ -122,6 +129,7 @@ const server = app.listen(publicPort, () => {
   console.log(burnFlipHistoryFile ? `Persistent BurnFlip history: ${burnFlipHistoryFile}` : "Persistent BurnFlip history: no Render disk detected; using memory only.");
   console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
+  console.log(plinkoHistoryFile ? `Persistent Plinko V4 history: ${plinkoHistoryFile}` : "Persistent Plinko V4 history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
   console.log(`Persistent Water Dyno raffle entries: ${dynoRaffleStateFile}`);
   console.log(crashStateFile ? `Persistent Crash state: ${crashStateFile}` : "Persistent Crash state: no Render disk detected; do not enable mainnet mode.");
