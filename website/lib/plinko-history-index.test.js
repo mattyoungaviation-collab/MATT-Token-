@@ -42,7 +42,7 @@ function eventLog({ requestHash, player, slots, payout, blockNumber, logIndex })
   };
 }
 
-async function fixture() {
+async function fixture({ logDelayMs = 0 } = {}) {
   const latest = DEPLOYMENT_BLOCK + 8;
   const logs = [
     eventLog({
@@ -65,6 +65,7 @@ async function fixture() {
   async function rpcRequest(method, params) {
     if (method === "eth_blockNumber") return `0x${latest.toString(16)}`;
     if (method === "eth_getLogs") {
+      if (logDelayMs) await new Promise(resolve => setTimeout(resolve, logDelayMs));
       const from = Number(BigInt(params[0].fromBlock));
       const to = Number(BigInt(params[0].toBlock));
       return logs.filter(log => {
@@ -105,8 +106,14 @@ test("indexes confirmed batches, resolves names, filters, and returns history", 
   const fx = await fixture();
   t.after(() => fx.server.close());
 
-  const board = await fx.json("/api/plinko/leaderboard?sort=net-desc&minCoins=1");
+  let board;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    board = await fx.json("/api/plinko/leaderboard?sort=net-desc&minCoins=1");
+    if (board.body.status === "READY") break;
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
   assert.equal(board.response.status, 200);
+  assert.equal(board.body.status, "READY");
   assert.equal(board.body.totalPlayers, 2);
   assert.equal(board.body.totalBatches, 2);
   assert.equal(board.body.totalCoins, 3);
@@ -126,4 +133,18 @@ test("indexes confirmed batches, resolves names, filters, and returns history", 
   assert.equal(history.body.player.coins, 2);
   assert.deepEqual(history.body.player.history[0].slots, [0, 8]);
   assert.equal(history.body.player.history[0].netRaw, (484_848n * 10n ** 18n).toString());
+});
+
+test("returns an indexing snapshot without blocking a cold-start history scan", async t => {
+  const fx = await fixture({ logDelayMs: 250 });
+  t.after(() => fx.server.close());
+  const startedAt = Date.now();
+  const first = await fx.json("/api/plinko/leaderboard?limit=3");
+  assert.equal(first.response.status, 200);
+  assert.equal(first.body.status, "INDEXING");
+  assert.ok(Date.now() - startedAt < 150, "cold-start response waited for the background scan");
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const ready = await fx.json("/api/plinko/leaderboard?limit=3");
+  assert.equal(ready.body.status, "READY");
+  assert.equal(ready.body.totalBatches, 2);
 });

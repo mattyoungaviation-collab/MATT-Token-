@@ -136,7 +136,8 @@
         : (rows || '<tr><td colspan="9">No players match these filters.</td></tr>');
       state.offset += payload.players.length;
       $("#pl-index-status").textContent =
-        `${Number(payload.totalPlayers).toLocaleString()} players · `
+        `${payload.status === "INDEXING" ? "Indexing history… · " : ""}`
+        + `${Number(payload.totalPlayers).toLocaleString()} players · `
         + `${Number(payload.totalBatches).toLocaleString()} batches · `
         + `${Number(payload.totalCoins).toLocaleString()} drops`;
       $("#pl-page-summary").textContent = payload.totalPlayers
@@ -172,7 +173,10 @@
     const current = wallet();
     if (current !== state.lastWallet) loadPlayer().catch(() => {});
   }, 1_500);
-  setInterval(() => loadBoard().catch(() => {}), 30_000);
+  setInterval(() => {
+    loadPlayer().catch(() => {});
+    loadBoard().catch(() => {});
+  }, 30_000);
   loadPlayer().catch(() => {});
   loadBoard().catch(error => {
     $("#pl-leaderboard-body").innerHTML =
