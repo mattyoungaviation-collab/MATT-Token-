@@ -9,13 +9,13 @@
   const MATT_ADDRESS = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
   const VAULT_ADDRESS = "0x896862e8D9c8576fcb4418ba21b4F9033E7785f4";
   const GIFT_BOXES_ADDRESS = "0x0F4b0637D60Af8e3dfE8aF8d7C9448d34a969EcE";
+  const KATANA_POOL_ADDRESS = "0xa517e05e96728e80284f2ae157ddf309449d7ce8";
   const RPC_URL = new URL("/api/rpc", window.location.origin).href;
   const QUOTE_SECONDS = 120;
   const RESULT_POLL_MS = 3_000;
   const RESULT_POLL_ATTEMPTS = 120;
   const MAX_MULTIPLIER_BPS = 75_000n;
   const BPS = 10_000n;
-  const DEFAULT_MATT_PER_RON = "10000";
   const TX_GAS_BUFFER_BPS = 12_000n;
 
   const GIFT_BOXES_ABI = [
@@ -125,7 +125,7 @@
     if (/paused/i.test(message)) return "Gift boxes are paused.";
     if (/insufficientbankroll/i.test(message)) return "The MATT vault cannot cover the 7.5× maximum payout.";
     if (/insufficientrandomnessreserve/i.test(message)) return "The RON randomness reserve needs more funding.";
-    if (/invalidquote/i.test(message)) return "The owner-signed quote was rejected.";
+    if (/invalidquote/i.test(message)) return "The signed market quote was rejected.";
     if (/quoteexpired/i.test(message)) return "The two-minute quote expired. Please try again.";
     return message.replace(/^execution reverted:\s*/i, "");
   }
@@ -162,13 +162,14 @@
 
   function renderQuote() {
     const tier = tiers[state.tier];
-    let baseline = BigInt(tier.price) * window.ethers.parseEther(DEFAULT_MATT_PER_RON);
+    let baseline = 0n;
     try { baseline = selectedBaseMatt(); } catch {}
     $("#stage-tier").textContent = `${tier.price} RON ${tier.name} BOX`;
     $("#quote-price").textContent = `${tier.price} RON`;
-    $("#quote-baseline").textContent = `${formatToken(baseline)} MATT`;
-    $("#quote-range").textContent =
-      `${formatToken(baseline * 8_500n / BPS)}–${formatToken(baseline * MAX_MULTIPLIER_BPS / BPS)} MATT`;
+    $("#quote-baseline").textContent = baseline > 0n ? `${formatToken(baseline)} MATT` : "LIVE PRICE";
+    $("#quote-range").textContent = baseline > 0n
+      ? `${formatToken(baseline * 8_500n / BPS)}–${formatToken(baseline * MAX_MULTIPLIER_BPS / BPS)} MATT`
+      : "CALCULATED LIVE";
     $("#reveal-box").className = `reveal-box ${tier.color}`;
   }
 
@@ -179,7 +180,7 @@
       card.setAttribute("aria-checked", String(cardIndex === index));
     });
     $("#result-multiplier").textContent = "SEALED";
-    $("#result-value").textContent = "Preview or prepare an owner-signed on-chain test.";
+    $("#result-value").textContent = "Preview or request a live on-chain quote.";
     $("#result-label").textContent = "YOUR REWARD";
     renderQuote();
     updateControls();
@@ -282,7 +283,7 @@
     $("#wallet-button").textContent = shortAddress(state.account);
     $("#wallet-role").textContent = isOwner() ? "Owner wallet connected" : "Player wallet connected";
     $("#owner-panel").hidden = !isOwner();
-    $("#matt-per-ron").readOnly = !isOwner();
+    $("#matt-per-ron").readOnly = true;
     setStatus(isOwner()
       ? "Owner wallet connected. Mainnet actions still require explicit wallet confirmation."
       : state.publicQuotesEnabled
@@ -319,12 +320,17 @@
     state.publicQuotesEnabled = config.enabled === true;
     if (state.publicQuotesEnabled && /^\d+(\.\d{1,18})?$/.test(String(config.mattPerRon || ""))) {
       $("#matt-per-ron").value = String(config.mattPerRon);
-      $("#quote-rate-note").textContent = "The server signs this rate for the connected buyer for two minutes.";
+      state.quoteExpiresAt = Date.now() + QUOTE_SECONDS * 1_000;
+      const liquidity = Number(config.pricing?.liquidityUsd || 0);
+      $("#quote-rate-note").textContent =
+        `Live Katana V3 rate cross-checked with CoinGecko${liquidity > 0 ? ` · $${compactNumber(liquidity)} liquidity` : ""}.`;
       renderQuote();
     } else {
-      $("#quote-rate-note").textContent = "Public quote issuance is currently disabled. Owner testing remains available.";
+      $("#matt-per-ron").value = "";
+      $("#quote-rate-note").textContent = "A safe live market price is currently unavailable. Purchases are disabled.";
+      renderQuote();
     }
-    if (state.account && !isOwner()) $("#matt-per-ron").readOnly = true;
+    $("#matt-per-ron").readOnly = true;
     updateControls();
   }
 
@@ -436,7 +442,7 @@
 
   function updateControls() {
     const owner = isOwner();
-    const hasQuoteSigner = owner || state.publicQuotesEnabled;
+    const hasQuoteSigner = state.publicQuotesEnabled;
     const canPurchase = Boolean(state.account)
       && hasQuoteSigner
       && !state.paused
@@ -451,9 +457,7 @@
           ? "CONTRACT PAUSED"
           : !reservesCoverSelection()
             ? "FUND BOTH RESERVES FIRST"
-            : owner
-              ? "SIGN OWNER QUOTE & BUY"
-              : "GET QUOTE & BUY ON MAINNET";
+            : "GET LIVE QUOTE & BUY";
     $("#preview-button").disabled = state.opening;
     $("#claim-button").disabled = !state.account || state.claimable === 0n || state.opening;
     $("#fund-vault-button").disabled = !owner || state.opening;
@@ -467,40 +471,6 @@
         || $("#unpause-confirm").value.trim().toUpperCase() !== "UNPAUSE"
         || !reservesCoverSelection();
     }
-  }
-
-  async function signOwnerQuote(recipient, baseMatt) {
-    if (!isOwner() || !state.signer) throw new Error("The owner wallet must sign the test quote.");
-    const nonce = BigInt(window.ethers.hexlify(crypto.getRandomValues(new Uint8Array(16))));
-    const deadline = Math.floor(Date.now() / 1_000) + QUOTE_SECONDS;
-    const domain = {
-      name: "MATT Gift Boxes",
-      version: "1",
-      chainId: CHAIN_ID,
-      verifyingContract: GIFT_BOXES_ADDRESS
-    };
-    const types = {
-      PriceQuote: [
-        { name: "buyer", type: "address" },
-        { name: "recipient", type: "address" },
-        { name: "tier", type: "uint8" },
-        { name: "baseMatt", type: "uint256" },
-        { name: "nonce", type: "uint256" },
-        { name: "deadline", type: "uint64" },
-        { name: "configVersion", type: "uint256" }
-      ]
-    };
-    const value = {
-      buyer: state.account,
-      recipient,
-      tier: state.tier,
-      baseMatt,
-      nonce,
-      deadline,
-      configVersion: state.activeConfigVersion
-    };
-    const signature = await state.signer.signTypedData(domain, types, value);
-    return { ...value, signature };
   }
 
   function quoteTypedValue(quote) {
@@ -518,12 +488,16 @@
   function verifyPublicQuote(quote, recipient) {
     const value = quoteTypedValue(quote);
     const now = Math.floor(Date.now() / 1_000);
+    const quotedRate = window.ethers.parseEther(String(quote.mattPerRon || ""));
+    const expectedBaseMatt = BigInt(quote.priceRon) * quotedRate / 10n ** 18n;
     if (
       value.buyer.toLowerCase() !== state.account.toLowerCase()
       || value.recipient.toLowerCase() !== recipient.toLowerCase()
       || value.tier !== state.tier
       || BigInt(quote.priceRon) !== state.tierPricesWei[state.tier]
       || value.baseMatt <= 0n
+      || value.baseMatt !== expectedBaseMatt
+      || String(quote.pricing?.pool || "").toLowerCase() !== KATANA_POOL_ADDRESS
       || value.configVersion !== state.activeConfigVersion
       || value.deadline <= now
       || value.deadline > now + QUOTE_SECONDS + 10
@@ -549,7 +523,12 @@
     if (recovered.toLowerCase() !== OWNER.toLowerCase()) {
       throw new Error("The public quote was not signed by the gift-box owner.");
     }
-    return { ...value, signature: quote.signature };
+    return {
+      ...value,
+      mattPerRon: String(quote.mattPerRon),
+      pricing: quote.pricing,
+      signature: quote.signature
+    };
   }
 
   async function requestPublicQuote(recipient) {
@@ -565,19 +544,20 @@
 
   async function purchaseLiveBox() {
     if (!state.account) throw new Error("Connect Ronin Wallet first.");
-    if (!isOwner() && !state.publicQuotesEnabled) throw new Error("Public gift-box quotes are disabled.");
+    if (!state.publicQuotesEnabled) throw new Error("A safe live gift-box quote is unavailable.");
     if (state.paused) throw new Error("Gift boxes are paused.");
     const recipient = recipientAddress();
     if (!reservesCoverSelection()) throw new Error("Fund both reserves before testing.");
     state.opening = true;
     updateControls();
     try {
-      setStatus(isOwner()
-        ? "Confirm the two-minute owner price quote in Ronin Wallet."
-        : "Requesting a two-minute signed quote…");
-      const quote = isOwner()
-        ? await signOwnerQuote(recipient, selectedBaseMatt())
-        : await requestPublicQuote(recipient);
+      setStatus("Calculating and verifying the live MATT market quote…");
+      const quote = await requestPublicQuote(recipient);
+      $("#matt-per-ron").value = quote.mattPerRon;
+      renderQuote();
+      if (state.vaultAvailable < quote.baseMatt * MAX_MULTIPLIER_BPS / BPS) {
+        throw new Error("The MATT vault cannot cover this live quote's maximum payout.");
+      }
       state.quoteExpiresAt = quote.deadline * 1_000;
       const args = [quote.recipient, quote.tier, quote.baseMatt, quote.nonce, quote.deadline, quote.signature];
       const value = state.tierPricesWei[state.tier];
@@ -673,7 +653,7 @@
       setStatus("Confirm unpausing Gift Boxes on Ronin mainnet.");
       await (await state.giftBoxes.unpause()).wait(1);
       $("#unpause-confirm").value = "";
-      setStatus("Gift Boxes are unpaused. Run only the controlled owner test.", "good");
+      setStatus("Gift Boxes are unpaused. Live automatic quotes are available when market checks pass.", "good");
     } else {
       setStatus("Confirm pausing Gift Boxes immediately.");
       await (await state.giftBoxes.pause()).wait(1);
@@ -719,12 +699,6 @@
   $("#fund-reserve-button").addEventListener("click", runAction(fundRandomnessReserve));
   $("#pause-toggle-button").addEventListener("click", runAction(togglePaused));
   $("#refresh-contract-button").addEventListener("click", runAction(refreshState));
-  $("#matt-per-ron").addEventListener("input", () => {
-    if (state.account && !isOwner()) return;
-    state.quoteExpiresAt = Date.now() + QUOTE_SECONDS * 1_000;
-    renderQuote();
-    updateControls();
-  });
   $("#recipient-address").addEventListener("input", updateControls);
   $("#unpause-confirm").addEventListener("input", updateControls);
 
@@ -740,9 +714,15 @@
   setInterval(updateQuoteTimer, 1_000);
   loadQuoteServiceConfig().catch(() => {
     state.publicQuotesEnabled = false;
-    $("#quote-rate-note").textContent = "Public quote status is unavailable. Owner testing remains available.";
+    $("#quote-rate-note").textContent = "Live market pricing is unavailable. Purchases are disabled.";
     updateControls();
   });
+  setInterval(() => {
+    loadQuoteServiceConfig().catch(() => {
+      state.publicQuotesEnabled = false;
+      updateControls();
+    });
+  }, 30_000);
   initializeContracts().catch(error => {
     $("#contract-status").textContent = "RPC UNAVAILABLE";
     setStatus(`On-chain status unavailable: ${errorMessage(error)}`, "bad");

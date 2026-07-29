@@ -9,8 +9,6 @@ services:
     autoDeploy: true
     envVars:
       - key: GIFT_BOX_PUBLIC_QUOTES_ENABLED
-        value: "false"
-      - key: GIFT_BOX_MATT_PER_RON
-        value: "10000"
+        sync: false
       - key: GIFT_BOX_QUOTE_PRIVATE_KEY
         sync: false

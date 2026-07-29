@@ -34,19 +34,20 @@ July 28, 2026.
 The contracts must remain paused until the MATT vault and RON randomness
 reserve are deliberately funded and a controlled end-to-end owner-wallet test
 is complete. Public purchases also require a separately reviewed signed-quote
-service; no owner private key is stored in the website.
+service. The signing key is stored only as an encrypted hosting secret and is
+never sent to the browser or committed to Git.
 
-## Controlled test page
+## Gift Boxes page
 
 The homepage navigation links to `/gift-boxes`, which reads the verified
 mainnet state and current configuration. Connecting the owner wallet reveals
-funding and pause controls. The owner can create a two-minute EIP-712 quote in
-Ronin Wallet for a controlled self-test. Public quote issuance is implemented
-but remains disabled by default.
+funding and pause controls. Every buyer, including the owner, receives an
+automatic two-minute EIP-712 quote from the server using the live MATT/RON
+market rate.
 
-The page requires all of the following before it enables an owner test purchase:
+The page requires all of the following before it enables a purchase:
 
-- The connected wallet is the configured owner.
+- The automatic quote service has a safe live market rate.
 - The controller is unpaused.
 - The vault can reserve the selected box's full `7.5x` maximum payout.
 - The RON randomness reserve covers the initial VRF request and two retries.
@@ -60,17 +61,23 @@ The server exposes:
   EIP-712 quotes.
 
 The service reads the active tier price and configuration version from Ronin
-before signing. It refuses to quote while the controller is paused, limits
+before signing. It prices MATT from the official Katana V3 MATT/WRON pool and
+cross-checks that rate against CoinGecko's data for the exact same pool. It
+requires at least `$5,000` reported pool liquidity, refuses to sign if the two
+rates differ by more than `3%`, and uses the lower rate when they agree. Live
+rates are cached for no more than 15 seconds.
+
+The service also refuses to quote while the controller is paused, limits
 requests by IP and buyer wallet, and validates that its configured signer is
 the deployed owner. The browser independently verifies the returned signature,
-buyer, recipient, tier, price, deadline, and configuration version.
+buyer, recipient, tier, price, live rate, pool, deadline, and configuration
+version. If RPC or market data fails, purchases fail closed.
 
 The service requires these hosting environment values:
 
 | Variable | Purpose |
 | --- | --- |
 | `GIFT_BOX_PUBLIC_QUOTES_ENABLED` | Must equal `true` to issue public quotes |
-| `GIFT_BOX_MATT_PER_RON` | Positive MATT-per-RON decimal used for `baseMatt` |
 | `GIFT_BOX_QUOTE_PRIVATE_KEY` | Encrypted hosting secret for the deployed owner signer |
 
 Never place `GIFT_BOX_QUOTE_PRIVATE_KEY` in Git, a local file that may be

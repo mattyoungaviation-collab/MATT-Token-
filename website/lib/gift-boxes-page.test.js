@@ -28,22 +28,25 @@ test("uses the verified Ronin mainnet contracts and owner", () => {
   assert.match(script, /0xa5450417BDCa0BDfB058ffE41205400FfDA1174d/);
 });
 
-test("keeps owner actions wallet-confirmed and safety gated", () => {
-  assert.match(script, /signer\.signTypedData/);
+test("keeps owner actions wallet-confirmed and live quotes safety gated", () => {
   assert.match(script, /fetch\("\/api\/gift-boxes\/quote"/);
   assert.match(script, /verifyTypedData/);
   assert.match(script, /publicQuotesEnabled/);
+  assert.match(script, /KATANA_POOL_ADDRESS/);
+  assert.match(script, /expectedBaseMatt/);
   assert.match(script, /JsonRpcProvider\(RPC_URL, CHAIN_ID, \{\s*staticNetwork: true/);
   assert.match(script, /randomnessReserve >= state\.randomFee \* 3n/);
   assert.match(script, /selectedMaximumPayout/);
   assert.match(script, /value\.trim\(\)\.toUpperCase\(\) !== "UNPAUSE"/);
+  assert.doesNotMatch(script, /signer\.signTypedData/);
   assert.doesNotMatch(script, /PRIVATE_KEY|privateKey|secretKey/);
 });
 
 test("loads ethers before the integration and is linked from the home navigation", () => {
   const ethersIndex = html.indexOf("/vendor/ethers.umd.min.js");
-  const integrationIndex = html.indexOf("/gift-boxes.js?v=5");
+  const integrationIndex = html.indexOf("/gift-boxes.js?v=6");
   assert.ok(ethersIndex >= 0 && integrationIndex > ethersIndex);
+  assert.match(html, /id="matt-per-ron"[^>]*readonly/);
   assert.match(html, /noindex,nofollow/);
   assert.match(home, /href="\/gift-boxes">GIFT BOXES<\/a>/);
   assert.equal((home.match(/href="\/gift-boxes"/g) || []).length, 1);
