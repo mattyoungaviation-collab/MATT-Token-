@@ -8,88 +8,112 @@
   const result = document.getElementById('flip-result');
   if (!section || !card || !actionButton || !result || !config.burnEdition) return;
 
-  card.classList.add('onchain-game-card');
+  card.classList.add('onchain-game-card', 'universal-burnflip-card');
   actionButton.textContent = 'CONNECT RONIN';
   actionButton.disabled = false;
-  result.textContent = 'Choose heads or tails, enter a MATT amount, and connect Ronin.';
+  result.textContent = 'Choose an asset, enter an amount, and call the MATT coin.';
 
-  if (!document.getElementById('coin-game-progress')) {
-    const panel = document.createElement('div');
-    panel.className = 'onchain-bet-panel';
-    panel.innerHTML = `
-      <div class="coin-contract-strip">
-        <span>BURNFLIP CONTRACT</span>
-        <a id="coin-game-contract" href="${config.explorerAddressBase}${config.contractAddress}" target="_blank" rel="noopener">${config.contractAddress.slice(0, 8)}…${config.contractAddress.slice(-6)}</a>
-      </div>
-      <div class="coin-amount-row">
-        <label class="coin-amount-field">
-          <span>Bet amount</span>
-          <span class="coin-amount-input-wrap">
-            <input id="coin-bet-amount" type="number" inputmode="decimal" min="1" step="1" value="1000" placeholder="Enter any supported amount" aria-label="MATT BurnFlip bet amount">
-            <span>MATT</span>
-          </span>
-        </label>
-        <button class="coin-max-button" id="coin-bet-max" type="button">MAX</button>
-      </div>
-      <div class="coin-quick-row" aria-label="Quick bet amounts">
-        <button class="coin-quick-button" type="button" data-bet="1000">1K</button>
-        <button class="coin-quick-button" type="button" data-bet="100000">100K</button>
-        <button class="coin-quick-button" type="button" data-bet="1000000">1M</button>
-        <button class="coin-quick-button" type="button" data-bet="10000000">10M</button>
-      </div>
-      <div class="coin-game-info-grid">
-        <div><span>Your MATT</span><strong id="coin-wallet-balance">Connect wallet</strong></div>
-        <div><span>Available bankroll</span><strong id="coin-bankroll">Loading…</strong></div>
-        <div><span>Your current maximum</span><strong id="coin-current-max">Connect wallet</strong></div>
-      </div>
-      <div class="coin-game-flow" aria-label="On-chain BurnFlip flow">
-        <div class="coin-game-step" data-step="commit"><b>01 COMMIT</b><span>Approve once if needed, then place the bet.</span></div>
-        <div class="coin-game-step" data-step="block"><b>02 RONIN BLOCK</b><span>Wait briefly for future block entropy.</span></div>
-        <div class="coin-game-step" data-step="reveal"><b>03 REVEAL</b><span>Confirm reveal to flip and settle.</span></div>
-      </div>
-      <div class="coin-game-warning">
-        <strong>Keep this browser open or preserve its storage while a bet is pending.</strong>
-        The reveal secret stays on this device. If the reveal window expires, 100% of the unrevealed stake is permanently burned.
-      </div>
-      <label class="coin-legal-check">
-        <input id="coin-legal-confirm" type="checkbox">
-        <span>I confirm I am at least 18, permitted to use token wagering where I live, and understand that 100% of a losing bet is permanently burned.</span>
-      </label>
-      <p class="coin-game-progress" id="coin-game-progress" role="status" aria-live="polite">Preparing MATT BurnFlip…</p>
+  const heading = section.querySelector('.section-heading');
+  if (heading) {
+    heading.innerHTML = `
+      <p class="eyebrow">MATT UTILITY #1 · LIVE ON RONIN</p>
+      <h2>MATT BurnFlip</h2>
+      <p>Wager a supported ecosystem asset. Every wager goes directly to the treasury, while every win and burn settles only in MATT.</p>
     `;
-    actionButton.before(panel);
+  }
 
-    const expireButton = document.createElement('button');
+  const oldPanel = document.querySelector('.onchain-bet-panel');
+  oldPanel?.remove();
+  const panel = document.createElement('div');
+  panel.className = 'onchain-bet-panel burnflip-wager-panel';
+  const options = (config.assets || []).map(asset => `
+    <option value="${asset.address}" ${asset.enabled ? '' : 'disabled'}>
+      ${asset.symbol}${asset.enabled ? '' : ' — unavailable'}
+    </option>
+  `).join('');
+  panel.innerHTML = `
+    <div class="coin-contract-strip">
+      <span>UNIVERSAL BURNFLIP</span>
+      ${config.contractAddress
+        ? `<a id="coin-game-contract" href="${config.explorerAddressBase}${config.contractAddress}" target="_blank" rel="noopener">${config.contractAddress.slice(0, 8)}…${config.contractAddress.slice(-6)}</a>`
+        : '<strong id="coin-game-contract">DEPLOYMENT PENDING</strong>'}
+    </div>
+    <div class="burnflip-input-grid">
+      <label class="coin-amount-field burnflip-asset-field">
+        <span>Wager asset</span>
+        <select id="burnflip-asset" aria-label="BurnFlip wager asset">${options}</select>
+      </label>
+      <label class="coin-amount-field">
+        <span>Wager amount</span>
+        <span class="coin-amount-input-wrap">
+          <input id="coin-bet-amount" type="number" inputmode="decimal" min="0" step="any" value="1" placeholder="Enter amount" aria-label="BurnFlip wager amount">
+          <span id="burnflip-amount-symbol">RON</span>
+        </span>
+      </label>
+      <button class="coin-max-button" id="coin-bet-max" type="button">MAX</button>
+    </div>
+    <div class="coin-game-info-grid burnflip-quote-grid">
+      <div><span>Selected asset</span><strong id="burnflip-selected-asset">RON</strong></div>
+      <div><span>Wallet balance</span><strong id="coin-wallet-balance">Connect wallet</strong></div>
+      <div><span>Current MATT value</span><strong id="burnflip-matt-value">—</strong></div>
+      <div><span>Potential payout</span><strong id="burnflip-payout">—</strong></div>
+      <div><span>Potential burn</span><strong id="burnflip-burn">—</strong></div>
+      <div><span>Reward vault available</span><strong id="coin-bankroll">Loading…</strong></div>
+    </div>
+    <div class="coin-game-flow" aria-label="On-chain BurnFlip flow">
+      <div class="coin-game-step" data-step="commit"><b>01 CONFIRM</b><span>Review the TWAP quote and approve the wager.</span></div>
+      <div class="coin-game-step" data-step="block"><b>02 RONIN BLOCK</b><span>Your asset is already in the treasury while entropy matures.</span></div>
+      <div class="coin-game-step" data-step="reveal"><b>03 REVEAL</b><span>Reveal to settle the MATT payout or burn.</span></div>
+    </div>
+    <div class="coin-game-warning">
+      <strong>Keep this browser storage until settlement.</strong>
+      The reveal secret stays on this device. An expired reveal is treated as a loss and burns the configured MATT amount from the Reward Vault.
+    </div>
+    <label class="coin-legal-check">
+      <input id="coin-legal-confirm" type="checkbox">
+      <span>I confirm I am at least 18, permitted to use token wagering where I live, and understand the wager always remains in the treasury.</span>
+    </label>
+    <p class="coin-game-progress" id="coin-game-progress" role="status" aria-live="polite">Preparing universal BurnFlip…</p>
+  `;
+  actionButton.before(panel);
+
+  let expireButton = document.getElementById('coin-expire-bet');
+  if (!expireButton) {
+    expireButton = document.createElement('button');
     expireButton.className = 'coin-secondary-action';
     expireButton.id = 'coin-expire-bet';
     expireButton.type = 'button';
-    expireButton.textContent = 'BURN EXPIRED BET';
+    expireButton.textContent = 'SETTLE EXPIRED BET';
     expireButton.hidden = true;
     actionButton.after(expireButton);
   }
 
-  for (const button of section.querySelectorAll('.choice[data-choice]')) {
-    button.addEventListener('click', () => {
-      for (const choice of section.querySelectorAll('.choice[data-choice]')) {
-        const selected = choice === button;
-        choice.classList.toggle('active', selected);
-        choice.setAttribute('aria-pressed', String(selected));
-      }
-    });
+  if (!document.getElementById('burnflip-confirm-dialog')) {
+    const dialog = document.createElement('dialog');
+    dialog.id = 'burnflip-confirm-dialog';
+    dialog.className = 'burnflip-confirm-dialog';
+    dialog.innerHTML = `
+      <form method="dialog">
+        <p class="eyebrow">CONFIRM ON-CHAIN WAGER</p>
+        <h3>Review your BurnFlip</h3>
+        <dl id="burnflip-confirm-summary"></dl>
+        <p>Your wager transfers directly to the treasury Safe. A win pays only MATT; a loss burns MATT from the Reward Vault.</p>
+        <div class="burnflip-dialog-actions">
+          <button value="cancel" class="secondary-button">CANCEL</button>
+          <button value="confirm" id="burnflip-confirm-submit" class="flip-button">CONFIRM WAGER</button>
+        </div>
+      </form>
+    `;
+    document.body.append(dialog);
   }
 
-  const amountInput = document.getElementById('coin-bet-amount');
-  for (const button of section.querySelectorAll('.coin-quick-button')) {
-    button.addEventListener('click', () => {
-      if (amountInput) amountInput.value = button.dataset.bet || '1';
-    });
-  }
-
-  const labels = [...section.querySelectorAll('.game-stats span')];
-  if (labels.length >= 3) {
-    labels[0].textContent = 'Your bets';
-    labels[1].textContent = 'Your wins';
-    labels[2].textContent = 'Your pending';
+  if (!document.getElementById('burnflip-result-card')) {
+    const resultCard = document.createElement('article');
+    resultCard.id = 'burnflip-result-card';
+    resultCard.className = 'burnflip-result-card';
+    resultCard.hidden = true;
+    resultCard.innerHTML = '<h3 id="burnflip-result-title">RESULT</h3><dl id="burnflip-result-summary"></dl>';
+    card.append(resultCard);
   }
 
   const rewards = document.getElementById('daily-missions');
@@ -97,11 +121,10 @@
     rewards.classList.add('burnflip-reward-migration');
     rewards.innerHTML = `
       <div class="section-heading">
-        <p class="eyebrow">BURNFLIP REWARD UPGRADE</p>
-        <h2>Daily Reward Migration in Progress</h2>
-        <p>BurnFlip is live. The 1,000,000 MATT daily reward will reopen after its replacement contract is linked to this BurnFlip contract.</p>
+        <p class="eyebrow">DEDICATED REWARD VAULT</p>
+        <h2>MATT-Only Settlement</h2>
+        <p>The Reward Vault can only pay winners or burn MATT. It cannot move wagers and exposes no arbitrary MATT transfer.</p>
       </div>
-      <p class="mission-notice">No claim is available during migration. Existing reward funds remain protected on-chain.</p>
     `;
   }
 })();
