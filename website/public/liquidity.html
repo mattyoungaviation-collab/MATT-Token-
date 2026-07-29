@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080b12">
+  <title>MATT Full-Range Liquidity | Katana V3</title>
+  <meta name="description" content="Create a full-range MATT/WRON Katana V3 liquidity position with live on-chain pricing and wallet-confirmed transactions.">
+  <meta property="og:title" content="MATT Full-Range Liquidity">
+  <meta property="og:description" content="Quote, approve, and mint a MATT/WRON Katana V3 position directly from Ronin Wallet.">
+  <meta property="og:image" content="/assets/matt-logo-512.png">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/liquidity.css?v=1">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/"><img src="/assets/matt-logo-512.png" alt=""><span><strong>MATT</strong><small>LIQUIDITY</small></span></a>
+    <nav aria-label="Liquidity navigation"><a href="/">HOME</a><a href="/hub">HUB</a><a href="https://www.geckoterminal.com/ronin/pools/0xa517e05e96728e80284f2ae157ddf309449d7ce8" target="_blank" rel="noopener">LIVE POOL</a></nav>
+    <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div>
+        <p class="eyebrow"><span></span> KATANA V3 · RONIN MAINNET</p>
+        <h1>FULL RANGE.<br><em>LESS FRICTION.</em></h1>
+        <p class="lead">Enter the RON side of your position. The app reads the live MATT/WRON pool price, calculates the matching MATT, and prepares the correct Katana position-manager calls.</p>
+        <div class="hero-pills"><span>1% pool fee</span><span>Full-range ticks</span><span>Unused RON refunded</span></div>
+      </div>
+      <div class="position-mark" aria-label="MATT and RON full-range position">
+        <div><img src="/assets/matt-logo-512.png" alt=""><strong>MATT</strong></div>
+        <span>+</span>
+        <div class="ron-mark"><i>R</i><strong>RON</strong></div>
+      </div>
+    </section>
+
+    <section class="builder shell" aria-labelledby="builder-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">POSITION BUILDER</p><h2 id="builder-title">CREATE THE NFT</h2></div>
+        <p>Every on-chain action still requires your explicit Ronin Wallet confirmation. This page never sees your private key.</p>
+      </div>
+
+      <div class="builder-grid">
+        <form class="quote-panel" id="liquidity-form">
+          <label for="ron-amount"><span>RON TO SUPPLY</span><small>Keep enough native RON for gas.</small></label>
+          <div class="amount-input"><input id="ron-amount" type="text" inputmode="decimal" autocomplete="off" value="600" aria-describedby="ron-help"><b>RON</b></div>
+          <p id="ron-help" class="field-note">RON is wrapped inside the final transaction. You do not need to call WRON separately.</p>
+
+          <label for="slippage"><span>MAX PRICE MOVEMENT</span><small>The mint reverts beyond this limit.</small></label>
+          <div class="amount-input compact"><input id="slippage" type="text" inputmode="decimal" autocomplete="off" value="2"><b>%</b></div>
+
+          <button id="quote-button" class="secondary-button" type="submit">REFRESH LIVE QUOTE</button>
+        </form>
+
+        <article class="quote-card">
+          <div class="quote-state"><span id="quote-dot"></span><b id="quote-state">WAITING FOR WALLET</b></div>
+          <div class="quote-row"><span>You supply</span><strong id="quote-ron">600 RON</strong></div>
+          <div class="quote-row"><span>Matching MATT</span><strong id="quote-matt">Connect wallet</strong></div>
+          <div class="quote-row"><span>Pool price</span><strong id="quote-price">Live on-chain quote</strong></div>
+          <div class="quote-row"><span>Range</span><strong>−887200 to 887200</strong></div>
+          <div class="quote-row"><span>Position fee tier</span><strong>1%</strong></div>
+          <div class="balance-strip">
+            <div><span>Wallet RON</span><b id="wallet-ron">—</b></div>
+            <div><span>Wallet MATT</span><b id="wallet-matt">—</b></div>
+          </div>
+          <button id="create-position" class="primary-button" type="button" disabled>CONNECT RONIN FIRST</button>
+          <p id="action-status" class="action-status" role="status" aria-live="polite">Connect your Ronin Wallet to begin.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="steps shell" aria-labelledby="steps-title">
+      <div class="section-heading"><div><p class="eyebrow">WHAT THE APP DOES</p><h2 id="steps-title">TWO CONFIRMATIONS. ONE POSITION.</h2></div></div>
+      <div class="step-grid">
+        <article><span>01</span><h3>LIVE QUOTE</h3><p>Reads the pool contract and verifies MATT, WRON, fee tier, and tick spacing.</p></article>
+        <article><span>02</span><h3>EXACT APPROVAL</h3><p>Approves only the quoted MATT maximum when the current allowance is insufficient.</p></article>
+        <article><span>03</span><h3>ATOMIC MINT</h3><p>Wraps RON, mints the full-range NFT, and refunds unused RON in one Katana multicall.</p></article>
+      </div>
+    </section>
+
+    <section class="risk shell">
+      <div><p class="eyebrow">BEFORE YOU CONFIRM</p><h2>LIQUIDITY HAS RISK.</h2></div>
+      <p>A full-range position remains active across the entire price curve, but it does not prevent impermanent loss. MATT and RON prices can change quickly. Confirm every wallet amount and never supply funds you cannot afford to lose.</p>
+    </section>
+  </main>
+
+  <footer class="shell"><a href="/">MATT</a><span>Direct Katana V3 position minting on Ronin.</span><a href="https://app.roninchain.com/token/0x7cf0fb64d72b733695d77d197c664e90d07cf45a" target="_blank" rel="noopener">POSITION MANAGER ↗</a></footer>
+
+  <script src="/vendor/ethers.umd.min.js"></script>
+  <script src="/liquidity-math.js?v=1"></script>
+  <script src="/liquidity.js?v=1"></script>
+</body>
+</html>
