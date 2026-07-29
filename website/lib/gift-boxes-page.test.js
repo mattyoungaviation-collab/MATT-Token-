@@ -37,10 +37,11 @@ test("keeps owner actions wallet-confirmed and safety gated", () => {
   assert.doesNotMatch(script, /PRIVATE_KEY|privateKey|secretKey/);
 });
 
-test("loads ethers before the integration and remains unlinked from home", () => {
+test("loads ethers before the integration and is linked from the home navigation", () => {
   const ethersIndex = html.indexOf("/vendor/ethers.umd.min.js");
   const integrationIndex = html.indexOf("/gift-boxes.js?v=4");
   assert.ok(ethersIndex >= 0 && integrationIndex > ethersIndex);
   assert.match(html, /noindex,nofollow/);
-  assert.doesNotMatch(home, /gift-box/i);
+  assert.match(home, /href="\/gift-boxes">GIFT BOXES<\/a>/);
+  assert.equal((home.match(/href="\/gift-boxes"/g) || []).length, 1);
 });

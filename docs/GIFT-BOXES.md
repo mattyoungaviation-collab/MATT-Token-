@@ -36,12 +36,12 @@ reserve are deliberately funded and a controlled end-to-end owner-wallet test
 is complete. Public purchases also require a separately reviewed signed-quote
 service; no owner private key is stored in the website.
 
-## Isolated test page
+## Controlled test page
 
-The unlinked `/gift-boxes` page reads the verified mainnet state and current
-configuration. Connecting the owner wallet reveals funding and pause controls.
-The owner can create a two-minute EIP-712 quote in Ronin Wallet for a controlled
-self-test; public quote issuance remains disabled.
+The homepage navigation links to `/gift-boxes`, which reads the verified
+mainnet state and current configuration. Connecting the owner wallet reveals
+funding and pause controls. The owner can create a two-minute EIP-712 quote in
+Ronin Wallet for a controlled self-test; public quote issuance remains disabled.
 
 The page requires all of the following before it enables an owner test purchase:
 
