@@ -38,7 +38,7 @@ test("keeps owner actions wallet-confirmed and safety gated", () => {
 
 test("loads ethers before the integration and remains unlinked from home", () => {
   const ethersIndex = html.indexOf("/vendor/ethers.umd.min.js");
-  const integrationIndex = html.indexOf("/gift-boxes.js?v=2");
+  const integrationIndex = html.indexOf("/gift-boxes.js?v=3");
   assert.ok(ethersIndex >= 0 && integrationIndex > ethersIndex);
   assert.match(html, /noindex,nofollow/);
   assert.doesNotMatch(home, /gift-box/i);
