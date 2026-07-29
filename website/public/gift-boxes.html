@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#08070d">
+  <meta name="robots" content="noindex,nofollow">
+  <title>MATT Gift Boxes | Private Test</title>
+  <meta name="description" content="Private test page for RON-funded MATT gift boxes with a protected 85% floor and a rare 7.5x jackpot.">
+  <meta property="og:title" content="MATT Gift Boxes">
+  <meta property="og:description" content="85% floor. 7.5x jackpot. Every reward backed by the MATT vault.">
+  <meta property="og:image" content="/assets/gift-boxes-og.png">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/gift-boxes.css?v=1">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="test-header">
+    <div class="brand" aria-label="MATT Gift Boxes private test">
+      <img src="/assets/matt-logo-512.png" alt="">
+      <div><strong>MATT</strong><span>GIFT BOXES</span></div>
+    </div>
+    <div class="test-badge"><span></span> PRIVATE TEST PAGE</div>
+    <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow">RON IN. MATT OUT. EVERY BOX BACKED.</p>
+        <h1>KEEP MOST.<br><span>WIN BIG.</span></h1>
+        <p class="hero-lead">Choose a box, lock a two-minute MATT quote, and reveal a verifiable reward. Every result returns at least 85% of the box value. One in roughly 333 hits the 7.5× jackpot.</p>
+        <div class="hero-stats">
+          <article><span>MINIMUM RETURN</span><strong>85%</strong><small>No zero-value boxes</small></article>
+          <article><span>JACKPOT</span><strong>7.5×</strong><small>0.3% published chance</small></article>
+          <article><span>AVERAGE RETURN</span><strong>95.98%</strong><small>Across all openings</small></article>
+        </div>
+        <p class="test-note"><b>TEST MODE:</b> Opening previews use local simulation. No RON or MATT can move from this page.</p>
+      </div>
+      <div class="hero-visual">
+        <img src="/assets/gift-boxes-og.png" alt="Three premium MATT gift boxes in bronze, violet, and gold">
+        <div class="verified-chip">RONIN VRF DESIGN</div>
+      </div>
+    </section>
+
+    <section class="box-shop shell" aria-labelledby="choose-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">CHOOSE YOUR BOX</p>
+          <h2 id="choose-title">ONE REWARD TABLE.<br>THREE WAYS TO OPEN.</h2>
+        </div>
+        <p>Higher tiers scale the MATT amount, not the odds. Every buyer receives the same published reward chances.</p>
+      </div>
+
+      <div class="tier-grid" role="radiogroup" aria-label="Gift box tier">
+        <button class="tier-card bronze" type="button" role="radio" aria-checked="true" data-tier="0">
+          <span class="tier-kicker">ENTRY BOX</span>
+          <div class="mini-box" aria-hidden="true"><i></i></div>
+          <strong>100 <small>RON</small></strong>
+          <p>85–750 RON equivalent in MATT</p>
+          <b>SELECT BRONZE</b>
+        </button>
+        <button class="tier-card violet" type="button" role="radio" aria-checked="false" data-tier="1">
+          <span class="tier-kicker">SIGNATURE BOX</span>
+          <div class="mini-box" aria-hidden="true"><i></i></div>
+          <strong>250 <small>RON</small></strong>
+          <p>212.5–1,875 RON equivalent in MATT</p>
+          <b>SELECT VIOLET</b>
+        </button>
+        <button class="tier-card gold" type="button" role="radio" aria-checked="false" data-tier="2">
+          <span class="tier-kicker">LEGEND BOX</span>
+          <div class="mini-box" aria-hidden="true"><i></i></div>
+          <strong>500 <small>RON</small></strong>
+          <p>425–3,750 RON equivalent in MATT</p>
+          <b>SELECT GOLD</b>
+        </button>
+      </div>
+    </section>
+
+    <section class="opening-shell shell" aria-labelledby="opening-title">
+      <div class="opening-stage">
+        <div class="stage-topline">
+          <span id="stage-tier">100 RON BRONZE BOX</span>
+          <span class="status-pill">SIMULATION READY</span>
+        </div>
+        <div id="reveal-box" class="reveal-box bronze" aria-live="polite">
+          <div class="box-lid"><span></span></div>
+          <div class="box-body"><img src="/assets/matt-logo-512.png" alt=""></div>
+          <div class="reward-burst" aria-hidden="true"></div>
+        </div>
+        <div class="result-panel">
+          <span id="result-label">YOUR REWARD</span>
+          <strong id="result-multiplier">SEALED</strong>
+          <p id="result-value">Preview the on-chain reveal experience.</p>
+        </div>
+      </div>
+
+      <aside class="purchase-card">
+        <p class="eyebrow">BOX SETUP</p>
+        <h2 id="opening-title">WHO GETS THE MATT?</h2>
+
+        <div class="recipient-toggle" role="group" aria-label="Reward recipient">
+          <button class="active" type="button" data-recipient-mode="self">OPEN FOR ME</button>
+          <button type="button" data-recipient-mode="gift">SEND AS A GIFT</button>
+        </div>
+
+        <label id="recipient-field" class="recipient-field" hidden>
+          <span>RECIPIENT RONIN ADDRESS</span>
+          <input id="recipient-address" type="text" autocomplete="off" spellcheck="false" placeholder="0x…">
+          <small>The recipient cannot be changed after purchase.</small>
+        </label>
+
+        <div class="quote-card">
+          <div><span>BOX PRICE</span><strong id="quote-price">100 RON</strong></div>
+          <div><span>TEST BASELINE</span><strong id="quote-baseline">1,000,000 MATT</strong></div>
+          <div><span>POSSIBLE PAYOUT</span><strong id="quote-range">850K–7.5M MATT</strong></div>
+          <div><span>QUOTE WINDOW</span><strong id="quote-timer">02:00</strong></div>
+        </div>
+
+        <button id="preview-button" class="primary-action" type="button">PREVIEW THIS OPENING</button>
+        <button id="live-purchase-button" class="live-action" type="button" disabled>LIVE CONTRACT NOT DEPLOYED</button>
+        <p id="purchase-status" class="purchase-status" role="status">This isolated page cannot request signatures or transfer funds.</p>
+      </aside>
+    </section>
+
+    <section class="odds-section shell" aria-labelledby="odds-title">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">THE COMPLETE REWARD TABLE</p><h2 id="odds-title">NOTHING HIDDEN.</h2></div>
+        <p>Probabilities total exactly 100%. The owner may publish a future configuration, but every purchased box remains locked to the version active when it was bought.</p>
+      </div>
+      <div class="odds-layout">
+        <div class="odds-table-wrap">
+          <table>
+            <thead><tr><th>MATT payout</th><th>Chance</th><th>100 RON box</th><th>Result</th></tr></thead>
+            <tbody>
+              <tr><td>0.85×</td><td>40%</td><td>85 RON value</td><td class="soft-loss">15% below cost</td></tr>
+              <tr><td>0.90×</td><td>20%</td><td>90 RON value</td><td class="soft-loss">10% below cost</td></tr>
+              <tr><td>0.95×</td><td>15%</td><td>95 RON value</td><td class="soft-loss">5% below cost</td></tr>
+              <tr><td>1.00×</td><td>15%</td><td>100 RON value</td><td class="even">Break even</td></tr>
+              <tr><td>1.10×</td><td>5%</td><td>110 RON value</td><td class="win">10% win</td></tr>
+              <tr><td>1.25×</td><td>2.5%</td><td>125 RON value</td><td class="win">25% win</td></tr>
+              <tr><td>1.50×</td><td>1.5%</td><td>150 RON value</td><td class="win">50% win</td></tr>
+              <tr><td>2.00×</td><td>0.5%</td><td>200 RON value</td><td class="win">Double</td></tr>
+              <tr><td>3.00×</td><td>0.2%</td><td>300 RON value</td><td class="win">Triple</td></tr>
+              <tr class="jackpot-row"><td>7.50×</td><td>0.3%</td><td>750 RON value</td><td>Jackpot</td></tr>
+            </tbody>
+            <tfoot><tr><td>Weighted average</td><td>100%</td><td>95.98 RON value</td><td>95.975% RTP</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="trust-stack">
+          <article><span>01</span><div><h3>RON GOES TO MATT</h3><p>The full displayed box price is forwarded directly to the owner treasury.</p></div></article>
+          <article><span>02</span><div><h3>THE VAULT BACKS 7.5×</h3><p>A purchase cannot begin unless the separate MATT vault can reserve the maximum outcome.</p></div></article>
+          <article><span>03</span><div><h3>VRF PICKS THE RESULT</h3><p>Ronin randomness selects from the published table. The reveal animation cannot change it.</p></div></article>
+          <article><span>04</span><div><h3>STALE BOXES RETURN 1×</h3><p>If randomness remains unresolved for two hours, the recipient receives the full quoted MATT baseline.</p></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="risk shell">
+      <div><p class="eyebrow">TEST RESPONSIBLY</p><h2>KNOW THE VALUE.</h2></div>
+      <p>MATT and RON are volatile cryptoassets. The RON-equivalent figures are measured only when the short-lived quote is created; market value may change afterward. Gift boxes involve chance and are intended for adults 18+ only. Never use funds you cannot afford to lose.</p>
+    </section>
+  </main>
+
+  <footer class="shell">
+    <div><b>MATT GIFT BOXES</b><span>Private, unlinked test surface</span></div>
+    <p>Contract pending · No live purchases · No homepage link</p>
+  </footer>
+
+  <script src="/gift-boxes.js?v=1"></script>
+</body>
+</html>
