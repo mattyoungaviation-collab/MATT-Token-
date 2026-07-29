@@ -9,7 +9,7 @@
   const MATT_ADDRESS = "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d";
   const VAULT_ADDRESS = "0x896862e8D9c8576fcb4418ba21b4F9033E7785f4";
   const GIFT_BOXES_ADDRESS = "0x0F4b0637D60Af8e3dfE8aF8d7C9448d34a969EcE";
-  const RPC_URL = "/api/rpc";
+  const RPC_URL = new URL("/api/rpc", window.location.origin).href;
   const QUOTE_SECONDS = 120;
   const RESULT_POLL_MS = 3_000;
   const RESULT_POLL_ATTEMPTS = 120;

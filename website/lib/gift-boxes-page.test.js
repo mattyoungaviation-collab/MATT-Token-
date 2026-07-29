@@ -21,6 +21,7 @@ test("every gift-box JavaScript ID hook exists in the page", () => {
 
 test("uses the verified Ronin mainnet contracts and owner", () => {
   assert.match(script, /const CHAIN_ID = 2020;/);
+  assert.match(script, /new URL\("\/api\/rpc", window\.location\.origin\)\.href/);
   assert.match(script, /0xF79913cB83Cc9CABD95D0ba9250103fbb939f984/);
   assert.match(script, /0x896862e8D9c8576fcb4418ba21b4F9033E7785f4/);
   assert.match(script, /0x0F4b0637D60Af8e3dfE8aF8d7C9448d34a969EcE/);
@@ -38,7 +39,7 @@ test("keeps owner actions wallet-confirmed and safety gated", () => {
 
 test("loads ethers before the integration and remains unlinked from home", () => {
   const ethersIndex = html.indexOf("/vendor/ethers.umd.min.js");
-  const integrationIndex = html.indexOf("/gift-boxes.js?v=3");
+  const integrationIndex = html.indexOf("/gift-boxes.js?v=4");
   assert.ok(ethersIndex >= 0 && integrationIndex > ethersIndex);
   assert.match(html, /noindex,nofollow/);
   assert.doesNotMatch(home, /gift-box/i);
