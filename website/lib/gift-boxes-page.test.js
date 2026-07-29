@@ -29,6 +29,7 @@ test("uses the verified Ronin mainnet contracts and owner", () => {
 
 test("keeps owner actions wallet-confirmed and safety gated", () => {
   assert.match(script, /signer\.signTypedData/);
+  assert.match(script, /JsonRpcProvider\(RPC_URL, CHAIN_ID, \{\s*staticNetwork: true/);
   assert.match(script, /randomnessReserve >= state\.randomFee \* 3n/);
   assert.match(script, /selectedMaximumPayout/);
   assert.match(script, /value\.trim\(\)\.toUpperCase\(\) !== "UNPAUSE"/);

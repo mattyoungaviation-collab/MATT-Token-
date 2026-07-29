@@ -289,9 +289,8 @@
   }
 
   async function initializeContracts() {
-    const network = { chainId: CHAIN_ID, name: "ronin" };
-    state.readProvider = new window.ethers.JsonRpcProvider(RPC_URL, network, {
-      staticNetwork: network,
+    state.readProvider = new window.ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, {
+      staticNetwork: true,
       batchMaxCount: 1
     });
     state.readGiftBoxes = new window.ethers.Contract(GIFT_BOXES_ADDRESS, GIFT_BOXES_ABI, state.readProvider);
