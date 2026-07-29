@@ -7,3 +7,10 @@ services:
     startCommand: npm run site
     healthCheckPath: /health
     autoDeploy: true
+    envVars:
+      - key: GIFT_BOX_PUBLIC_QUOTES_ENABLED
+        value: "false"
+      - key: GIFT_BOX_MATT_PER_RON
+        value: "10000"
+      - key: GIFT_BOX_QUOTE_PRIVATE_KEY
+        sync: false

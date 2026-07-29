@@ -30,6 +30,9 @@ test("uses the verified Ronin mainnet contracts and owner", () => {
 
 test("keeps owner actions wallet-confirmed and safety gated", () => {
   assert.match(script, /signer\.signTypedData/);
+  assert.match(script, /fetch\("\/api\/gift-boxes\/quote"/);
+  assert.match(script, /verifyTypedData/);
+  assert.match(script, /publicQuotesEnabled/);
   assert.match(script, /JsonRpcProvider\(RPC_URL, CHAIN_ID, \{\s*staticNetwork: true/);
   assert.match(script, /randomnessReserve >= state\.randomFee \* 3n/);
   assert.match(script, /selectedMaximumPayout/);
@@ -39,7 +42,7 @@ test("keeps owner actions wallet-confirmed and safety gated", () => {
 
 test("loads ethers before the integration and is linked from the home navigation", () => {
   const ethersIndex = html.indexOf("/vendor/ethers.umd.min.js");
-  const integrationIndex = html.indexOf("/gift-boxes.js?v=4");
+  const integrationIndex = html.indexOf("/gift-boxes.js?v=5");
   assert.ok(ethersIndex >= 0 && integrationIndex > ethersIndex);
   assert.match(html, /noindex,nofollow/);
   assert.match(home, /href="\/gift-boxes">GIFT BOXES<\/a>/);

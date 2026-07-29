@@ -86,7 +86,8 @@
     randomnessReserve: 0n,
     randomFee: 0n,
     claimable: 0n,
-    pendingBoxId: null
+    pendingBoxId: null,
+    publicQuotesEnabled: false
   };
 
   const $ = selector => document.querySelector(selector);
@@ -281,9 +282,12 @@
     $("#wallet-button").textContent = shortAddress(state.account);
     $("#wallet-role").textContent = isOwner() ? "Owner wallet connected" : "Player wallet connected";
     $("#owner-panel").hidden = !isOwner();
+    $("#matt-per-ron").readOnly = !isOwner();
     setStatus(isOwner()
       ? "Owner wallet connected. Mainnet actions still require explicit wallet confirmation."
-      : "Player wallet connected. Public quotes remain disabled during controlled testing.", "good");
+      : state.publicQuotesEnabled
+        ? "Player wallet connected. Signed public quotes are available."
+        : "Player wallet connected. Public quotes are currently disabled.", "good");
     await refreshState();
     restorePendingBox();
   }
@@ -303,6 +307,25 @@
     ]);
     if (boxesCode === "0x" || vaultCode === "0x") throw new Error("A configured gift-box contract is missing.");
     await refreshState();
+  }
+
+  async function loadQuoteServiceConfig() {
+    const response = await fetch("/api/gift-boxes/config", {
+      headers: { accept: "application/json" },
+      cache: "no-store"
+    });
+    if (!response.ok) throw new Error("Public quote status is unavailable.");
+    const config = await response.json();
+    state.publicQuotesEnabled = config.enabled === true;
+    if (state.publicQuotesEnabled && /^\d+(\.\d{1,18})?$/.test(String(config.mattPerRon || ""))) {
+      $("#matt-per-ron").value = String(config.mattPerRon);
+      $("#quote-rate-note").textContent = "The server signs this rate for the connected buyer for two minutes.";
+      renderQuote();
+    } else {
+      $("#quote-rate-note").textContent = "Public quote issuance is currently disabled. Owner testing remains available.";
+    }
+    if (state.account && !isOwner()) $("#matt-per-ron").readOnly = true;
+    updateControls();
   }
 
   function renderConfiguration(config) {
@@ -413,17 +436,24 @@
 
   function updateControls() {
     const owner = isOwner();
-    const canOwnerPurchase = owner && !state.paused && reservesCoverSelection() && !state.opening;
-    $("#live-purchase-button").disabled = !canOwnerPurchase;
+    const hasQuoteSigner = owner || state.publicQuotesEnabled;
+    const canPurchase = Boolean(state.account)
+      && hasQuoteSigner
+      && !state.paused
+      && reservesCoverSelection()
+      && !state.opening;
+    $("#live-purchase-button").disabled = !canPurchase;
     $("#live-purchase-button").textContent = !state.account
-      ? "CONNECT OWNER WALLET FOR LIVE TEST"
-      : !owner
-        ? "PUBLIC QUOTES DISABLED DURING TESTING"
+      ? "CONNECT RONIN TO OPEN"
+      : !hasQuoteSigner
+        ? "PUBLIC QUOTES CURRENTLY DISABLED"
         : state.paused
           ? "CONTRACT PAUSED"
           : !reservesCoverSelection()
             ? "FUND BOTH RESERVES FIRST"
-            : "SIGN QUOTE & BUY ON MAINNET";
+            : owner
+              ? "SIGN OWNER QUOTE & BUY"
+              : "GET QUOTE & BUY ON MAINNET";
     $("#preview-button").disabled = state.opening;
     $("#claim-button").disabled = !state.account || state.claimable === 0n || state.opening;
     $("#fund-vault-button").disabled = !owner || state.opening;
@@ -473,17 +503,81 @@
     return { ...value, signature };
   }
 
+  function quoteTypedValue(quote) {
+    return {
+      buyer: window.ethers.getAddress(quote.buyer),
+      recipient: window.ethers.getAddress(quote.recipient),
+      tier: Number(quote.tier),
+      baseMatt: BigInt(quote.baseMatt),
+      nonce: BigInt(quote.nonce),
+      deadline: Number(quote.deadline),
+      configVersion: BigInt(quote.configVersion)
+    };
+  }
+
+  function verifyPublicQuote(quote, recipient) {
+    const value = quoteTypedValue(quote);
+    const now = Math.floor(Date.now() / 1_000);
+    if (
+      value.buyer.toLowerCase() !== state.account.toLowerCase()
+      || value.recipient.toLowerCase() !== recipient.toLowerCase()
+      || value.tier !== state.tier
+      || BigInt(quote.priceRon) !== state.tierPricesWei[state.tier]
+      || value.baseMatt <= 0n
+      || value.configVersion !== state.activeConfigVersion
+      || value.deadline <= now
+      || value.deadline > now + QUOTE_SECONDS + 10
+    ) {
+      throw new Error("The public quote did not match this purchase.");
+    }
+    const recovered = window.ethers.verifyTypedData({
+      name: "MATT Gift Boxes",
+      version: "1",
+      chainId: CHAIN_ID,
+      verifyingContract: GIFT_BOXES_ADDRESS
+    }, {
+      PriceQuote: [
+        { name: "buyer", type: "address" },
+        { name: "recipient", type: "address" },
+        { name: "tier", type: "uint8" },
+        { name: "baseMatt", type: "uint256" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint64" },
+        { name: "configVersion", type: "uint256" }
+      ]
+    }, value, quote.signature);
+    if (recovered.toLowerCase() !== OWNER.toLowerCase()) {
+      throw new Error("The public quote was not signed by the gift-box owner.");
+    }
+    return { ...value, signature: quote.signature };
+  }
+
+  async function requestPublicQuote(recipient) {
+    const response = await fetch("/api/gift-boxes/quote", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ buyer: state.account, recipient, tier: state.tier })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.message || "A public quote could not be created.");
+    return verifyPublicQuote(body, recipient);
+  }
+
   async function purchaseLiveBox() {
-    if (!isOwner()) throw new Error("Only the owner wallet can run the controlled live test.");
+    if (!state.account) throw new Error("Connect Ronin Wallet first.");
+    if (!isOwner() && !state.publicQuotesEnabled) throw new Error("Public gift-box quotes are disabled.");
     if (state.paused) throw new Error("Gift boxes are paused.");
     const recipient = recipientAddress();
-    const baseMatt = selectedBaseMatt();
     if (!reservesCoverSelection()) throw new Error("Fund both reserves before testing.");
     state.opening = true;
     updateControls();
     try {
-      setStatus("Confirm the two-minute owner price quote in Ronin Wallet.");
-      const quote = await signOwnerQuote(recipient, baseMatt);
+      setStatus(isOwner()
+        ? "Confirm the two-minute owner price quote in Ronin Wallet."
+        : "Requesting a two-minute signed quote…");
+      const quote = isOwner()
+        ? await signOwnerQuote(recipient, selectedBaseMatt())
+        : await requestPublicQuote(recipient);
       state.quoteExpiresAt = quote.deadline * 1_000;
       const args = [quote.recipient, quote.tier, quote.baseMatt, quote.nonce, quote.deadline, quote.signature];
       const value = state.tierPricesWei[state.tier];
@@ -626,6 +720,7 @@
   $("#pause-toggle-button").addEventListener("click", runAction(togglePaused));
   $("#refresh-contract-button").addEventListener("click", runAction(refreshState));
   $("#matt-per-ron").addEventListener("input", () => {
+    if (state.account && !isOwner()) return;
     state.quoteExpiresAt = Date.now() + QUOTE_SECONDS * 1_000;
     renderQuote();
     updateControls();
@@ -643,6 +738,11 @@
   setRecipientMode("self");
   updateQuoteTimer();
   setInterval(updateQuoteTimer, 1_000);
+  loadQuoteServiceConfig().catch(() => {
+    state.publicQuotesEnabled = false;
+    $("#quote-rate-note").textContent = "Public quote status is unavailable. Owner testing remains available.";
+    updateControls();
+  });
   initializeContracts().catch(error => {
     $("#contract-status").textContent = "RPC UNAVAILABLE";
     setStatus(`On-chain status unavailable: ${errorMessage(error)}`, "bad");

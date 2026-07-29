@@ -15,6 +15,7 @@ const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createCrashRouter } = require("./lib/crash-routes");
 const { createCrashContractRouter } = require("./lib/crash-routes-contract");
 const { installDynoRaffle } = require("./dyno-raffle-routes");
+const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -77,6 +78,7 @@ app.set("trust proxy", 1);
 installXFollowVerifier(app);
 installDiscordAuth(app);
 installDynoRaffle(app, { rpcRequest: statsRpcRequest, stateFile: dynoRaffleStateFile });
+app.use("/api/gift-boxes", createGiftBoxQuoteRouter({ rpcRequest: statsRpcRequest }));
 const walletProfiles = installWalletProfiles(app, { stateFile: walletProfilesFile });
 installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipStatsFile });
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
