@@ -11,7 +11,7 @@
   <meta property="og:description" content="85% floor. 7.5x jackpot. Every reward backed by the MATT vault.">
   <meta property="og:image" content="/assets/gift-boxes-og.png">
   <link rel="icon" href="/assets/matt-logo-512.png">
-  <link rel="stylesheet" href="/gift-boxes.css?v=1">
+  <link rel="stylesheet" href="/gift-boxes.css?v=2">
 </head>
 <body>
   <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -22,7 +22,7 @@
       <img src="/assets/matt-logo-512.png" alt="">
       <div><strong>MATT</strong><span>GIFT BOXES</span></div>
     </div>
-    <div class="test-badge"><span></span> PRIVATE TEST PAGE</div>
+    <div id="contract-status" class="test-badge"><span></span>CHECKING MAINNET</div>
     <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
   </header>
 
@@ -33,9 +33,9 @@
         <h1>KEEP MOST.<br><span>WIN BIG.</span></h1>
         <p class="hero-lead">Choose a box, lock a two-minute MATT quote, and reveal a verifiable reward. Every result returns at least 85% of the box value. One in roughly 333 hits the 7.5× jackpot.</p>
         <div class="hero-stats">
-          <article><span>MINIMUM RETURN</span><strong>85%</strong><small>No zero-value boxes</small></article>
-          <article><span>JACKPOT</span><strong>7.5×</strong><small>0.3% published chance</small></article>
-          <article><span>AVERAGE RETURN</span><strong>95.98%</strong><small>Across all openings</small></article>
+          <article><span>MINIMUM RETURN</span><strong id="minimum-return">85%</strong><small>No zero-value boxes</small></article>
+          <article><span>JACKPOT</span><strong id="jackpot-multiplier">7.5×</strong><small>0.3% published chance</small></article>
+          <article><span>AVERAGE RETURN</span><strong id="average-return">95.975%</strong><small>Read from mainnet</small></article>
         </div>
         <p class="test-note"><b>TEST MODE:</b> Opening previews use local simulation. No RON or MATT can move from this page.</p>
       </div>
@@ -58,22 +58,22 @@
         <button class="tier-card bronze" type="button" role="radio" aria-checked="true" data-tier="0">
           <span class="tier-kicker">ENTRY BOX</span>
           <div class="mini-box" aria-hidden="true"><i></i></div>
-          <strong>100 <small>RON</small></strong>
-          <p>85–750 RON equivalent in MATT</p>
+          <strong data-tier-price>100 RON</strong>
+          <p data-tier-range>85–750 RON equivalent in MATT</p>
           <b>SELECT BRONZE</b>
         </button>
         <button class="tier-card violet" type="button" role="radio" aria-checked="false" data-tier="1">
           <span class="tier-kicker">SIGNATURE BOX</span>
           <div class="mini-box" aria-hidden="true"><i></i></div>
-          <strong>250 <small>RON</small></strong>
-          <p>212.5–1,875 RON equivalent in MATT</p>
+          <strong data-tier-price>250 RON</strong>
+          <p data-tier-range>212.5–1,875 RON equivalent in MATT</p>
           <b>SELECT VIOLET</b>
         </button>
         <button class="tier-card gold" type="button" role="radio" aria-checked="false" data-tier="2">
           <span class="tier-kicker">LEGEND BOX</span>
           <div class="mini-box" aria-hidden="true"><i></i></div>
-          <strong>500 <small>RON</small></strong>
-          <p>425–3,750 RON equivalent in MATT</p>
+          <strong data-tier-price>500 RON</strong>
+          <p data-tier-range>425–3,750 RON equivalent in MATT</p>
           <b>SELECT GOLD</b>
         </button>
       </div>
@@ -83,7 +83,7 @@
       <div class="opening-stage">
         <div class="stage-topline">
           <span id="stage-tier">100 RON BRONZE BOX</span>
-          <span class="status-pill">SIMULATION READY</span>
+          <span class="status-pill">MAINNET-CONNECTED TEST</span>
         </div>
         <div id="reveal-box" class="reveal-box bronze" aria-live="polite">
           <div class="box-lid"><span></span></div>
@@ -93,7 +93,7 @@
         <div class="result-panel">
           <span id="result-label">YOUR REWARD</span>
           <strong id="result-multiplier">SEALED</strong>
-          <p id="result-value">Preview the on-chain reveal experience.</p>
+          <p id="result-value">Preview or prepare an owner-signed on-chain test.</p>
         </div>
       </div>
 
@@ -112,17 +112,81 @@
           <small>The recipient cannot be changed after purchase.</small>
         </label>
 
+        <label class="recipient-field quote-rate-field">
+          <span>OWNER TEST QUOTE · MATT PER RON</span>
+          <input id="matt-per-ron" type="text" inputmode="decimal" value="10000">
+          <small>This rate is signed by the owner wallet for two minutes. Public quote service is not enabled.</small>
+        </label>
+
         <div class="quote-card">
           <div><span>BOX PRICE</span><strong id="quote-price">100 RON</strong></div>
-          <div><span>TEST BASELINE</span><strong id="quote-baseline">1,000,000 MATT</strong></div>
+          <div><span>SIGNED BASELINE</span><strong id="quote-baseline">1,000,000 MATT</strong></div>
           <div><span>POSSIBLE PAYOUT</span><strong id="quote-range">850K–7.5M MATT</strong></div>
           <div><span>QUOTE WINDOW</span><strong id="quote-timer">02:00</strong></div>
         </div>
 
-        <button id="preview-button" class="primary-action" type="button">PREVIEW THIS OPENING</button>
-        <button id="live-purchase-button" class="live-action" type="button" disabled>LIVE CONTRACT NOT DEPLOYED</button>
-        <p id="purchase-status" class="purchase-status" role="status">This isolated page cannot request signatures or transfer funds.</p>
+        <button id="preview-button" class="primary-action" type="button">PREVIEW AN OPENING</button>
+        <button id="live-purchase-button" class="live-action" type="button" disabled>CONNECT OWNER WALLET FOR LIVE TEST</button>
+        <button id="claim-button" class="secondary-action" type="button" disabled>CLAIM MATT REWARD</button>
+        <p id="purchase-status" class="purchase-status" role="status">Reading the verified Ronin mainnet contracts…</p>
       </aside>
+    </section>
+
+    <section class="contract-console shell" aria-labelledby="contract-title">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">VERIFIED MAINNET CONTROL ROOM</p><h2 id="contract-title">SAFE WHILE PAUSED.</h2></div>
+        <p>Read-only state is public. Funding and pause controls appear only after the owner wallet is connected, and every action requires Ronin Wallet confirmation.</p>
+      </div>
+
+      <div class="chain-grid">
+        <article><span>CONTRACT STATE</span><strong id="chain-state">CHECKING</strong></article>
+        <article><span>CONFIGURATION</span><strong id="config-version">–</strong></article>
+        <article><span>AVAILABLE VAULT</span><strong id="vault-available">–</strong></article>
+        <article><span>RESERVED MATT</span><strong id="vault-reserved">–</strong></article>
+        <article><span>CLAIMABLE MATT</span><strong id="vault-claimable">–</strong></article>
+        <article><span>RANDOMNESS RESERVE</span><strong id="random-reserve">–</strong></article>
+        <article><span>CURRENT VRF FEE</span><strong id="random-fee">–</strong></article>
+        <article><span>BOXES PURCHASED</span><strong id="boxes-opened">–</strong></article>
+      </div>
+
+      <div class="wallet-summary">
+        <div><span>CONNECTED ROLE</span><strong id="wallet-role">Not connected</strong></div>
+        <div><span>WALLET MATT</span><strong id="wallet-matt">–</strong></div>
+        <div><span>READY TO CLAIM</span><strong id="wallet-claimable">–</strong></div>
+        <button id="refresh-contract-button" type="button">REFRESH MAINNET STATE</button>
+      </div>
+
+      <div id="owner-panel" class="owner-panel" hidden>
+        <div class="owner-heading">
+          <div><p class="eyebrow">OWNER WALLET ONLY</p><h3>FUND AND CONTROL THE TEST</h3></div>
+          <p>No secret key is stored by this page. Transactions are created only through the connected Ronin Wallet.</p>
+        </div>
+        <div class="owner-actions">
+          <label>
+            <span>MATT TO DEPOSIT IN VAULT</span>
+            <input id="vault-fund-amount" type="text" inputmode="decimal" placeholder="7500000">
+            <button id="fund-vault-button" type="button">APPROVE &amp; FUND VAULT</button>
+          </label>
+          <label>
+            <span>RON FOR VRF RANDOMNESS</span>
+            <input id="reserve-fund-amount" type="text" inputmode="decimal" placeholder="0.1">
+            <button id="fund-reserve-button" type="button">FUND RANDOMNESS RESERVE</button>
+          </label>
+          <div class="pause-control">
+            <label id="unpause-confirm-row">
+              <span>TYPE UNPAUSE AFTER BOTH RESERVES ARE READY</span>
+              <input id="unpause-confirm" type="text" autocomplete="off" placeholder="UNPAUSE">
+            </label>
+            <button id="pause-toggle-button" type="button" disabled>UNPAUSE MAINNET</button>
+            <small>Unpausing is blocked here until the selected test box is fully backed.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="contract-links">
+        <a href="https://explorer.roninchain.com/address/0x896862e8D9c8576fcb4418ba21b4F9033E7785f4" target="_blank" rel="noopener">VERIFIED VAULT</a>
+        <a href="https://explorer.roninchain.com/address/0x0F4b0637D60Af8e3dfE8aF8d7C9448d34a969EcE" target="_blank" rel="noopener">VERIFIED GIFT BOXES</a>
+      </div>
     </section>
 
     <section class="odds-section shell" aria-labelledby="odds-title">
@@ -134,7 +198,7 @@
         <div class="odds-table-wrap">
           <table>
             <thead><tr><th>MATT payout</th><th>Chance</th><th>100 RON box</th><th>Result</th></tr></thead>
-            <tbody>
+            <tbody id="odds-table-body">
               <tr><td>0.85×</td><td>40%</td><td>85 RON value</td><td class="soft-loss">15% below cost</td></tr>
               <tr><td>0.90×</td><td>20%</td><td>90 RON value</td><td class="soft-loss">10% below cost</td></tr>
               <tr><td>0.95×</td><td>15%</td><td>95 RON value</td><td class="soft-loss">5% below cost</td></tr>
@@ -146,7 +210,7 @@
               <tr><td>3.00×</td><td>0.2%</td><td>300 RON value</td><td class="win">Triple</td></tr>
               <tr class="jackpot-row"><td>7.50×</td><td>0.3%</td><td>750 RON value</td><td>Jackpot</td></tr>
             </tbody>
-            <tfoot><tr><td>Weighted average</td><td>100%</td><td>95.98 RON value</td><td>95.975% RTP</td></tr></tfoot>
+            <tfoot><tr id="odds-average"><td>Weighted average</td><td>100%</td><td>95.98 RON value</td><td>95.975% RTP</td></tr></tfoot>
           </table>
         </div>
         <div class="trust-stack">
@@ -166,9 +230,10 @@
 
   <footer class="shell">
     <div><b>MATT GIFT BOXES</b><span>Private, unlinked test surface</span></div>
-    <p>Contract pending · No live purchases · No homepage link</p>
+    <p>Verified mainnet contracts · Controlled owner test · No homepage link</p>
   </footer>
 
-  <script src="/gift-boxes.js?v=1"></script>
+  <script src="/vendor/ethers.umd.min.js"></script>
+  <script src="/gift-boxes.js?v=2"></script>
 </body>
 </html>

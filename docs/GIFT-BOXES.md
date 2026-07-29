@@ -25,14 +25,30 @@ July 28, 2026.
 
 - Owner: `0xF79913cB83Cc9CABD95D0ba9250103fbb939f984`
 - Vault controller: `0x0F4b0637D60Af8e3dfE8aF8d7C9448d34a969EcE`
+- Source verification: verified on Ronin Explorer
 - Active configuration version: `1`
 - Gift boxes: paused
 - Vault: unfunded
 - Live purchases: disabled
 
-The contracts must remain paused until the source is verified on the explorer,
-the MATT vault and RON randomness reserve are deliberately funded, the signed
-quote service is configured, and a controlled end-to-end test is complete.
+The contracts must remain paused until the MATT vault and RON randomness
+reserve are deliberately funded and a controlled end-to-end owner-wallet test
+is complete. Public purchases also require a separately reviewed signed-quote
+service; no owner private key is stored in the website.
+
+## Isolated test page
+
+The unlinked `/gift-boxes` page reads the verified mainnet state and current
+configuration. Connecting the owner wallet reveals funding and pause controls.
+The owner can create a two-minute EIP-712 quote in Ronin Wallet for a controlled
+self-test; public quote issuance remains disabled.
+
+The page requires all of the following before it enables an owner test purchase:
+
+- The connected wallet is the configured owner.
+- The controller is unpaused.
+- The vault can reserve the selected box's full `7.5x` maximum payout.
+- The RON randomness reserve covers the initial VRF request and two retries.
 
 ## Published reward configuration
 

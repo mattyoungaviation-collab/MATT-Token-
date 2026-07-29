@@ -56,7 +56,7 @@
     "inspect:plinko-v4:ronin": "hardhat run scripts/inspect-plinko-v4.js --network ronin",
     "test:plinko-v4-ui": "node website/lib/plinko-v4-engine.test.js",
     "test:plinko-history": "node --test website/lib/plinko-history-index.test.js",
-    "test:gift-boxes": "hardhat test test/MattGiftBoxes.test.js",
+    "test:gift-boxes": "hardhat test test/MattGiftBoxes.test.js && node --test website/lib/gift-boxes-page.test.js",
     "deploy:gift-boxes:saigon": "hardhat run scripts/deploy-gift-boxes.js --network saigon",
     "deploy:gift-boxes:ronin": "hardhat run scripts/deploy-gift-boxes.js --network ronin"
   },
