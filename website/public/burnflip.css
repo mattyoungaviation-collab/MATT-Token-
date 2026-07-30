@@ -172,6 +172,10 @@
   -webkit-backface-visibility: hidden;
 }
 
+#coin-flip .burnflip-coin-side[hidden] {
+  display: none !important;
+}
+
 #coin-flip .burnflip-coin-heads {
   transform: rotateY(0deg);
 }
@@ -192,7 +196,7 @@
     radial-gradient(circle at 35% 28%, #fff0a3, #f5bd36 50%, #a86b00);
 }
 
-#coin-flip .burnflip-coin-tails span {
+#coin-flip .burnflip-tail-mark {
   display: grid;
   place-items: center;
   width: 72%;
@@ -201,6 +205,23 @@
   border-radius: 50%;
   font-size: 5rem;
   line-height: 1;
+}
+
+#coin-flip .burnflip-face-label {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  z-index: 2;
+  padding: 3px 8px;
+  transform: translateX(-50%);
+  background: rgba(46, 27, 0, .82);
+  border: 1px solid rgba(255, 238, 168, .72);
+  border-radius: 999px;
+  color: #fff3b0;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+  text-shadow: none;
 }
 
 .burnflip-reward-migration .mission-notice,

@@ -92,10 +92,17 @@ test("existing BurnFlip shell exposes universal quote, confirmation, and result 
   assert.match(controller, /placeRonBet/);
   assert.match(shell, /burnflip-coin-heads/);
   assert.match(shell, /burnflip-coin-tails/);
+  assert.match(shell, /burnflip-face-label">HEADS/);
+  assert.match(shell, /burnflip-face-label">TAILS/);
   assert.match(styles, /backface-visibility:\s*hidden/);
+  assert.match(styles, /\.burnflip-coin-side\[hidden\]/);
+  assert.match(controller, /headsFace\.hidden = outcome !== 0/);
+  assert.match(controller, /tailsFace\.hidden = outcome !== 1/);
+  assert.match(controller, /coin\.dataset\.outcome = outcome === 0 \? "heads" : "tails"/);
+  assert.match(controller, /await nextPaint\(\)/);
   assert.doesNotMatch(loader, /coin-settlement-animation/);
-  assert.match(loader, /coin-game-config\.js\?v=27/);
-  assert.match(loader, /burnflip-controller\.js\?v=27/);
+  assert.match(loader, /coin-game-config\.js\?v=29/);
+  assert.match(loader, /burnflip-controller\.js\?v=29/);
 });
 
 test("stats API reads universal BurnFlip counters from the configured deployment", async (t) => {

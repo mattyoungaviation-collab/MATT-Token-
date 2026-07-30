@@ -21,10 +21,11 @@
     outcomeCoin.innerHTML = `
       <div class="coin-face burnflip-coin-side burnflip-coin-heads">
         <img src="/assets/matt-logo.gif" alt="" aria-hidden="true">
-        <span class="sr-only">Heads</span>
+        <span class="burnflip-face-label">HEADS</span>
       </div>
       <div class="coin-face burnflip-coin-side burnflip-coin-tails" aria-hidden="true">
-        <span>T</span>
+        <span class="burnflip-tail-mark">T</span>
+        <span class="burnflip-face-label">TAILS</span>
       </div>
     `;
   }

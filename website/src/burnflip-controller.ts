@@ -167,6 +167,11 @@ interface Quote {
   const sleep = (milliseconds: number) =>
     new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 
+  const nextPaint = () =>
+    new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    }));
+
   function account(): Address | null {
     const value = appWindow.MattRoninConnect?.account || appWindow.currentAccount;
     return ADDRESS_PATTERN.test(String(value || ""))
@@ -635,6 +640,17 @@ interface Quote {
     const duration = reducedMotion
       ? COIN_REDUCED_MOTION_DURATION_MS
       : COIN_SPIN_DURATION_MS;
+    const headsFace = coin.querySelector<HTMLElement>(".burnflip-coin-heads");
+    const tailsFace = coin.querySelector<HTMLElement>(".burnflip-coin-tails");
+    for (const face of [headsFace, tailsFace]) {
+      if (!face) continue;
+      face.hidden = false;
+      face.style.removeProperty("transform");
+      face.setAttribute("aria-hidden", "true");
+    }
+    coin.style.removeProperty("transform");
+    delete coin.dataset.outcome;
+
     const currentFace = coin.dataset.face === "tails" ? 1 : 0;
     const startDegrees = currentFace === 1 ? 180 : 0;
     const targetDegrees = outcome === 1 ? 180 : 0;
@@ -679,22 +695,34 @@ interface Quote {
 
     await spin.finished;
     coin.dataset.face = outcome === 0 ? "heads" : "tails";
+    coin.dataset.outcome = outcome === 0 ? "heads" : "tails";
     delete coin.dataset.spinning;
     coin.setAttribute(
       "aria-label",
       outcome === 0 ? "MATT coin landed on heads" : "MATT coin landed on tails",
     );
     spin.cancel();
+    coin.style.transform = "none";
+
+    if (headsFace && tailsFace) {
+      headsFace.hidden = outcome !== 0;
+      tailsFace.hidden = outcome !== 1;
+      headsFace.setAttribute("aria-hidden", outcome === 0 ? "false" : "true");
+      tailsFace.setAttribute("aria-hidden", outcome === 1 ? "false" : "true");
+      const landedFace = outcome === 0 ? headsFace : tailsFace;
+      landedFace.style.transform = "none";
+    }
 
     const landing = coin.animate([
-      { transform: `rotateY(${targetDegrees}deg) translateY(-7px) scale(1.035)` },
-      { transform: `rotateY(${targetDegrees}deg) translateY(5px) scale(.97)` },
-      { transform: `rotateY(${targetDegrees}deg) translateY(0) scale(1)` },
+      { transform: "translateY(-7px) scale(1.035)" },
+      { transform: "translateY(5px) scale(.97)" },
+      { transform: "translateY(0) scale(1)" },
     ], {
       duration: COIN_LANDING_DURATION_MS,
       easing: "cubic-bezier(.2,.9,.3,1.25)",
     });
     await landing.finished;
+    await nextPaint();
   }
 
   async function showResult(betId: bigint, bet: ActiveBet): Promise<void> {
