@@ -10,6 +10,7 @@
 - **Historical terms:** the quote, payout, burn, tick, asset, and amount are stored at placement, so later admin configuration does not rewrite a pending bet.
 - **Canonical pools:** asset setup validates code, factory, token pair, and active liquidity.
 - **Manipulation resistance:** pricing uses a fixed 30-minute TWAP plus a per-pool harmonic-liquidity floor. There is no spot or manual fallback.
+- **MATT identity pricing:** a MATT wager is exactly the settlement token, so it is valued 1:1 with no pool, rate input, or oracle manipulation surface.
 - **Replay resistance:** commitments bind player, asset, choice, amount, game, and chain; one pending bet is allowed per wallet.
 - **Operational brakes:** game and vault start paused. Asset, pool, payout, burn, and vault controls are owner-only; economic and oracle configuration changes require the game to be paused.
 - **Reentrancy protection:** every value-moving public path uses `ReentrancyGuard`; ERC-20 operations use `SafeERC20`.
@@ -31,6 +32,10 @@ Commit/reveal with a future block hash is preserved for UX compatibility. A bloc
 ### Oracle preparation
 
 Calling `increaseObservationCardinalityNext()` increases capacity but does not instantly create history. Pools need swaps/observation writes and a full 30-minute lookback before launch. Cardinality and observation age must be monitored after long inactivity.
+
+MATT itself is not subject to this oracle requirement. Its supported-asset
+configuration must use the zero pool and zero liquidity floor; any attempt to
+attach a pool or nonzero floor is rejected.
 
 ### Economic risk
 

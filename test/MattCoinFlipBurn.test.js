@@ -63,10 +63,13 @@ async function fixture({ vaultFunds = ethers.parseEther("1000000") } = {}) {
   );
   await game.addSupportedAsset(asset.target, assetPool.target, 1);
   await game.addSupportedAsset(NATIVE_RON, ronPool.target, 1);
+  await game.addSupportedAsset(matt.target, ethers.ZeroAddress, 0);
   await game.unpause();
 
   await asset.mint(player.address, ethers.parseEther("100000"));
   await asset.connect(player).approve(game.target, ethers.MaxUint256);
+  await matt.mint(player.address, ethers.parseEther("100000"));
+  await matt.connect(player).approve(game.target, ethers.MaxUint256);
   const chainId = (await ethers.provider.getNetwork()).chainId;
   return {
     owner,
@@ -113,7 +116,7 @@ async function placeErc20({
   const event = receipt.logs.map((log) => {
     try { return game.interface.parseLog(log); } catch { return null; }
   }).find((parsed) => parsed?.name === "BetPlaced");
-  return { betId: event.args.betId, secret };
+  return { betId: event.args.betId, secret, receipt };
 }
 
 async function settleDesiredOutcome(context, desiredWin) {
@@ -188,6 +191,34 @@ describe("MattCoinFlipBurn", function () {
     expect(await ethers.provider.getBalance(context.game.target)).to.equal(0);
   });
 
+  it("forwards MATT wagers to treasury and prices them exactly 1:1", async function () {
+    const context = await fixture();
+    const amount = ethers.parseEther("500");
+    const treasuryBefore = await context.matt.balanceOf(context.treasury.address);
+    const { betId, receipt } = await placeErc20({
+      ...context,
+      asset: context.matt,
+      amount,
+      label: "matt-identity",
+    });
+    const bet = await context.game.bets(betId);
+    const priceEvent = receipt.logs.map((log) => {
+      try { return context.game.interface.parseLog(log); } catch { return null; }
+    }).find((parsed) => parsed?.name === "PoolPriceUsed");
+
+    expect(await context.matt.balanceOf(context.game.target)).to.equal(0);
+    expect(await context.matt.balanceOf(context.treasury.address))
+      .to.equal(treasuryBefore + amount);
+    expect(bet.asset).to.equal(context.matt.target);
+    expect(bet.mattEquivalent).to.equal(amount);
+    expect(bet.payoutAmount).to.equal(amount * 2n);
+    expect(bet.burnAmount).to.equal(amount * 75n / 100n);
+    expect(priceEvent.args.pool).to.equal(ethers.ZeroAddress);
+    expect(priceEvent.args.twapWindow).to.equal(0);
+    expect(priceEvent.args.arithmeticMeanTick).to.equal(0);
+    expect(priceEvent.args.harmonicMeanLiquidity).to.equal(0);
+  });
+
   it("pays a winner only in MATT from the reward vault", async function () {
     const context = await fixture();
     const playerMattBefore = await context.matt.balanceOf(context.player.address);
@@ -239,6 +270,14 @@ describe("MattCoinFlipBurn", function () {
       wrongFactory.target,
       1,
     )).to.be.revertedWithCustomError(context.game, "InvalidPoolFactory");
+    await expect(context.game.updateV3Pool(
+      context.matt.target,
+      context.assetPool.target,
+      1,
+    )).to.be.revertedWithCustomError(
+      context.game,
+      "InvalidMattIdentityConfiguration",
+    );
 
     await context.assetPool.setOracle(0, 10);
     await context.game.updateV3Pool(context.asset.target, context.assetPool.target, 11);

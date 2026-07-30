@@ -1,7 +1,9 @@
 const hre = require("hardhat");
 
 async function main() {
-  const deployment = await hre.deployments.get("MattCoinFlipBurn");
+  const gameDeploymentName =
+    process.env.BURNFLIP_GAME_DEPLOYMENT || "MattCoinFlipBurn";
+  const deployment = await hre.deployments.get(gameDeploymentName);
   const vaultDeployment = await hre.deployments.get("MattRewardVault");
   const game = await hre.ethers.getContractAt("MattCoinFlipBurn", deployment.address);
   const vault = await hre.ethers.getContractAt("MattRewardVault", vaultDeployment.address);

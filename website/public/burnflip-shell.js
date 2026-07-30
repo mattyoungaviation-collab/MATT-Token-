@@ -61,7 +61,7 @@
       <div><span>Reward vault available</span><strong id="coin-bankroll">Loading…</strong></div>
     </div>
     <div class="coin-game-flow" aria-label="On-chain BurnFlip flow">
-      <div class="coin-game-step" data-step="commit"><b>01 CONFIRM</b><span>Review the TWAP quote and approve the wager.</span></div>
+      <div class="coin-game-step" data-step="commit"><b>01 CONFIRM</b><span>Review the MATT value quote and approve the wager.</span></div>
       <div class="coin-game-step" data-step="block"><b>02 RONIN BLOCK</b><span>Your asset is already in the treasury while entropy matures.</span></div>
       <div class="coin-game-step" data-step="reveal"><b>03 REVEAL</b><span>Reveal to settle the MATT payout or burn.</span></div>
     </div>

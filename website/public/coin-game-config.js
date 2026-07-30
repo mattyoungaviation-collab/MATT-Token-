@@ -2,10 +2,10 @@
 // only after the universal BurnFlip and Reward Vault pass the launch checklist.
 window.MATT_COIN_FLIP_CONFIG = Object.freeze({
   chainId: 2020,
-  version: "universal-v1",
+  version: "universal-v2-matt",
   tokenAddress: "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
-  contractAddress: "0x44BB8214b295e64Df8aac30097381C1Db4d66B31",
-  deploymentBlock: 58950453,
+  contractAddress: "0x7d3F3e454638418D315c1A5a39C9E3c7ECeDBc99",
+  deploymentBlock: 58953064,
   treasuryAddress: "0xBacE355D23d378a6E1adD986E53a18Dd12E6EeAc",
   explorerAddressBase: "https://explorer.roninchain.com/address/",
   burnEdition: true,
@@ -15,6 +15,13 @@ window.MATT_COIN_FLIP_CONFIG = Object.freeze({
       address: "0x0000000000000000000000000000000000000000",
       decimals: 18,
       native: true,
+      enabled: true
+    }),
+    Object.freeze({
+      symbol: "MATT",
+      address: "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+      decimals: 18,
+      native: false,
       enabled: true
     }),
     Object.freeze({

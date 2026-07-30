@@ -18,13 +18,24 @@
       "enabled": true
     },
     {
+      "symbol": "MATT",
+      "asset": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+      "oracleToken": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+      "pool": "0x0000000000000000000000000000000000000000",
+      "fee": 0,
+      "native": false,
+      "identityPrice": true,
+      "enabled": true
+    },
+    {
       "symbol": "USDC",
       "asset": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
       "oracleToken": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
       "pool": "0x415c997Ce1adcFEA7B3aC8949Ff4220749ad7DC6",
       "fee": 10000,
       "native": false,
-      "enabled": false
+      "enabled": false,
+      "disabledReason": "The selected MATT/USDC V3 pool does not currently retain a reliable 30-minute TWAP"
     },
     {
       "symbol": "WATER",

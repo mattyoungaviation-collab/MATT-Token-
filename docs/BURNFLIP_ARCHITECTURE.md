@@ -4,7 +4,7 @@
 
 Universal BurnFlip is an in-place replacement of the existing Burn Flip game. It preserves the heads/tails interface and future-block commit/reveal sequence, but separates three kinds of value:
 
-- **Wager asset:** RON or an enabled ecosystem ERC-20 supplied by the player.
+- **Wager asset:** RON, MATT, or another enabled ecosystem ERC-20 supplied by the player.
 - **Treasury asset:** the same wager asset, transferred immediately and permanently to the Gnosis Safe.
 - **Settlement asset:** MATT, paid or burned only by the dedicated Reward Vault.
 
@@ -32,6 +32,7 @@ flowchart LR
 - Holds immutable MATT, wrapped RON, Katana V3 factory, and treasury addresses.
 - Maintains the supported-asset-to-pool mapping and minimum harmonic-liquidity floor.
 - Calls `observe([1800, 0])`; there is no spot-price or manual-price fallback.
+- Prices MATT wagers by exact token identity (`1 MATT = 1 MATT`) without an unnecessary or manipulable oracle round trip.
 - Stores the MATT equivalent, payout, burn, mean tick, and commitment at placement.
 - Transfers ERC-20 wagers directly from the player to the Safe and verifies the exact Safe balance increase.
 - Forwards native RON to the Safe before placement returns.
@@ -60,6 +61,7 @@ The address list originally supplied in the product brief was shifted by one sym
 | UI asset | Contract/oracle token | Decimals |
 |---|---|---:|
 | RON | WRON `0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4` | 18 |
+| MATT | identity-priced `0xa5450417BDCa0BDfB058ffE41205400FfDA1174d` | 18 |
 | USDC | `0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc` | 6 |
 | WATER | `0x57A8Eb80d6813AEEEB9c8e770011C016F980d581` | 18 |
 | FIRE | `0x0E8Edc6f5CaC5dCaE036Ad77Fc0dE4E72404e2Fb` | 18 |
@@ -72,7 +74,7 @@ The address list originally supplied in the product brief was shifted by one sym
 
 1. The browser creates a random 32-byte secret.
 2. It commits to the secret, wallet, asset, choice, amount, game address, and chain ID.
-3. The contract obtains a safe TWAP quote, reserves the winner liability, stores the bet, and sends the wager to the Safe atomically.
+3. The contract obtains an exact 1:1 MATT identity quote or a safe TWAP quote for another asset, reserves the winner liability, stores the bet, and sends the wager to the Safe atomically.
 4. After the entropy block, the browser reveals the secret.
 5. The outcome hashes the secret with the future block hash, bet ID, contract, and chain.
 6. The vault pays the stored payout or burns the stored burn amount.

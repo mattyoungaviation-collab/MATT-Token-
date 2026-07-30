@@ -30,6 +30,22 @@ async function consult(pool, secondsAgo) {
   return { meanTick, harmonicLiquidity };
 }
 
+async function waitForConsistentQuote(game, asset, amount) {
+  let lastError;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      return await game.quoteMatt(asset, amount);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 5) {
+        console.log(`Quote read-back pending RPC consistency (${attempt}/5)`);
+        await new Promise((resolve) => setTimeout(resolve, 4_000));
+      }
+    }
+  }
+  throw lastError;
+}
+
 async function validatePool(config, asset, pool) {
   const [factory, token0, token1, liquidity, slot0] = await Promise.all([
     pool.factory(),
@@ -64,7 +80,9 @@ async function main() {
     throw new Error(`Configuration must be signed by admin ${config.admin}`);
   }
 
-  const gameDeployment = await hre.deployments.get("MattCoinFlipBurn");
+  const gameDeploymentName =
+    process.env.BURNFLIP_GAME_DEPLOYMENT || "MattCoinFlipBurn";
+  const gameDeployment = await hre.deployments.get(gameDeploymentName);
   const vaultDeployment = await hre.deployments.get("MattRewardVault");
   const game = await hre.ethers.getContractAt(
     "MattCoinFlipBurn",
@@ -84,9 +102,45 @@ async function main() {
   }
 
   const enabledAssets = config.assets.filter(
-    (asset) => asset.enabled !== false && asset.pool,
+    (asset) => asset.enabled !== false,
   );
   for (const asset of enabledAssets) {
+    const isMatt = asset.asset.toLowerCase() === config.matt.toLowerCase();
+    if (isMatt) {
+      if (prepareOnly) {
+        console.log(`${asset.symbol}: exact 1:1 identity pricing needs no oracle preparation`);
+        continue;
+      }
+      const current = await game.assetConfigs(asset.asset);
+      if (!current.supported) {
+        console.log(`${asset.symbol}: adding exact 1:1 identity pricing`);
+        await (await game.addSupportedAsset(
+          asset.asset,
+          hre.ethers.ZeroAddress,
+          0,
+        )).wait(3);
+      } else if (
+        current.pool !== hre.ethers.ZeroAddress
+        || current.minHarmonicLiquidity !== 0n
+      ) {
+        throw new Error(`${asset.symbol}: invalid on-chain identity configuration`);
+      } else {
+        console.log(`${asset.symbol}: already configured at exact 1:1`);
+      }
+      const quote = await waitForConsistentQuote(
+        game,
+        asset.asset,
+        hre.ethers.parseEther("1"),
+      );
+      if (quote[0] !== hre.ethers.parseEther("1")) {
+        throw new Error(`${asset.symbol}: identity quote is not exactly 1:1`);
+      }
+      console.log(`${asset.symbol}: ready (exact 1 MATT = 1 MATT)`);
+      continue;
+    }
+    if (!asset.pool || asset.pool === hre.ethers.ZeroAddress) {
+      throw new Error(`${asset.symbol}: enabled oracle asset has no pool`);
+    }
     const pool = new hre.ethers.Contract(asset.pool, poolAbi, signer);
     const details = await validatePool(config, asset, pool);
     if (details.cardinalityNext < 32) {
@@ -119,21 +173,23 @@ async function main() {
         asset.asset,
         asset.pool,
         minLiquidity,
-      )).wait();
-    } else if (
-      current.pool.toLowerCase() !== asset.pool.toLowerCase()
-      || current.minHarmonicLiquidity !== minLiquidity
-    ) {
+      )).wait(3);
+    } else if (current.pool.toLowerCase() !== asset.pool.toLowerCase()) {
       console.log(`${asset.symbol}: updating pool/liquidity floor`);
       await (await game.updateV3Pool(
         asset.asset,
         asset.pool,
         minLiquidity,
-      )).wait();
+      )).wait(3);
+    } else {
+      console.log(
+        `${asset.symbol}: already configured; preserving liquidity floor `
+        + current.minHarmonicLiquidity,
+      );
     }
 
     const unit = 10n ** BigInt(asset.symbol === "USDC" ? 6 : 18);
-    await game.quoteMatt(asset.asset, unit);
+    await waitForConsistentQuote(game, asset.asset, unit);
     console.log(
       `${asset.symbol}: ready (tick ${observation.meanTick}, `
       + `harmonic liquidity ${observation.harmonicLiquidity})`,

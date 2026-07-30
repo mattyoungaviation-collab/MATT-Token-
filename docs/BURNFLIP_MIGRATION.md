@@ -44,7 +44,27 @@ npm run configure:coinflip-burn:ronin
 
 The script rejects wrong factories, wrong pairs, zero active liquidity, unavailable TWAP history, and a zero derived floor. It configures only entries whose `enabled` field is not false.
 
-NOTUS must remain disabled while its pool has zero active liquidity.
+MATT is configured separately at exact 1:1 with the zero pool and zero
+liquidity floor. USDC remains disabled while its 30-minute observation is
+unreliable. NOTUS must remain disabled while its pool has zero active
+liquidity.
+
+### Replacing a universal game that omitted MATT
+
+Reuse the funded `MattRewardVault`; its MATT cannot be rescued into a newly
+deployed vault.
+
+1. Pause the current game to block new wagers.
+2. Leave the vault unpaused until all existing reservations settle or expire.
+3. Confirm the current game is paused and `reservedPayouts() == 0`.
+4. Pause the vault.
+5. Deploy the paused replacement with
+   `npm run deploy:coinflip-burn-matt:ronin`.
+6. Configure it with `npm run configure:coinflip-burn-matt:ronin`.
+7. Confirm MATT quotes exactly 1:1 and all other enabled assets quote safely.
+8. Run `npm run switch:coinflip-burn-matt:ronin` to authorize the replacement.
+9. Unpause the vault, then the replacement game.
+10. Update the website and backend to the replacement address and block.
 
 ## 4. Fund and activate
 

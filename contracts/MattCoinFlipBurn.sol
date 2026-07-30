@@ -58,6 +58,10 @@ contract MattCoinFlipBurn is Ownable2Step, Pausable, ReentrancyGuard {
     error InvalidPoolFactory(address expected, address actual);
     error InvalidPoolPair(address token0, address token1);
     error PoolHasNoLiquidity(address pool);
+    error InvalidMattIdentityConfiguration(
+        address pool,
+        uint128 minHarmonicLiquidity
+    );
     error OracleLiquidityTooLow(uint128 actual, uint128 minimum);
     error InvalidMinimumLiquidity();
     error InvalidWagerAmount();
@@ -221,6 +225,10 @@ contract MattCoinFlipBurn is Ownable2Step, Pausable, ReentrancyGuard {
         if (!config.supported) revert UnsupportedAsset(asset);
         if (amount == 0) revert InvalidWagerAmount();
         if (amount > type(uint128).max) revert WagerTooLarge(amount);
+
+        if (asset == address(matt)) {
+            return (amount, 0, 0, address(0));
+        }
 
         pool = config.pool;
         (arithmeticMeanTick, harmonicMeanLiquidity) =
@@ -536,7 +544,7 @@ contract MattCoinFlipBurn is Ownable2Step, Pausable, ReentrancyGuard {
             betId,
             asset,
             pool,
-            TWAP_WINDOW,
+            asset == address(matt) ? 0 : TWAP_WINDOW,
             meanTick,
             harmonicLiquidity,
             mattEquivalent
@@ -566,6 +574,21 @@ contract MattCoinFlipBurn is Ownable2Step, Pausable, ReentrancyGuard {
         address pool,
         uint128 minHarmonicLiquidity
     ) private {
+        if (asset == address(matt)) {
+            if (pool != address(0) || minHarmonicLiquidity != 0) {
+                revert InvalidMattIdentityConfiguration(
+                    pool,
+                    minHarmonicLiquidity
+                );
+            }
+            assetConfigs[asset] = AssetConfig({
+                pool: address(0),
+                minHarmonicLiquidity: 0,
+                supported: true
+            });
+            return;
+        }
+
         if (pool == address(0) || pool.code.length == 0) {
             revert InvalidPool(pool);
         }
@@ -573,7 +596,6 @@ contract MattCoinFlipBurn is Ownable2Step, Pausable, ReentrancyGuard {
             revert InvalidMinimumLiquidity();
         }
         address oracleToken = asset == NATIVE_RON ? wrappedRon : asset;
-        if (oracleToken == address(matt)) revert InvalidPool(pool);
 
         IKatanaV3Pool katanaPool = IKatanaV3Pool(pool);
         address actualFactory = katanaPool.factory();

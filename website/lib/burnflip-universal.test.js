@@ -37,19 +37,21 @@ test("frontend configuration uses verified asset identities and keeps unsafe NOT
   const config = context.window.MATT_COIN_FLIP_CONFIG;
 
   assert.equal(config.tokenAddress, "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d");
-assert.equal(
-  config.contractAddress,
-  "0x44BB8214b295e64Df8aac30097381C1Db4d66B31",
-);
-assert.equal(config.deploymentBlock, 58950453);
-  assert.equal(config.assets.length, 8);
+  assert.equal(config.version, "universal-v2-matt");
+  assert.equal(config.contractAddress, "0x7d3F3e454638418D315c1A5a39C9E3c7ECeDBc99");
+  assert.equal(config.deploymentBlock, 58953064);
+  assert.equal(config.assets.length, 9);
   assert.deepEqual(
     Array.from(config.assets, (asset) => asset.symbol),
-    ["RON", "USDC", "WATER", "FIRE", "EARTH", "COIN", "RONKE", "NOTUS"],
+    ["RON", "MATT", "USDC", "WATER", "FIRE", "EARTH", "COIN", "RONKE", "NOTUS"],
   );
+  const matt = config.assets.find((asset) => asset.symbol === "MATT");
+  assert.equal(matt.address, config.tokenAddress);
+  assert.equal(matt.decimals, 18);
+  assert.equal(matt.enabled, true);
   const usdc = config.assets.find((asset) => asset.symbol === "USDC");
-assert.equal(usdc.decimals, 6);
-assert.equal(usdc.enabled, false);
+  assert.equal(usdc.decimals, 6);
+  assert.equal(usdc.enabled, false);
   assert.equal(config.assets.find((asset) => asset.symbol === "NOTUS").enabled, false);
 });
 
@@ -82,6 +84,8 @@ test("existing BurnFlip shell exposes universal quote, confirmation, and result 
   assert.match(controller, /Treasury received/);
   assert.match(controller, /placeRonBet/);
   assert.doesNotMatch(loader, /coin-settlement-animation/);
+  assert.match(loader, /coin-game-config\.js\?v=26/);
+  assert.match(loader, /burnflip-controller\.js\?v=26/);
 });
 
 test("stats API reads universal BurnFlip counters from the configured deployment", async (t) => {

@@ -20,7 +20,7 @@ The token has no owner. BurnFlip uses its existing `burn(uint256)` function and 
 `MattCoinFlipBurn` retains the existing heads/tails commit-and-reveal experience while changing the economic flow:
 
 1. The player selects a supported ecosystem asset and an amount.
-2. The contract derives its MATT value from a 30-minute Katana V3 TWAP.
+2. MATT wagers use exact `1 MATT = 1 MATT` identity pricing; every other asset derives its MATT value from a 30-minute Katana V3 TWAP.
 3. The wager is transferred directly to the immutable treasury Safe.
 4. A win pays the stored MATT value multiplied by the configured payout multiplier from `MattRewardVault`.
 5. A loss burns the configured percentage of the stored MATT value from the vault.
@@ -48,7 +48,7 @@ Canonical asset metadata and discovered pool addresses are in [`config/burnflip.
 npm run discover:coinflip-burn:pools
 ```
 
-NOTUS is represented in the selector but disabled because its canonical MATT V3 pool currently has zero active liquidity. It must not be enabled until liquidity exists and a valid 30-minute observation can be read.
+MATT is enabled without an oracle pool because its settlement value is exactly 1:1. USDC is disabled until its selected pool reliably retains the full 30-minute observation, and NOTUS is disabled because its canonical MATT V3 pool currently has zero active liquidity.
 
 ## Build and test
 
@@ -62,6 +62,11 @@ npm run test:coinflip-burn
 ```
 
 The focused suite includes unit coverage for the game and vault, plus an end-to-end integration test that proves wager assets reach the treasury while MATT settlement comes from the vault.
+
+If a previously deployed universal BurnFlip omitted MATT, deploy the paused
+`MattCoinFlipBurnMatt` replacement, configure it, pause the funded vault, and
+switch the vault authorization only after the previous game has zero reserved
+payouts. The funded vault is reused; do not deploy a second vault.
 
 ## Deployment overview
 

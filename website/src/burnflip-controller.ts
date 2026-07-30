@@ -493,9 +493,12 @@ interface Quote {
         actionButton.textContent = paused ? "BURNFLIP PAUSED" : "REVIEW BURNFLIP";
         actionButton.disabled = paused || busy || !selectedAsset().enabled;
         if (!preserveMessage && !busy) {
+          const priceMessage = selectedAsset().symbol === "MATT"
+            ? "MATT uses an exact 1:1 value. Review your wager when ready."
+            : "Live Katana V3 TWAP loaded. Review your wager when ready.";
           setStatus(paused
             ? "BurnFlip is paused by the administrator."
-            : "Live Katana V3 TWAP loaded. Review your wager when ready.");
+            : priceMessage);
         }
         setFlow("commit");
         return;
@@ -578,7 +581,7 @@ interface Quote {
     if (amount > walletBalance) throw new Error(`Your wallet does not hold that much ${asset.symbol}.`);
     await refreshQuote();
     const quote = currentQuote;
-    if (!quote) throw new Error("A safe Katana V3 TWAP quote is not available.");
+    if (!quote) throw new Error("A safe MATT value quote is not available.");
     if (!(await confirmWager(asset, amount, quote))) throw new Error("Wager confirmation cancelled.");
 
     const secret = ethersApi.hexlify(crypto.getRandomValues(new Uint8Array(32)));
