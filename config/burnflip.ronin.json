@@ -24,7 +24,7 @@
       "pool": "0x415c997Ce1adcFEA7B3aC8949Ff4220749ad7DC6",
       "fee": 10000,
       "native": false,
-      "enabled": true
+      "enabled": false
     },
     {
       "symbol": "WATER",

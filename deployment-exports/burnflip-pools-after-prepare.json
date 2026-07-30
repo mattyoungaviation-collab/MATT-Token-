@@ -1,0 +1,201 @@
+{
+  "chainId": 2020,
+  "matt": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+  "factory": "0x1f0B70d9A137e3cAEF0ceAcD312BC5f81Da0cC0c",
+  "assets": [
+    {
+      "requestedSymbol": "RON",
+      "address": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+      "onchainSymbol": "WRON",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 100,
+          "address": "0x76CB6899c97Ee0585aaFfddfe5a94027507DE76A",
+          "token0": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "token1": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+          "liquidity": "0",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        },
+        {
+          "fee": 3000,
+          "address": "0x6e6EAe2556C068169A507cE32259182024d47BF8",
+          "token0": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "token1": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+          "liquidity": "0",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        },
+        {
+          "fee": 10000,
+          "address": "0xa517E05e96728E80284F2aE157dDF309449D7cE8",
+          "token0": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "token1": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+          "liquidity": "1732543593700384127933372",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "USDC",
+      "address": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+      "onchainSymbol": "USDC",
+      "decimals": 6,
+      "pools": [
+        {
+          "fee": 100,
+          "address": "0x88E17dEb85942715D485d1099E650f63609cA082",
+          "token0": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "0",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        },
+        {
+          "fee": 3000,
+          "address": "0xC0cd7CB373468a2602ef560a90890b6C5347d195",
+          "token0": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "2271693013559885",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        },
+        {
+          "fee": 10000,
+          "address": "0x415c997Ce1adcFEA7B3aC8949Ff4220749ad7DC6",
+          "token0": "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "231728999216494633",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": false
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "WATER",
+      "address": "0x57A8Eb80d6813AEEEB9c8e770011C016F980d581",
+      "onchainSymbol": "WATER",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 10000,
+          "address": "0x1AeAb61E5fB199096433fC91604FA4acc176234C",
+          "token0": "0x57A8Eb80d6813AEEEB9c8e770011C016F980d581",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "4734713686019891759823340",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "FIRE",
+      "address": "0x0E8Edc6f5CaC5dCaE036Ad77Fc0dE4E72404e2Fb",
+      "onchainSymbol": "FIRE",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 10000,
+          "address": "0xEf3AE13Fc6BE618b392F9cd976cC5703C606CAF5",
+          "token0": "0x0E8Edc6f5CaC5dCaE036Ad77Fc0dE4E72404e2Fb",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "2591652908244197567170576",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "EARTH",
+      "address": "0xC89384CD2970c916DC75DA8e11524eBE6d77fa07",
+      "onchainSymbol": "EARTH",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 100,
+          "address": "0xc195E2723627Cc9124cF13B11010429dfad8bD60",
+          "token0": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "token1": "0xC89384CD2970c916DC75DA8e11524eBE6d77fa07",
+          "liquidity": "18010275442517667692916033",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "COIN",
+      "address": "0x7dc167e270d5EF683ceaf4aFCDf2efbDd667a9A7",
+      "onchainSymbol": "COIN",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 3000,
+          "address": "0xeF38E70998e167d2e898AbFf84d4766CaE7C3A94",
+          "token0": "0x7dc167e270d5EF683ceaf4aFCDf2efbDd667a9A7",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "477441657710215593497622",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        },
+        {
+          "fee": 10000,
+          "address": "0xa3d4d4f86320d16BF6D4f38500A73d845e7f71Ae",
+          "token0": "0x7dc167e270d5EF683ceaf4aFCDf2efbDd667a9A7",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "8860313038832231809822643",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "RONKE",
+      "address": "0xf988f63bf26C3Ed3fBf39922149E3E7b1e5c27cB",
+      "onchainSymbol": "Ronke",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 10000,
+          "address": "0xB3CEBF54276a29FaeC45E73566dbD4D853CCb66E",
+          "token0": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "token1": "0xf988f63bf26C3Ed3fBf39922149E3E7b1e5c27cB",
+          "liquidity": "2118732964115104238222118",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 32,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    },
+    {
+      "requestedSymbol": "NOTUS",
+      "address": "0x214b8ba88244587b69c609214e0b3e6cf56025d1",
+      "onchainSymbol": "NOTUS",
+      "decimals": 18,
+      "pools": [
+        {
+          "fee": 10000,
+          "address": "0x7E15cd4B9f4C140DC14623867047C06169fd5B23",
+          "token0": "0x214B8bA88244587b69C609214E0b3E6Cf56025D1",
+          "token1": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+          "liquidity": "0",
+          "observationCardinality": 1,
+          "observationCardinalityNext": 1,
+          "thirtyMinuteTwapReady": true
+        }
+      ]
+    }
+  ]
+}

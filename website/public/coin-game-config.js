@@ -4,8 +4,8 @@ window.MATT_COIN_FLIP_CONFIG = Object.freeze({
   chainId: 2020,
   version: "universal-v1",
   tokenAddress: "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
-  contractAddress: null,
-  deploymentBlock: null,
+  contractAddress: "0x44BB8214b295e64Df8aac30097381C1Db4d66B31",
+  deploymentBlock: 58950453,
   treasuryAddress: "0xBacE355D23d378a6E1adD986E53a18Dd12E6EeAc",
   explorerAddressBase: "https://explorer.roninchain.com/address/",
   burnEdition: true,
@@ -22,7 +22,8 @@ window.MATT_COIN_FLIP_CONFIG = Object.freeze({
       address: "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
       decimals: 6,
       native: false,
-      enabled: true
+      enabled: false,
+      disabledReason: "USDC wagering is temporarily unavailable."
     }),
     Object.freeze({
       symbol: "WATER",

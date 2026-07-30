@@ -37,13 +37,19 @@ test("frontend configuration uses verified asset identities and keeps unsafe NOT
   const config = context.window.MATT_COIN_FLIP_CONFIG;
 
   assert.equal(config.tokenAddress, "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d");
-  assert.equal(config.contractAddress, null);
+assert.equal(
+  config.contractAddress,
+  "0x44BB8214b295e64Df8aac30097381C1Db4d66B31",
+);
+assert.equal(config.deploymentBlock, 58950453);
   assert.equal(config.assets.length, 8);
   assert.deepEqual(
     Array.from(config.assets, (asset) => asset.symbol),
     ["RON", "USDC", "WATER", "FIRE", "EARTH", "COIN", "RONKE", "NOTUS"],
   );
-  assert.equal(config.assets.find((asset) => asset.symbol === "USDC").decimals, 6);
+  const usdc = config.assets.find((asset) => asset.symbol === "USDC");
+assert.equal(usdc.decimals, 6);
+assert.equal(usdc.enabled, false);
   assert.equal(config.assets.find((asset) => asset.symbol === "NOTUS").enabled, false);
 });
 

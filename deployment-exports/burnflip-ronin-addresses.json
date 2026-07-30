@@ -1,0 +1,107 @@
+{
+    "schemaVersion":  1,
+    "network":  "ronin",
+    "chainId":  2020,
+    "generatedAt":  "2026-07-30T00:03:42.0743925Z",
+    "deployer":  "0xF79913cB83Cc9CABD95D0ba9250103fbb939f984",
+    "contracts":  {
+                      "MattCoinFlipBurn":  {
+                                               "address":  "0x44BB8214b295e64Df8aac30097381C1Db4d66B31",
+                                               "transactionHash":  "0xbde9f01cfbc17d799622a12dd10e31eb9d5a8cc5ee308a286203e520b034b867",
+                                               "blockNumber":  58950453
+                                           },
+                      "MattRewardVault":  {
+                                              "address":  "0xB105479c6A4F3e1034087c9E30a6d0A73d159c05",
+                                              "transactionHash":  "0xb3992a0fb4358d0bedd0bf921e55930bb505ff6944345b252c5a971eb1cff2c2",
+                                              "blockNumber":  58950446,
+                                              "authorizationTransactionHash":  "0x9f050b1a2925d8adb65848b67d3563e189b1d9e78fedddd823b2857a202d9998"
+                                          }
+                  },
+    "dependencies":  {
+                         "matt":  "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+                         "wrappedRon":  "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+                         "katanaV3Factory":  "0x1f0B70d9A137e3cAEF0ceAcD312BC5f81Da0cC0c",
+                         "treasury":  "0xBacE355D23d378a6E1adD986E53a18Dd12E6EeAc",
+                         "admin":  "0xF79913cB83Cc9CABD95D0ba9250103fbb939f984"
+                     },
+    "economics":  {
+                      "payoutMultiplierBps":  20000,
+                      "burnBps":  7500,
+                      "twapWindowSeconds":  1800
+                  },
+    "assets":  [
+                   {
+                       "symbol":  "RON",
+                       "asset":  "0x0000000000000000000000000000000000000000",
+                       "oracleToken":  "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+                       "pool":  "0xa517E05e96728E80284F2aE157dDF309449D7cE8",
+                       "fee":  10000,
+                       "native":  true,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "USDC",
+                       "asset":  "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+                       "oracleToken":  "0x0B7007c13325C48911F73A2daD5FA5dCBf808aDc",
+                       "pool":  "0x415c997Ce1adcFEA7B3aC8949Ff4220749ad7DC6",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "WATER",
+                       "asset":  "0x57A8Eb80d6813AEEEB9c8e770011C016F980d581",
+                       "oracleToken":  "0x57A8Eb80d6813AEEEB9c8e770011C016F980d581",
+                       "pool":  "0x1AeAb61E5fB199096433fC91604FA4acc176234C",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "FIRE",
+                       "asset":  "0x0E8Edc6f5CaC5dCaE036Ad77Fc0dE4E72404e2Fb",
+                       "oracleToken":  "0x0E8Edc6f5CaC5dCaE036Ad77Fc0dE4E72404e2Fb",
+                       "pool":  "0xEf3AE13Fc6BE618b392F9cd976cC5703C606CAF5",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "EARTH",
+                       "asset":  "0xC89384CD2970c916DC75DA8e11524eBE6d77fa07",
+                       "oracleToken":  "0xC89384CD2970c916DC75DA8e11524eBE6d77fa07",
+                       "pool":  "0xc195E2723627Cc9124cF13B11010429dfad8bD60",
+                       "fee":  100,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "COIN",
+                       "asset":  "0x7dc167e270d5EF683ceaf4aFCDf2efbDd667a9A7",
+                       "oracleToken":  "0x7dc167e270d5EF683ceaf4aFCDf2efbDd667a9A7",
+                       "pool":  "0xa3d4d4f86320d16BF6D4f38500A73d845e7f71Ae",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "RONKE",
+                       "asset":  "0xf988f63bf26C3Ed3fBf39922149E3E7b1e5c27cB",
+                       "oracleToken":  "0xf988f63bf26C3Ed3fBf39922149E3E7b1e5c27cB",
+                       "pool":  "0xB3CEBF54276a29FaeC45E73566dbD4D853CCb66E",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  true
+                   },
+                   {
+                       "symbol":  "NOTUS",
+                       "asset":  "0x214b8ba88244587b69c609214e0b3e6cf56025d1",
+                       "oracleToken":  "0x214b8ba88244587b69c609214e0b3e6cf56025d1",
+                       "pool":  "0x7E15cd4B9f4C140DC14623867047C06169fd5B23",
+                       "fee":  10000,
+                       "native":  false,
+                       "enabled":  false,
+                       "disabledReason":  "The canonical MATT/NOTUS Katana V3 pool has zero active liquidity"
+                   }
+               ]
+}
