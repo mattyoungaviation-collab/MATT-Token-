@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node scripts/configure-crash-betting-window.js && node website/server-combined.js",
     "compile": "hardhat compile",
+    "build:burnflip": "tsc -p tsconfig.burnflip.json",
     "test": "node scripts/run-contract-tests.js",
     "coverage": "hardhat coverage",
     "deploy:saigon": "hardhat deploy --network saigon --tags MattToken",
@@ -18,6 +19,9 @@
     "deploy:coinflip:ronin": "hardhat deploy --network ronin --tags MattCoinFlip",
     "deploy:coinflip-burn:saigon": "hardhat deploy --network saigon --tags MattCoinFlipBurn",
     "deploy:coinflip-burn:ronin": "hardhat deploy --network ronin --tags MattCoinFlipBurn",
+    "configure:coinflip-burn:ronin": "hardhat run scripts/configure-burnflip.js --network ronin",
+    "discover:coinflip-burn:pools": "node scripts/discover-burnflip-pools.js",
+    "test:coinflip-burn": "hardhat test test/MattCoinFlipBurn.test.js test/MattRewardVault.test.js test/BurnFlipIntegration.test.js && node --test website/lib/burnflip-universal.test.js",
     "deploy:rewards:saigon": "hardhat deploy --network saigon --tags MattDailyRewards",
     "deploy:rewards:ronin": "hardhat deploy --network ronin --tags MattDailyRewards",
     "deploy:rewards-v2:saigon": "hardhat deploy --network saigon --tags MattDailyRewardsV2",
@@ -67,7 +71,8 @@
     "dotenv": "^16.4.7",
     "hardhat": "^2.26.3",
     "hardhat-deploy": "^0.12.4",
-    "solc": "^0.8.28"
+    "solc": "^0.8.28",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "express": "^5.1.0"

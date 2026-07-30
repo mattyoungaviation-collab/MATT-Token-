@@ -1,19 +1,29 @@
 const fs = require("fs");
 const path = require("path");
-const { Interface } = require("ethers");
+const { Interface, isAddress } = require("ethers");
 
-const CONTRACT = "0xd6B6E08fB04b2Ee76e6584f49c6adE75d7ad144e";
+const CONTRACT = String(process.env.BURNFLIP_CONTRACT_ADDRESS || "").trim();
 const CONTRACT_LOWER = CONTRACT.toLowerCase();
-const DEPLOYMENT_BLOCK = 58_299_639;
+const DEPLOYMENT_BLOCK = Number.parseInt(process.env.BURNFLIP_DEPLOYMENT_BLOCK || "", 10);
+const CONFIGURED = isAddress(CONTRACT) && Number.isSafeInteger(DEPLOYMENT_BLOCK) && DEPLOYMENT_BLOCK >= 0;
 const ABI = [
-  "event BetSettled(uint256 indexed betId,address indexed player,uint8 choice,uint8 outcome,uint256 amount,uint256 payout,bool won,bytes32 entropyBlockHash,uint256 randomWord)"
+  "event GamePlayed(uint256 indexed betId,address indexed player,address indexed asset,uint256 wagerAmount,uint256 mattEquivalent,uint8 choice,uint8 outcome,bool won,bool expired,uint256 payoutAmount,uint256 burnAmount)"
 ];
 const iface = new Interface(ABI);
-const topic = iface.getEvent("BetSettled").topicHash;
+const topic = iface.getEvent("GamePlayed").topicHash;
 
 function installBurnFlipHistoryIndex(app, options = {}) {
   const rpcRequest = options.rpcRequest;
   if (typeof rpcRequest !== "function") throw new Error("BurnFlip history requires rpcRequest");
+  if (!CONFIGURED) {
+    const pending = (_req, res) => res.status(503).json({
+      status: "CONFIG_PENDING",
+      message: "BurnFlip history starts after BURNFLIP_CONTRACT_ADDRESS and BURNFLIP_DEPLOYMENT_BLOCK are configured."
+    });
+    app.get("/api/burnflip/history/:wallet", pending);
+    app.get("/api/burnflip/leaderboard", pending);
+    return { refresh: async () => null, getStatus: () => ({ indexedThroughBlock: null, players: 0, lastError: "Configuration pending" }) };
+  }
   const stateFile = String(options.stateFile || process.env.BURNFLIP_HISTORY_FILE || "").trim();
   const chunkSize = positiveInteger(process.env.BURNFLIP_HISTORY_CHUNK_SIZE, 4_000);
   const refreshMs = positiveInteger(process.env.BURNFLIP_HISTORY_REFRESH_MS, 20_000);
@@ -49,15 +59,16 @@ function installBurnFlipHistoryIndex(app, options = {}) {
 
   async function ingest(log) {
     const parsed = iface.parseLog(log);
-    if (!parsed || parsed.name !== "BetSettled") return;
+    if (!parsed || parsed.name !== "GamePlayed") return;
     const betId = BigInt(parsed.args.betId).toString();
     if (state.seen[betId]) return;
 
     const wallet = String(parsed.args.player).toLowerCase();
-    const amount = BigInt(parsed.args.amount);
-    const payout = BigInt(parsed.args.payout);
-    const net = payout - amount;
+    const amount = BigInt(parsed.args.mattEquivalent);
+    const payout = Boolean(parsed.args.won) ? BigInt(parsed.args.payoutAmount) : 0n;
+    const burn = Boolean(parsed.args.won) ? 0n : BigInt(parsed.args.burnAmount);
     const won = Boolean(parsed.args.won);
+    const net = won ? payout - amount : -amount;
     const blockNumber = Number(BigInt(log.blockNumber));
     const timestamp = await blockTimestamp(blockNumber).catch(() => null);
     const record = {
@@ -67,8 +78,13 @@ function installBurnFlipHistoryIndex(app, options = {}) {
       outcome: Number(parsed.args.outcome),
       amountRaw: amount.toString(),
       payoutRaw: payout.toString(),
+      burnRaw: burn.toString(),
+      wagerAsset: String(parsed.args.asset).toLowerCase(),
+      wagerAmountRaw: BigInt(parsed.args.wagerAmount).toString(),
+      mattEquivalentRaw: amount.toString(),
       netRaw: net.toString(),
       won,
+      expired: Boolean(parsed.args.expired),
       transactionHash: log.transactionHash,
       blockNumber,
       timestamp
@@ -96,7 +112,7 @@ function installBurnFlipHistoryIndex(app, options = {}) {
     if (!force && Date.now() - lastRefreshAt < refreshMs) return state;
     refreshPromise = (async () => {
       const latest = Number(BigInt(await rpcRequest("eth_blockNumber", [])));
-      if (state.version !== 1 || state.contract !== CONTRACT_LOWER || state.throughBlock > latest) state = freshState();
+      if (state.version !== 2 || state.contract !== CONTRACT_LOWER || state.throughBlock > latest) state = freshState();
       let cursor = state.throughBlock + 1;
       while (cursor <= latest) {
         const end = Math.min(latest, cursor + chunkSize - 1);
@@ -198,7 +214,7 @@ function comparator(sort) {
     default: return byBig("netRaw", -1);
   }
 }
-function freshState() { return { version: 1, contract: CONTRACT_LOWER, deploymentBlock: DEPLOYMENT_BLOCK, throughBlock: DEPLOYMENT_BLOCK - 1, totalSettlements: 0, players: {}, seen: {}, updatedAt: null }; }
+function freshState() { return { version: 2, contract: CONTRACT_LOWER, deploymentBlock: DEPLOYMENT_BLOCK, throughBlock: DEPLOYMENT_BLOCK - 1, totalSettlements: 0, players: {}, seen: {}, updatedAt: null }; }
 function loadState(file) { try { if (!file || !fs.existsSync(file)) return null; const state = JSON.parse(fs.readFileSync(file, "utf8")); return state?.contract === CONTRACT_LOWER ? state : null; } catch { return null; } }
 function saveState(file, state) { if (!file) return; try { fs.mkdirSync(path.dirname(file), { recursive: true }); const temporary = `${file}.tmp`; fs.writeFileSync(temporary, JSON.stringify(state)); fs.renameSync(temporary, file); } catch (error) { console.warn("BurnFlip history checkpoint failed:", safe(error)); } }
 function normalizeWallet(value) { const wallet = String(value || "").toLowerCase(); return /^0x[0-9a-f]{40}$/.test(wallet) ? wallet : null; }

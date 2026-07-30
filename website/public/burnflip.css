@@ -155,8 +155,107 @@
   text-align: center;
 }
 
+.burnflip-input-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, .8fr) minmax(210px, 1.2fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.burnflip-asset-field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  background: #0b1019;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+}
+
+.burnflip-quote-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.burnflip-confirm-dialog {
+  width: min(92vw, 520px);
+  padding: 0;
+  background: #101620;
+  border: 1px solid rgba(255, 148, 65, .48);
+  border-radius: 18px;
+  color: var(--text);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, .72);
+}
+
+.burnflip-confirm-dialog::backdrop {
+  background: rgba(2, 5, 10, .8);
+  backdrop-filter: blur(5px);
+}
+
+.burnflip-confirm-dialog form {
+  padding: 26px;
+}
+
+.burnflip-confirm-dialog h3 {
+  margin: 4px 0 16px;
+  font-size: 1.55rem;
+}
+
+.burnflip-confirm-dialog dl,
+.burnflip-result-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px 20px;
+}
+
+.burnflip-confirm-dialog dt,
+.burnflip-result-card dt {
+  color: var(--muted);
+}
+
+.burnflip-confirm-dialog dd,
+.burnflip-result-card dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 850;
+  text-align: right;
+}
+
+.burnflip-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.burnflip-dialog-actions button {
+  min-height: 48px;
+}
+
+.burnflip-result-card {
+  margin-top: 18px;
+  padding: 20px;
+  background: linear-gradient(145deg, rgba(255, 123, 44, .1), #0b1019);
+  border: 1px solid rgba(255, 148, 65, .32);
+  border-radius: 16px;
+}
+
+.burnflip-result-card[hidden] {
+  display: none;
+}
+
+.burnflip-result-card h3 {
+  margin: 0 0 14px;
+  color: #ffad69;
+}
+
 @media (max-width: 820px) {
   .burnflip-live-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .burnflip-quote-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -180,5 +279,10 @@
 
   .burnflip-stat strong {
     white-space: normal;
+  }
+
+  .burnflip-input-grid,
+  .burnflip-quote-grid {
+    grid-template-columns: 1fr;
   }
 }
