@@ -41,16 +41,16 @@ function loadStylesheet(source) {
 
 async function loadMattHubApps() {
   if (!document.getElementById('coin-flip')) return;
-  loadStylesheet('/coin-game.css?v=26');
-  loadStylesheet('/burnflip.css?v=26');
+  loadStylesheet('/coin-game.css?v=27');
+  loadStylesheet('/burnflip.css?v=27');
   try {
-    await loadScript('/rpc-proxy.js?v=26');
-    await loadScript('/ronin-connect-copy.js?v=26');
-    await loadScript('/walletconnect-game-fix.js?v=26');
-    await loadScript('/coin-game-config.js?v=26');
-    await loadScript('/burnflip-shell.js?v=26');
-    await loadScript('/burnflip-controller.js?v=26');
-    await loadScript('/burnflip-stats.js?v=26');
+    await loadScript('/rpc-proxy.js?v=27');
+    await loadScript('/ronin-connect-copy.js?v=27');
+    await loadScript('/walletconnect-game-fix.js?v=27');
+    await loadScript('/coin-game-config.js?v=27');
+    await loadScript('/burnflip-shell.js?v=27');
+    await loadScript('/burnflip-controller.js?v=27');
+    await loadScript('/burnflip-stats.js?v=27');
   } catch (error) {
     console.error('MATT Hub apps failed to load:', error);
   }

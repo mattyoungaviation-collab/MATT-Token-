@@ -114,6 +114,9 @@ interface Quote {
   const IDLE_POLL_MS = 15_000;
   const TX_TIMEOUT_MS = 180_000;
   const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
+  const COIN_SPIN_DURATION_MS = 2_400;
+  const COIN_REDUCED_MOTION_DURATION_MS = 650;
+  const COIN_LANDING_DURATION_MS = 360;
 
   function byId<T extends HTMLElement>(id: string): T {
     const element = document.getElementById(id);
@@ -622,9 +625,84 @@ interface Quote {
     setStatus(`Bet #${betId} confirmed. ${formatAmount(amount, asset)} reached the treasury.`, "good");
   }
 
-  function showResult(betId: bigint, bet: ActiveBet): void {
+  function outcomeFor(bet: ActiveBet): 0 | 1 {
+    const choice = bet.choice === 1 ? 1 : 0;
+    return bet.state === 2 ? choice : choice === 0 ? 1 : 0;
+  }
+
+  async function animateOutcome(outcome: 0 | 1, betId: bigint): Promise<void> {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reducedMotion
+      ? COIN_REDUCED_MOTION_DURATION_MS
+      : COIN_SPIN_DURATION_MS;
+    const currentFace = coin.dataset.face === "tails" ? 1 : 0;
+    const startDegrees = currentFace === 1 ? 180 : 0;
+    const targetDegrees = outcome === 1 ? 180 : 0;
+    const turns = reducedMotion ? 2 : 8;
+    const faceOffset = (targetDegrees - startDegrees + 360) % 360;
+    const endDegrees = startDegrees + turns * 360 + faceOffset;
+
+    coin.getAnimations().forEach((animation) => animation.cancel());
+    coin.classList.remove("flipping");
+    coin.dataset.spinning = "true";
+    coin.setAttribute("aria-label", "MATT coin flipping to the verified Ronin outcome");
+    resultCard.hidden = true;
+    resultText.className = "result";
+    resultText.textContent = `BET #${betId} RESULT LOCKED — FLIPPING…`;
+
+    const spin = coin.animate([
+      {
+        transform: `translateY(0) rotateX(0deg) rotateY(${startDegrees}deg) scale(1)`,
+        filter: "brightness(1)",
+        offset: 0,
+      },
+      {
+        transform: `translateY(-82px) rotateX(360deg) rotateY(${startDegrees + (endDegrees - startDegrees) * .55}deg) scale(1.12)`,
+        filter: "brightness(1.3)",
+        offset: .52,
+      },
+      {
+        transform: `translateY(-18px) rotateX(690deg) rotateY(${startDegrees + (endDegrees - startDegrees) * .9}deg) scale(1.04)`,
+        filter: "brightness(1.1)",
+        offset: .88,
+      },
+      {
+        transform: `translateY(0) rotateX(720deg) rotateY(${endDegrees}deg) scale(1)`,
+        filter: "brightness(1)",
+        offset: 1,
+      },
+    ], {
+      duration,
+      easing: "cubic-bezier(.12,.72,.18,1)",
+      fill: "forwards",
+    });
+
+    await spin.finished;
+    coin.dataset.face = outcome === 0 ? "heads" : "tails";
+    delete coin.dataset.spinning;
+    coin.setAttribute(
+      "aria-label",
+      outcome === 0 ? "MATT coin landed on heads" : "MATT coin landed on tails",
+    );
+    spin.cancel();
+
+    const landing = coin.animate([
+      { transform: `rotateY(${targetDegrees}deg) translateY(-7px) scale(1.035)` },
+      { transform: `rotateY(${targetDegrees}deg) translateY(5px) scale(.97)` },
+      { transform: `rotateY(${targetDegrees}deg) translateY(0) scale(1)` },
+    ], {
+      duration: COIN_LANDING_DURATION_MS,
+      easing: "cubic-bezier(.2,.9,.3,1.25)",
+    });
+    await landing.finished;
+  }
+
+  async function showResult(betId: bigint, bet: ActiveBet): Promise<void> {
     const asset = assetFor(bet.asset);
     const won = bet.state === 2;
+    const outcome = outcomeFor(bet);
+    const outcomeLabel = outcome === 0 ? "HEADS" : "TAILS";
+    await animateOutcome(outcome, betId);
     resultCard.hidden = false;
     resultCard.classList.toggle("win", won);
     resultCard.classList.toggle("loss", !won);
@@ -633,16 +711,14 @@ interface Quote {
       <div><dt>Asset</dt><dd>${formatAmount(bet.wagerAmount, asset)}</dd></div>
       <div><dt>Value</dt><dd>${formatMatt(bet.mattEquivalent)}</dd></div>
       <div><dt>Result</dt><dd>${won ? "WIN" : "LOSS"}</dd></div>
+      <div><dt>Coin</dt><dd>${outcomeLabel}</dd></div>
       <div><dt>${won ? "Paid" : "Burned"}</dt><dd>${formatMatt(won ? bet.payoutAmount : bet.burnAmount)}</dd></div>
       <div><dt>Treasury received</dt><dd>${formatAmount(bet.wagerAmount, asset)}</dd></div>
     `;
     resultText.className = won ? "result win" : "result burn-result";
     resultText.textContent = won
-      ? `BET #${betId} — ${formatMatt(bet.payoutAmount)} PAID`
-      : `BET #${betId} — ${formatMatt(bet.burnAmount)} BURNED`;
-    coin.classList.remove("flipping");
-    void coin.offsetWidth;
-    coin.classList.add("flipping");
+      ? `${outcomeLabel} — BET #${betId} PAID ${formatMatt(bet.payoutAmount)}`
+      : `${outcomeLabel} — BET #${betId} BURNED ${formatMatt(bet.burnAmount)}`;
   }
 
   async function revealBet(): Promise<void> {
@@ -660,7 +736,7 @@ interface Quote {
     });
     localStorage.removeItem(secretKey(owner, betId));
     const settled = await readBet(betId);
-    showResult(betId, settled);
+    await showResult(betId, settled);
     activeBetId = 0n;
     activeBet = null;
     activeSecret = null;
@@ -689,7 +765,7 @@ interface Quote {
     });
     localStorage.removeItem(secretKey(owner, betId));
     const settled = await readBet(betId);
-    showResult(betId, settled);
+    await showResult(betId, settled);
     activeBetId = 0n;
     activeBet = null;
     activeSecret = null;

@@ -13,6 +13,22 @@
   actionButton.disabled = false;
   result.textContent = 'Choose an asset, enter an amount, and call the MATT coin.';
 
+  const outcomeCoin = document.getElementById('coin');
+  if (outcomeCoin) {
+    outcomeCoin.classList.add('burnflip-outcome-coin');
+    outcomeCoin.dataset.face = 'heads';
+    outcomeCoin.setAttribute('aria-label', 'MATT coin showing heads');
+    outcomeCoin.innerHTML = `
+      <div class="coin-face burnflip-coin-side burnflip-coin-heads">
+        <img src="/assets/matt-logo.gif" alt="" aria-hidden="true">
+        <span class="sr-only">Heads</span>
+      </div>
+      <div class="coin-face burnflip-coin-side burnflip-coin-tails" aria-hidden="true">
+        <span>T</span>
+      </div>
+    `;
+  }
+
   const heading = section.querySelector('.section-heading');
   if (heading) {
     heading.innerHTML = `

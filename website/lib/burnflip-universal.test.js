@@ -68,6 +68,10 @@ test("existing BurnFlip shell exposes universal quote, confirmation, and result 
     path.join(root, "website", "public", "explorer-links.js"),
     "utf8",
   );
+  const styles = fs.readFileSync(
+    path.join(root, "website", "public", "burnflip.css"),
+    "utf8",
+  );
 
   for (const id of [
     "burnflip-asset",
@@ -82,10 +86,16 @@ test("existing BurnFlip shell exposes universal quote, confirmation, and result 
   }
   assert.match(controller, /quoteMatt/);
   assert.match(controller, /Treasury received/);
+  assert.match(controller, /function outcomeFor/);
+  assert.match(controller, /await animateOutcome\(outcome, betId\)/);
+  assert.match(controller, /await showResult\(betId, settled\)/);
   assert.match(controller, /placeRonBet/);
+  assert.match(shell, /burnflip-coin-heads/);
+  assert.match(shell, /burnflip-coin-tails/);
+  assert.match(styles, /backface-visibility:\s*hidden/);
   assert.doesNotMatch(loader, /coin-settlement-animation/);
-  assert.match(loader, /coin-game-config\.js\?v=26/);
-  assert.match(loader, /burnflip-controller\.js\?v=26/);
+  assert.match(loader, /coin-game-config\.js\?v=27/);
+  assert.match(loader, /burnflip-controller\.js\?v=27/);
 });
 
 test("stats API reads universal BurnFlip counters from the configured deployment", async (t) => {
