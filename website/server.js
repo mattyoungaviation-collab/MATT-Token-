@@ -34,7 +34,9 @@ const KNOWN_HOLDERS = new Map([
   ["0xf79913cb83cc9cabd95d0ba9250103fbb939f984", "MATT Treasury"],
   ["0xa517e05e96728e80284f2ae157ddf309449d7ce8", "Katana MATT/RON Pool"],
   [MATT_ADDRESS_LOWER, "MATT Contract"],
-  ["0x000000000000000000000000000000000000dead", "Burn Address"]
+  ["0x000000000000000000000000000000000000dead", "Burn Address"],
+
+  ["0x0d5930b7d0f5531a9039935f460ce3620111dcc0", "Daruman"]
 ]);
 
 let rpcRequestId = 0;
