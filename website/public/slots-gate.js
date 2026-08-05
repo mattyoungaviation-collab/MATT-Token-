@@ -45,7 +45,7 @@
     if (gameLoaded) return;
     gameLoaded = true;
     const script = document.createElement("script");
-    script.src = "/slots.js?v=3";
+    script.src = "/slots.js?v=4";
     script.async = false;
     document.body.appendChild(script);
   }

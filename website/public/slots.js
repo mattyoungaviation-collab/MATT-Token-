@@ -564,10 +564,11 @@
     try {
       const quotedFee = await state.slots.quoteRandomFee();
       const fee = (quotedFee * 11_500n + 9_999n) / 10_000n;
+      const transactionOverrides = { value: fee, gasLimit: 1_500_000n };
       setStatus(`Confirm one ${state.selected.type === "bonus" ? "free" : "paid"} spin. The small RON value funds this spin's VRF request; unused fee is refunded by the coordinator.`);
       const transaction = state.selected.type === "paid"
-        ? await state.slots.playPaid(state.selected.index, { value: fee })
-        : await state.slots.playBonus(state.selected.id, { value: fee });
+        ? await state.slots.playPaid(state.selected.index, transactionOverrides)
+        : await state.slots.playBonus(state.selected.id, transactionOverrides);
       showPending(0n, "Spin transaction sent. Waiting for its onchain ID.");
       const receipt = await transaction.wait();
       let spinId = 0n;
