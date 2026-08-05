@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-08-05T10:15:00Z",
+  "javascriptSyntax": {
+    "status": "passed",
+    "files": 18
+  },
+  "nodeTests": {
+    "status": "passed",
+    "tests": 13,
+    "failures": 0,
+    "tap": "reports/js-tests.tap"
+  },
+  "deterministicSimulation": {
+    "status": "passed",
+    "seed": "0x4d415454",
+    "iterations": 5000000,
+    "report": "reports/slots-sim-5m.json"
+  },
+  "installer": {
+    "status": "passed",
+    "runs": 2,
+    "npmScripts": 15,
+    "hubSlotsLinks": 2,
+    "idempotent": true
+  },
+  "html": {
+    "status": "passed",
+    "uniqueIds": 57,
+    "duplicateIds": 0
+  },
+  "assets": {
+    "status": "passed",
+    "count": 10,
+    "fileTypes": "reports/assets-file-types.txt"
+  },
+  "secretPatternScan": {
+    "status": "passed"
+  },
+  "solidityStructuralSanity": {
+    "status": "passed",
+    "files": 6,
+    "note": "Brace and parenthesis balance only; not a Solidity compilation."
+  },
+  "solidityCompile": {
+    "status": "not_run",
+    "reason": "Pinned npm dependencies/compiler unavailable in this execution runtime."
+  },
+  "hardhatTests": {
+    "status": "not_run",
+    "reason": "Requires npm install and Solidity compilation."
+  }
+}

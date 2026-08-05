@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: uses five 64-stop reels and twenty fixed paylines
+ok 1 - uses five 64-stop reels and twenty fixed paylines
+  ---
+  duration_ms: 1.079868
+  type: 'test'
+  ...
+# Subtest: packs and unpacks the exact 5x3 source-of-truth grid
+ok 2 - packs and unpacks the exact 5x3 source-of-truth grid
+  ---
+  duration_ms: 1.176011
+  type: 'test'
+  ...
+# Subtest: the Golden MATT wild substitutes but the Treasury Vault does not
+ok 3 - the Golden MATT wild substitutes but the Treasury Vault does not
+  ---
+  duration_ms: 1.497536
+  type: 'test'
+  ...
+# Subtest: three, four, and five vaults award 10, 15, and 25 free spins
+ok 4 - three, four, and five vaults award 10, 15, and 25 free spins
+  ---
+  duration_ms: 0.614655
+  type: 'test'
+  ...
+# Subtest: caps any individual displayed result at 500x
+ok 5 - caps any individual displayed result at 500x
+  ---
+  duration_ms: 1.85342
+  type: 'test'
+  ...
+# Subtest: JSON deployment config exactly mirrors the tested browser math
+ok 6 - JSON deployment config exactly mirrors the tested browser math
+  ---
+  duration_ms: 0.530279
+  type: 'test'
+  ...
+# Subtest: simulation is deterministic for the published MATT seed
+ok 7 - simulation is deterministic for the published MATT seed
+  ---
+  duration_ms: 357.297236
+  type: 'test'
+  ...
+# Subtest: working V1 simulation remains near the declared 97 percent target
+ok 8 - working V1 simulation remains near the declared 97 percent target
+  ---
+  duration_ms: 872.154032
+  type: 'test'
+  ...
+# Subtest: slots page exposes the agreed 5x3, twenty-line, 1-25 purchase experience
+ok 9 - slots page exposes the agreed 5x3, twenty-line, 1-25 purchase experience
+  ---
+  duration_ms: 1.032879
+  type: 'test'
+  ...
+# Subtest: live interface consumes one onchain credit per click and never creates a live result locally
+ok 10 - live interface consumes one onchain credit per click and never creates a live result locally
+  ---
+  duration_ms: 0.497581
+  type: 'test'
+  ...
+# Subtest: undeployed addresses keep live MATT locked while preserving explicit practice mode
+ok 11 - undeployed addresses keep live MATT locked while preserving explicit practice mode
+  ---
+  duration_ms: 0.154911
+  type: 'test'
+  ...
+# Subtest: players can restore stale VRF spins and claim or refund while game play is paused
+ok 12 - players can restore stale VRF spins and claim or refund while game play is paused
+  ---
+  duration_ms: 1.363891
+  type: 'test'
+  ...
+# Subtest: live mode verifies the linked token vault converter and treasury identities
+ok 13 - live mode verifies the linked token vault converter and treasury identities
+  ---
+  duration_ms: 0.264313
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1412.888392

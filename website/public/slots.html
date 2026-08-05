@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#060913">
+  <title>MATT'S MILLION | Resource Rush Slots</title>
+  <meta name="description" content="Buy 1–25 onchain MATT spins, press once per spin, and watch the exact Ronin VRF result settle across five reels and twenty paylines.">
+  <meta property="og:title" content="MATT'S MILLION — Resource Rush">
+  <meta property="og:description" content="Five reels. Twenty paylines. Every spin verified on Ronin.">
+  <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/slots.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/hub"><img src="/assets/matt-logo-512.png" alt=""><span>MATT</span><b>SLOTS</b></a>
+    <nav><a href="#machine">Play</a><a href="#paytable">Paytable</a><a href="#fairness">Fairness</a><a href="#history">History</a></nav>
+    <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">LIVE-SOURCE SLOT ENGINE • RONIN VRF • 20 PAYLINES</p>
+        <h1>MATT'S<br><span>MILLION</span></h1>
+        <h2>RESOURCE RUSH</h2>
+        <p>Buy your spins once. Click once for each spin. The contract records the exact 5×3 result, calculates every line, pays MATT, and routes net-losing MATT toward treasury RON.</p>
+        <div class="hero-pills"><span id="rtp-pill">Working 97% RTP</span><span>500× max session</span><span>1–25 spins per buy</span></div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="pixel-sun"></div>
+        <img src="/assets/slots/dyno.png" alt="">
+        <div class="coin-stack"><img src="/assets/slots/dynocoin.webp" alt=""><img src="/assets/slots/wild.svg" alt=""></div>
+      </div>
+    </section>
+
+    <section class="machine-layout" id="machine">
+      <article class="cabinet">
+        <div class="cabinet-sign">
+          <small id="mode-label">CONTRACT CHECK</small>
+          <strong>MATT'S MILLION</strong>
+          <span>RESOURCE RUSH</span>
+        </div>
+
+        <div class="reel-frame">
+          <div id="payline-overlay" class="payline-overlay" aria-hidden="true"></div>
+          <div id="reels" class="reels" aria-label="Five reel, three row slot result"></div>
+          <div id="reel-shade" class="reel-shade"></div>
+          <div id="pending-screen" class="pending-screen" hidden>
+            <span class="spinner"></span><strong>RONIN IS VERIFYING</strong><small id="pending-detail">Waiting for the VRF result</small>
+            <button id="stale-refund-button" class="stale-refund-button" type="button" hidden>RESTORE STALE SPIN</button>
+          </div>
+        </div>
+
+        <div class="win-display" aria-live="polite">
+          <span id="result-kicker">READY</span>
+          <strong id="result-title">CONNECT OR TRY PRACTICE</strong>
+          <small id="result-detail">Final reels always match the contract result.</small>
+        </div>
+
+        <div class="cabinet-controls">
+          <button id="lines-button" type="button" class="cabinet-small">20<br><span>LINES</span></button>
+          <button id="turbo-button" type="button" class="cabinet-small">⚡<br><span>TURBO</span></button>
+          <button id="spin-button" type="button" class="spin-button" disabled><span>SPIN</span><small>ONE VERIFIED RESULT</small></button>
+          <button id="practice-button" type="button" class="cabinet-small">▶<br><span>PRACTICE</span></button>
+          <button id="sound-button" type="button" class="cabinet-small" aria-pressed="true">🔊<br><span>SOUND</span></button>
+        </div>
+      </article>
+
+      <aside class="control-panel">
+        <section class="wallet-card">
+          <div><span>WALLET</span><strong id="wallet-address">Not connected</strong></div>
+          <div><span>MATT BALANCE</span><strong id="wallet-balance">—</strong></div>
+        </section>
+
+        <section class="buy-card">
+          <div class="section-title"><div><span>BUY SPINS</span><strong>Choose value and quantity</strong></div><b id="contract-state">CHECKING</b></div>
+          <label class="field-label" for="bet-input"><span>MATT PER SPIN</span><output id="bet-limit-label">Max 50,000</output></label>
+          <div class="bet-control"><button id="bet-minus" type="button">−</button><input id="bet-input" type="text" inputmode="numeric" value="5,000" aria-label="MATT per spin"><button id="bet-plus" type="button">+</button></div>
+          <div id="bet-presets" class="preset-row"><button data-bet="500">500</button><button data-bet="1000">1K</button><button data-bet="5000" class="active">5K</button><button data-bet="10000">10K</button><button data-bet="25000">25K</button><button data-bet="50000">50K</button></div>
+
+          <label class="field-label" for="spin-quantity"><span>NUMBER OF SPINS</span><output id="spin-quantity-output">10</output></label>
+          <div class="slider-line"><button id="quantity-minus" type="button">−</button><input id="spin-quantity" type="range" min="1" max="25" step="1" value="10"><button id="quantity-plus" type="button">+</button></div>
+          <div class="range-labels"><span>1</span><span>25</span></div>
+
+          <div class="purchase-summary">
+            <div><span>SPIN VALUE</span><strong id="summary-bet">5,000 MATT</strong></div>
+            <div><span>QUANTITY</span><strong id="summary-quantity">10</strong></div>
+            <div class="total"><span>TOTAL COST</span><strong id="summary-total">50,000 MATT</strong></div>
+            <div><span>MAX CONNECTED WIN</span><strong id="summary-max">2,500,000 MATT</strong></div>
+          </div>
+          <button id="buy-button" type="button" class="primary-button" disabled>CONNECT RONIN TO BUY</button>
+          <p id="action-status" class="action-status" role="status" aria-live="polite">Reading the Slots deployment.</p>
+        </section>
+
+        <section class="inventory-card">
+          <div class="section-title"><div><span>YOUR INVENTORY</span><strong>Onchain spin credits</strong></div><button id="refresh-button" type="button">REFRESH</button></div>
+          <div class="inventory-totals"><article><span>PAID</span><strong id="paid-total">0</strong></article><article><span>FREE</span><strong id="bonus-total">0</strong></article><article><span>CLAIMABLE</span><strong id="claimable-total">0</strong></article></div>
+          <div id="inventory-list" class="inventory-list"><p>Connect your wallet to load purchased spins.</p></div>
+          <div class="claim-row"><button id="claim-button" type="button" disabled>CLAIM MATT</button><button id="refund-button" type="button" disabled>REFUND SELECTED</button></div>
+        </section>
+
+        <section class="treasury-card">
+          <div><span>MATT WAITING FOR RON</span><strong id="pending-conversion">—</strong></div>
+          <div><span>RON SENT TO TREASURY</span><strong id="ron-forwarded">—</strong></div>
+          <small>Only settled net losses are eligible for conversion. Player payouts and unused spin credits remain protected.</small>
+        </section>
+      </aside>
+    </section>
+
+    <section class="paytable-section" id="paytable">
+      <div class="section-heading"><p class="eyebrow">RESOURCE PAYTABLE</p><h2>Match from the left.</h2><p>Every paid spin activates all twenty lines. Wild substitutes for normal resources. Vaults pay anywhere and award free spins.</p></div>
+      <div id="paytable-grid" class="paytable-grid"></div>
+      <div class="bonus-rules">
+        <article><img src="/assets/slots/scatter.svg" alt="Treasury Vault"><div><span>3 VAULTS</span><strong id="scatter-three-rule">2× + 10 FREE SPINS</strong></div></article>
+        <article><img src="/assets/slots/scatter.svg" alt="Treasury Vault"><div><span>4 VAULTS</span><strong id="scatter-four-rule">10× + 15 FREE SPINS</strong></div></article>
+        <article><img src="/assets/slots/scatter.svg" alt="Treasury Vault"><div><span>5+ VAULTS</span><strong id="scatter-five-rule">25× + 25 FREE SPINS</strong></div></article>
+        <article><img src="/assets/slots/wild.svg" alt="Golden MATT Wild"><div><span>FREE-SPIN POWER</span><strong>ONE FULL WILD REEL PER SPIN</strong></div></article>
+      </div>
+    </section>
+
+    <section class="fairness-section" id="fairness">
+      <div class="section-heading"><p class="eyebrow">THE SPIN IS THE RECEIPT</p><h2>No hidden result server.</h2></div>
+      <div class="fairness-grid">
+        <article><b>01</b><h3>Buy Credits</h3><p>The contract records 1–25 prepaid spins at the exact wager and math version you selected.</p></article>
+        <article><b>02</b><h3>Click Once</h3><p>One click consumes one credit and creates one fresh Ronin VRF request. Only one spin can be pending per wallet.</p></article>
+        <article><b>03</b><h3>Grid Settles Onchain</h3><p>Five reel stops create fifteen stored symbols. Twenty paylines, Wilds, Vaults, free spins, and the payout are calculated by the contract.</p></article>
+        <article><b>04</b><h3>MATT Moves Last</h3><p>Winnings become claimable MATT. The paid spin's net loss is queued for protected MATT-to-RON treasury conversion.</p></article>
+      </div>
+      <div class="contract-links"><a id="slots-contract-link" href="#" aria-disabled="true">Slots contract pending</a><a id="vault-contract-link" href="#" aria-disabled="true">Reward vault pending</a><a id="converter-contract-link" href="#" aria-disabled="true">Converter pending</a></div>
+    </section>
+
+    <section class="history-section" id="history">
+      <div class="section-heading split"><div><p class="eyebrow">YOUR VERIFIED SPINS</p><h2>Every result stays attached to your wallet.</h2></div><button id="history-refresh" type="button">REFRESH HISTORY</button></div>
+      <div class="history-wrap"><table><thead><tr><th>Spin</th><th>Type</th><th>Wager</th><th>Payout</th><th>Net / Treasury</th><th>Feature</th><th>Ronin</th></tr></thead><tbody id="history-body"><tr><td colspan="7">Connect a wallet to load spin history.</td></tr></tbody></table></div>
+    </section>
+  </main>
+
+  <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by MATT.</span><a href="#machine">Back to machine ↑</a></footer>
+
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/slots-config.js?v=1"></script>
+  <script src="/slots-math-v1.js?v=1"></script>
+  <script src="/slots.js?v=1"></script>
+</body>
+</html>

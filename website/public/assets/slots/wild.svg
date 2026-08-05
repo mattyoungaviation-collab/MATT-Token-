@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" shape-rendering="crispEdges">
+  <rect width="128" height="128" fill="none"/>
+  <rect x="40" y="8" width="48" height="8" fill="#fff4a3"/>
+  <rect x="24" y="16" width="80" height="8" fill="#f8d129"/>
+  <rect x="16" y="24" width="96" height="16" fill="#f1ad00"/>
+  <rect x="8" y="40" width="112" height="48" fill="#7a3a00"/>
+  <rect x="16" y="32" width="96" height="64" fill="#ffca0a"/>
+  <rect x="24" y="24" width="80" height="80" fill="#ffe948"/>
+  <rect x="32" y="32" width="64" height="64" fill="#d88a00"/>
+  <rect x="40" y="40" width="48" height="48" fill="#1c1324"/>
+  <rect x="48" y="48" width="8" height="32" fill="#65d9ff"/>
+  <rect x="56" y="48" width="16" height="8" fill="#65d9ff"/>
+  <rect x="72" y="56" width="8" height="24" fill="#65d9ff"/>
+  <rect x="56" y="64" width="16" height="8" fill="#65d9ff"/>
+  <rect x="24" y="96" width="16" height="8" fill="#fff4a3"/>
+  <rect x="88" y="96" width="16" height="8" fill="#fff4a3"/>
+  <rect x="40" y="104" width="48" height="8" fill="#f1ad00"/>
+  <rect x="8" y="56" width="8" height="16" fill="#58c9ff"/>
+  <rect x="112" y="56" width="8" height="16" fill="#58c9ff"/>
+  <text x="64" y="122" text-anchor="middle" font-family="monospace" font-size="15" font-weight="900" fill="#ffffff">WILD</text>
+</svg>
