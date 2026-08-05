@@ -9,6 +9,7 @@ const content = `(() => {\n  "use strict";\n  window.MATT_SLOTS_CONFIG = Object.
   chainId: 2020, chainHex: "0x7e4", chainName: "Ronin Mainnet", rpcUrl: "/api/rpc",
   tokenAddress: deployment.immutable.matt, tokenSymbol: "MATT", treasuryAddress: deployment.immutable.treasury,
   vrfCoordinatorAddress: deployment.immutable.coordinator,
+  vrfSponsored: Boolean(deployment.vrf?.nativePayment),
   slotsAddress: deployment.contracts.slots, rewardVaultAddress: deployment.contracts.rewardVault,
   converterAddress: deployment.contracts.converter, deploymentBlock: deployment.deploymentBlock || null,
   declaredRtp: deployment.math.declaredRtpBps / 100, maxMultiplier: 500,

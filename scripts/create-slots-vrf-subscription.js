@@ -1,0 +1,13 @@
+const fs=require("node:fs"),path=require("node:path"),hre=require("hardhat");
+const CHAIN=2020n,COORDINATOR="0xa18FD3db9B869AD2A8c55267e0D54dbf6ECEbEda",ADMIN="0xF79913cB83Cc9CABD95D0ba9250103fbb939f984";
+const ABI=["event SubscriptionCreated(uint256 indexed subId,address owner)","function createSubscription() returns(uint256)","function fundSubscriptionWithNative(uint256) payable","function getSubscription(uint256) view returns(uint96 balance,uint96 nativeBalance,uint64 reqCount,address subOwner,address[] consumers)"];
+async function main(){
+ if(process.env.CONFIRM_CREATE_SLOTS_VRF_SUBSCRIPTION!=="YES")throw new Error("Set CONFIRM_CREATE_SLOTS_VRF_SUBSCRIPTION=YES after reviewing the RON amount.");
+ const amount=String(process.env.SLOTS_VRF_FUND_RON||"").trim();if(!/^\d+(\.\d+)?$/.test(amount)||hre.ethers.parseEther(amount)<=0n)throw new Error("SLOTS_VRF_FUND_RON must be positive.");
+ const [signer]=await hre.ethers.getSigners(),network=await hre.ethers.provider.getNetwork();if(network.chainId!==CHAIN)throw new Error("Expected Ronin mainnet.");if(signer.address.toLowerCase()!==ADMIN.toLowerCase())throw new Error(`Subscription owner must be ${ADMIN}.`);
+ const c=new hre.ethers.Contract(COORDINATOR,ABI,signer);console.log("Creating Slots VRF subscription",{coordinator:COORDINATOR,owner:signer.address,fundRON:amount});
+ const tx=await c.createSubscription(),receipt=await tx.wait(2);let id;for(const log of receipt.logs){try{const p=c.interface.parseLog(log);if(p?.name==="SubscriptionCreated")id=p.args.subId}catch{}}if(!id)throw new Error("SubscriptionCreated event missing.");
+ const fund=await c.fundSubscriptionWithNative(id,{value:hre.ethers.parseEther(amount)});await fund.wait(2);const sub=await c.getSubscription(id);if(sub.subOwner.toLowerCase()!==signer.address.toLowerCase())throw new Error("Subscription owner mismatch.");
+ const out={schemaVersion:1,network:"ronin",chainId:2020,coordinator:COORDINATOR,subscriptionId:id.toString(),owner:signer.address,fundedRON:amount,nativeBalanceWei:sub.nativeBalance.toString(),createdAt:new Date().toISOString(),transactions:{create:tx.hash,fund:fund.hash}};
+ const file=path.join(__dirname,"../deployment-exports/slots-vrf-subscription-ronin.json");fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,JSON.stringify(out,null,2)+"\n");console.log("Slots VRF subscription created and funded",{subscriptionId:out.subscriptionId,nativeBalanceWei:out.nativeBalanceWei,outputPath:file});
+}main().catch(e=>{console.error(e);process.exitCode=1});

@@ -12,7 +12,7 @@ describe("MattSlotsTreasuryConverter", function () {
     router = await (await ethers.getContractFactory("MockSlotsRouter")).deploy();
     source = await (await ethers.getContractFactory("MockSlotsSourceVault")).deploy();
     pool = await (await ethers.getContractFactory("MockKatanaV3Pool")).deploy(
-      owner.address, await matt.getAddress(), await wron.getAddress()
+      owner.address, await matt.getAddress(), await wron.getAddress(), 0, 1_000_000
     );
     converter = await (await ethers.getContractFactory("MattSlotsTreasuryConverter")).deploy(
       await matt.getAddress(), await wron.getAddress(), owner.address, await pool.getAddress(),

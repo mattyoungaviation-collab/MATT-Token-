@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "matt-token",
     "version":  "1.0.0",
     "private":  true,
@@ -13,6 +13,12 @@
                     "deploy:rewards-v2:ronin":  "hardhat deploy --network ronin --tags MattDailyRewardsV2",
                     "deploy:plinko-v3:ronin":  "hardhat run scripts/deploy-plinko-v3.js --network ronin",
                     "fund:slots-vault:ronin":  "hardhat run scripts/fund-slots-vault.js --network ronin",
+                    "create:slots-vrf-subscription:ronin":  "hardhat run scripts/create-slots-vrf-subscription.js --network ronin",
+                    "fund:slots-vrf-subscription:ronin":  "hardhat run scripts/fund-slots-vrf-subscription.js --network ronin",
+                    "deploy:slots-v2:ronin":  "hardhat run scripts/deploy-slots-v2.js --network ronin",
+                    "inspect:slots-v2:ronin":  "hardhat run scripts/inspect-slots-v2.js --network ronin",
+                    "activate:slots-v2:ronin":  "hardhat run scripts/activate-slots-v2.js --network ronin",
+                    "export:slots-v2-verification":  "hardhat run scripts/export-slots-v2-verification.js",
                     "deploy:blackjack:ronin":  "hardhat run scripts/deploy-blackjack-vault.js --network ronin",
                     "deploy:blackjack:saigon":  "hardhat run scripts/deploy-blackjack-vault.js --network saigon",
                     "inspect:coinflip:saigon":  "hardhat run scripts/inspect-coin-flip.js --network saigon",
@@ -37,7 +43,7 @@
                     "configure:coinflip-burn-matt:ronin":  "hardhat run scripts/configure-burnflip-matt.js --network ronin",
                     "configure:coinflip-burn:ronin":  "hardhat run scripts/configure-burnflip.js --network ronin",
                     "activate:slots:ronin":  "hardhat run scripts/activate-slots.js --network ronin",
-                    "test:slots":  "hardhat test test/MattSlotsV1.test.js test/MattSlotsRewardVault.test.js test/MattSlotsTreasuryConverter.test.js \u0026\u0026 node --test website/lib/slots-math-v1.test.js website/lib/slots-page.test.js",
+                    "test:slots":  "hardhat test test/MattSlotsV1.test.js test/MattSlotsRewardVault.test.js test/MattSlotsTreasuryConverter.test.js test/MattSlotsVRFV25Adapter.test.js \u0026\u0026 node --test website/lib/slots-math-v1.test.js website/lib/slots-page.test.js",
                     "inspect:coinflip-burn-matt:ronin":  "hardhat run scripts/inspect-coin-flip-burn-matt.js --network ronin",
                     "test:plinko-v4":  "hardhat test test/MattPlinkoV4.test.js",
                     "simulate:slots":  "node scripts/simulate-slots-v1.js",

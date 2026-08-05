@@ -565,7 +565,10 @@
       const quotedFee = await state.slots.quoteRandomFee();
       const fee = (quotedFee * 11_500n + 9_999n) / 10_000n;
       const transactionOverrides = { value: fee, gasLimit: 1_500_000n };
-      setStatus(`Confirm one ${state.selected.type === "bonus" ? "free" : "paid"} spin. The small RON value funds this spin's VRF request; unused fee is refunded by the coordinator.`);
+      const vrfSponsored = quotedFee === 0n || config.vrfSponsored === true;
+      setStatus(vrfSponsored
+        ? `Confirm one ${state.selected.type === "bonus" ? "free" : "paid"} spin. The Slots subscription sponsors VRF; your wallet pays only normal Ronin transaction gas.`
+        : `Confirm one ${state.selected.type === "bonus" ? "free" : "paid"} spin. The small RON value funds this spin's VRF request; unused fee is refunded by the coordinator.`);
       const transaction = state.selected.type === "paid"
         ? await state.slots.playPaid(state.selected.index, transactionOverrides)
         : await state.slots.playBonus(state.selected.id, transactionOverrides);

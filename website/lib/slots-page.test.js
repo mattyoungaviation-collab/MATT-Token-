@@ -40,7 +40,7 @@ test("risk and age acknowledgment blocks the game script until accepted", () => 
   assert.match(html, /slots-gate\.js/);
   assert.doesNotMatch(html, /<script src="\/slots\.js/);
   assert.match(gateJs, /localStorage\.setItem\(ACKNOWLEDGMENT_KEY, "accepted"\)/);
-  assert.match(gateJs, /script\.src = "\/slots\.js\?v=2"/);
+  assert.match(gateJs, /script\.src = "\/slots\.js\?v=5"/);
   assert.match(gateJs, /element\.inert = locked/);
 });
 
