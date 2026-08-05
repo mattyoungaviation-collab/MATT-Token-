@@ -1,0 +1,10 @@
+website/public/assets/slots/dyno.png:      PNG image data, 128 x 128, 8-bit colormap, non-interlaced
+website/public/assets/slots/dynocoin.webp: RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/fire.webp:     RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/gift.webp:     RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/metal.webp:    RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/sand.webp:     RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/scatter.svg:   SVG Scalable Vector Graphics image, ASCII text
+website/public/assets/slots/sprout.webp:   RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/water.webp:    RIFF (little-endian) data, Web/P image, with alpha, 127+1x127+1
+website/public/assets/slots/wild.svg:      SVG Scalable Vector Graphics image, ASCII text

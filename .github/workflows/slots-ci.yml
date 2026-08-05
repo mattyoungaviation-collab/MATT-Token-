@@ -1,0 +1,38 @@
+name: MATT Slots V1
+
+on:
+  pull_request:
+    paths:
+      - "contracts/MattSlots*.sol"
+      - "contracts/test/MockSlotsRouter.sol"
+      - "contracts/test/MockWrappedRon.sol"
+      - "contracts/test/MockKatanaV3Pool.sol"
+      - "test/MattSlots*.test.js"
+      - "scripts/*slots*.js"
+      - "config/slots.*"
+      - "website/public/slots*"
+      - "website/public/assets/slots/**"
+      - "website/lib/slots*"
+      - ".github/workflows/slots-ci.yml"
+  push:
+    branches: ["agent/matt-slots-v1"]
+
+jobs:
+  slots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Compile paused Slots contracts
+        run: npx hardhat compile
+      - name: Contract tests
+        run: npx hardhat test test/MattSlotsV1.test.js test/MattSlotsRewardVault.test.js test/MattSlotsTreasuryConverter.test.js
+      - name: Browser and math tests
+        run: node --test website/lib/slots-math-v1.test.js website/lib/slots-page.test.js
+      - name: Working RTP regression
+        run: node scripts/simulate-slots-v1.js 500000
