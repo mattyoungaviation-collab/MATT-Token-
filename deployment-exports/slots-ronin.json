@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "network": "ronin",
+  "chainId": 2020,
+  "deployedAt": "2026-08-05T15:40:22.901Z",
+  "deploymentBlock": 59237804,
+  "deployer": "0xF79913cB83Cc9CABD95D0ba9250103fbb939f984",
+  "contracts": {
+    "slots": "0xa4d1bE4bb63204D924D81E927E2ba95ce83bf589",
+    "rewardVault": "0x0c9C78880D48d0ce93E52713DDDB7F25996D234A",
+    "converter": "0xCe4CBBD4d2Ee93a678297E3a27cb14Ece80A04a2"
+  },
+  "immutable": {
+    "matt": "0xa5450417BDCa0BDfB058ffE41205400FfDA1174d",
+    "wrappedRon": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+    "factory": "0x1f0B70d9A137e3cAEF0ceAcD312BC5f81Da0cC0c",
+    "pool": "0xa517E05e96728E80284F2aE157dDF309449D7cE8",
+    "treasury": "0xBacE355D23d378a6E1adD986E53a18Dd12E6EeAc",
+    "coordinator": "0x16A62a921e7fEC5Bf867fF5c805b662Db757B778"
+  },
+  "administration": {
+    "owner": "0xF79913cB83Cc9CABD95D0ba9250103fbb939f984",
+    "router": "0xC05AFC8c9353c1dd5f872EcCFaCD60fd5A2a9aC7",
+    "keeper": "0xF79913cB83Cc9CABD95D0ba9250103fbb939f984",
+    "maxSlippageBps": 500,
+    "minHarmonicLiquidity": "679891542822127632037233"
+  },
+  "math": {
+    "version": 1,
+    "declaredRtpBps": 9700,
+    "maxMultiplierBps": 5000000
+  },
+  "paused": true
+}
