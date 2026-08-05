@@ -562,7 +562,7 @@
     if (!state.selected || !state.slots) return;
     setBusy(true);
     try {
-      const quotedFee = await state.readSlots.quoteRandomFee();
+      const quotedFee = await state.slots.quoteRandomFee();
       const fee = (quotedFee * 11_500n + 9_999n) / 10_000n;
       setStatus(`Confirm one ${state.selected.type === "bonus" ? "free" : "paid"} spin. The small RON value funds this spin's VRF request; unused fee is refunded by the coordinator.`);
       const transaction = state.selected.type === "paid"
@@ -574,11 +574,11 @@
       for (const log of receipt.logs) {
         try { const parsed = state.slots.interface.parseLog(log); if (parsed?.name === "SpinRequested") { spinId = parsed.args.spinId; break; } } catch {}
       }
-      if (!spinId) spinId = await state.readSlots.activeSpinOf(state.account);
+      if (!spinId) spinId = await state.slots.activeSpinOf(state.account);
       if (!spinId) throw new Error("The spin request was confirmed but its ID was not found.");
       state.lastSpinId = spinId;
       state.pendingSpin = spinId;
-      const pending = await state.readSlots.spins(spinId);
+      const pending = await state.slots.spins(spinId);
       state.pendingRequestedAt = Number(pending.requestedAt);
       configureStaleRestore(spinId, state.pendingRequestedAt);
       showPending(spinId, `Spin #${spinId} requested. Waiting for Ronin VRF.`);
@@ -636,13 +636,13 @@
   async function pollSpin(spinId) {
     const started = Date.now();
     while (Date.now() - started < 15 * 60_000) {
-      const spin = await state.readSlots.spins(spinId);
+      const spin = await state.slots.spins(spinId);
       const status = Number(spin.status);
       if (status === STATUS_SETTLED) {
         clearPendingState();
         $("#pending-screen").hidden = true;
         cycleReels(false);
-        const flat = await state.readSlots.getSpinGrid(spinId);
+        const flat = await state.slots.getSpinGrid(spinId);
         const grid = Array.from({ length: 5 }, (_, reel) => Array.from({ length: 3 }, (_, row) => Number(flat[reel * 3 + row])));
         await animateToGrid(grid, spin);
         showResult(spinId, spin);
@@ -739,7 +739,7 @@
     if (!spinId) { body.innerHTML = '<tr><td colspan="7">No completed or pending spins for this wallet.</td></tr>'; return; }
     const rows = [];
     for (let count = 0; spinId && count < 20; count += 1) {
-      const spin = await state.readSlots.spins(spinId);
+      const spin = await state.slots.spins(spinId);
       const payout = BigInt(spin.payout);
       const wager = BigInt(spin.wager);
       const loss = BigInt(spin.treasuryLoss);
