@@ -11,8 +11,32 @@
   <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/slots.css?v=1">
+  <link rel="stylesheet" href="/slots-gate.css?v=1">
 </head>
-<body>
+<body class="slots-gated">
+  <div id="access-gate" class="access-gate" role="dialog" aria-modal="true" aria-labelledby="access-gate-title" aria-describedby="access-gate-risk">
+    <section class="access-gate-card">
+      <div class="access-gate-topline"><span>PLAYER CHECK</span><b aria-hidden="true">18+</b></div>
+      <p class="access-gate-kicker">BEFORE YOU ENTER</p>
+      <h1 id="access-gate-title">Know the risk.<br><span>Set your limit.</span></h1>
+      <p id="access-gate-risk" class="access-gate-risk">Blockchain transactions are irreversible. MATT and RON prices can move sharply, and random outcomes can return less than you spend, including zero. <strong>You may lose all funds you use.</strong></p>
+      <div class="access-gate-rules">
+        <article><b>01</b><span>You must be at least 18 years old.</span></article>
+        <article><b>02</b><span>Only participate where it is lawful for you to do so.</span></article>
+        <article><b>03</b><span>Never use borrowed money or funds you need.</span></article>
+      </div>
+      <label class="access-gate-check" for="access-gate-checkbox">
+        <input id="access-gate-checkbox" type="checkbox">
+        <span>I confirm that I am 18 or older and acknowledge that I may lose all funds I use.</span>
+      </label>
+      <div class="access-gate-actions">
+        <button id="access-gate-accept" type="button" disabled>ACKNOWLEDGE &amp; ENTER</button>
+        <a href="/hub">LEAVE</a>
+        <button id="access-gate-return" class="access-gate-return" type="button" hidden>RETURN TO GAME</button>
+      </div>
+      <small>Your acknowledgment is stored only in this browser. It does not guarantee winnings or make participation lawful in every location.</small>
+    </section>
+  </div>
   <header class="topbar">
     <a class="brand" href="/hub"><img src="/assets/matt-logo-512.png" alt=""><span>MATT</span><b>SLOTS</b></a>
     <nav><a href="#machine">Play</a><a href="#paytable">Paytable</a><a href="#fairness">Fairness</a><a href="#history">History</a></nav>
@@ -140,8 +164,8 @@
   <footer><a href="/hub">← Back to MATT Hub</a><span>Built by Matt. Backed by MATT.</span><a href="#machine">Back to machine ↑</a></footer>
 
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
-  <script src="/slots-config.js?v=1"></script>
+  <script src="/slots-config.js?v=2"></script>
   <script src="/slots-math-v1.js?v=1"></script>
-  <script src="/slots.js?v=1"></script>
+  <script src="/slots-gate.js?v=1"></script>
 </body>
 </html>
