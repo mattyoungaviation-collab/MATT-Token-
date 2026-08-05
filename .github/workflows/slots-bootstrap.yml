@@ -1,0 +1,56 @@
+name: Bootstrap MATT Slots V1
+
+on:
+  push:
+    branches: ["agent/matt-slots-v1"]
+    paths:
+      - ".slots-upload/**"
+      - ".github/workflows/slots-bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  install-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild verified Slots overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .slots-upload/part-* > /tmp/slots-overlay.b64
+          base64 --decode /tmp/slots-overlay.b64 > /tmp/slots-overlay.zip
+          echo "c41b8af3220617464df170d5599790d9affd73e97d3bd28e7827efbee2bf3c67  /tmp/slots-overlay.zip" | sha256sum --check
+          unzip -o /tmp/slots-overlay.zip -d .
+          node scripts/apply-slots-integration.js
+          rm -rf .slots-upload
+          rm -f .github/workflows/slots-bootstrap.yml
+          rm -f package.json.before-slots-v1 website/public/hub.html.before-slots-v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Compile Slots
+        run: npx hardhat compile
+      - name: Enforce EIP-170 runtime size
+        run: node scripts/check-slots-contract-size.js
+      - name: Contract tests
+        run: npx hardhat test test/MattSlotsV1.test.js test/MattSlotsRewardVault.test.js test/MattSlotsTreasuryConverter.test.js
+      - name: Browser and math tests
+        run: node --test website/lib/slots-math-v1.test.js website/lib/slots-page.test.js
+      - name: RTP regression
+        run: node scripts/simulate-slots-v1.js 500000 0x4d415454
+      - name: Commit verified Slots build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add MATT Slots V1"
+          git push origin HEAD:agent/matt-slots-v1
