@@ -86,8 +86,8 @@
     paidBatches: [],
     bonusSessions: [],
     minBet: ethers ? ethers.parseEther("500") : 0n,
-    maxBet: ethers ? ethers.parseEther("50000") : 0n,
-    playableMax: ethers ? ethers.parseEther("50000") : 0n,
+    maxBet: ethers ? ethers.parseEther("100000") : 0n,
+    playableMax: ethers ? ethers.parseEther("100000") : 0n,
     paused: true,
     live: false,
     busy: false,
@@ -313,16 +313,23 @@
     return `${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}×`;
   }
 
+  function normalizeWholeMattInput(value) {
+    const raw = String(value || "").trim().replace(/[\u00a0\u202f]/g, " ");
+    if (/^\d+$/.test(raw)) return raw;
+    if (/^\d{1,3}(?:[., ]\d{3})+$/.test(raw)) return raw.replace(/[., ]/g, "");
+    return null;
+  }
   function betValue() {
-    const raw = $("#bet-input").value.replace(/,/g, "").trim();
-    if (!/^\d+$/.test(raw)) throw new Error("Enter a whole-MATT spin value.");
+    const raw = normalizeWholeMattInput($("#bet-input").value);
+    if (!raw) throw new Error("Enter a whole-MATT value, such as 1,000 or 1.000.");
     return ethers.parseEther(raw);
   }
   function clampBet(value) {
     let amount = BigInt(value);
     if (amount < state.minBet) amount = state.minBet;
     if (amount > state.playableMax) amount = state.playableMax;
-    $("#bet-input").value = Number(ethers.formatEther(amount)).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    const wholeMatt = amount / ethers.WeiPerEther;
+    $("#bet-input").value = wholeMatt.toLocaleString();
     updateSummary();
   }
   function betStep(amount) {
@@ -513,7 +520,7 @@
     if (!state.account) { root.innerHTML = "<p>Connect your wallet to load purchased spins.</p>"; updateButtons(); return; }
     if (!state.live) { root.innerHTML = "<p>Live inventory will appear after the paused contracts are deployed and configured.</p>"; updateButtons(); return; }
     const items = [...state.bonusSessions, ...state.paidBatches];
-    if (!items.length) { root.innerHTML = "<p>No spin credits yet. Choose a value and buy 1–25 spins.</p>"; updateButtons(); return; }
+    if (!items.length) { root.innerHTML = "<p>No spin credits yet. Choose a value and buy 1–10 spins.</p>"; updateButtons(); return; }
     root.innerHTML = items.map(item => `<label class="inventory-item ${inventoryKey(item) === inventoryKey(state.selected) ? "selected" : ""}"><input type="radio" name="inventory" value="${inventoryKey(item)}" ${inventoryKey(item) === inventoryKey(state.selected) ? "checked" : ""}><div><strong>${item.type === "bonus" ? "FREE SPINS" : "PAID SPINS"} · ${formatMatt(item.wager, 0)}</strong><span>${item.type === "bonus" ? `Session #${item.id}` : `Batch #${item.index}`} · Math V${item.mathVersion}</span></div><b>${item.remaining}</b></label>`).join("");
     $$('input[name="inventory"]').forEach(input => input.addEventListener("change", () => {
       state.selected = items.find(item => inventoryKey(item) === input.value) || null; renderInventory();
@@ -770,7 +777,7 @@
     $("#history-refresh").addEventListener("click", () => loadHistory().catch(error => setStatus(errorMessage(error), "bad")));
     $("#spin-quantity").addEventListener("input", updateSummary);
     $("#quantity-minus").addEventListener("click", () => { $("#spin-quantity").value = Math.max(1, Number($("#spin-quantity").value) - 1); updateSummary(); });
-    $("#quantity-plus").addEventListener("click", () => { $("#spin-quantity").value = Math.min(25, Number($("#spin-quantity").value) + 1); updateSummary(); });
+    $("#quantity-plus").addEventListener("click", () => { $("#spin-quantity").value = Math.min(10, Number($("#spin-quantity").value) + 1); updateSummary(); });
     $("#bet-input").addEventListener("input", updateSummary);
     $("#bet-input").addEventListener("blur", () => { try { clampBet(betValue()); } catch { clampBet(state.minBet); } });
     $("#bet-minus").addEventListener("click", () => { try { const current = betValue(); clampBet(current - betStep(current)); } catch { clampBet(state.minBet); } });

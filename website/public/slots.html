@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#060913">
   <title>MATT'S MILLION | Resource Rush Slots</title>
-  <meta name="description" content="Buy 1–25 onchain MATT spins, press once per spin, and watch the exact Ronin VRF result settle across five reels and twenty paylines.">
+  <meta name="description" content="Buy 1–10 onchain MATT spins, press once per spin, and watch the exact Ronin VRF result settle across five reels and twenty paylines.">
   <meta property="og:title" content="MATT'S MILLION — Resource Rush">
   <meta property="og:description" content="Five reels. Twenty paylines. Every spin verified on Ronin.">
   <meta property="og:image" content="https://matt-token.onrender.com/assets/matt-logo-512.png">
@@ -50,7 +50,7 @@
         <h1>MATT'S<br><span>MILLION</span></h1>
         <h2>RESOURCE RUSH</h2>
         <p>Buy your spins once. Click once for each spin. The contract records the exact 5×3 result, calculates every line, pays MATT, and routes net-losing MATT toward treasury RON.</p>
-        <div class="hero-pills"><span id="rtp-pill">Working 97% RTP</span><span>500× max session</span><span>1–25 spins per buy</span></div>
+        <div class="hero-pills"><span id="rtp-pill">Working 97% RTP</span><span>500× max session</span><span>1–10 spins per buy</span></div>
       </div>
       <div class="hero-art" aria-hidden="true">
         <div class="pixel-sun"></div>
@@ -100,13 +100,13 @@
 
         <section class="buy-card">
           <div class="section-title"><div><span>BUY SPINS</span><strong>Choose value and quantity</strong></div><b id="contract-state">CHECKING</b></div>
-          <label class="field-label" for="bet-input"><span>MATT PER SPIN</span><output id="bet-limit-label">Max 50,000</output></label>
+          <label class="field-label" for="bet-input"><span>MATT PER SPIN</span><output id="bet-limit-label">Max 100,000</output></label>
           <div class="bet-control"><button id="bet-minus" type="button">−</button><input id="bet-input" type="text" inputmode="numeric" value="5,000" aria-label="MATT per spin"><button id="bet-plus" type="button">+</button></div>
-          <div id="bet-presets" class="preset-row"><button data-bet="500">500</button><button data-bet="1000">1K</button><button data-bet="5000" class="active">5K</button><button data-bet="10000">10K</button><button data-bet="25000">25K</button><button data-bet="50000">50K</button></div>
+          <div id="bet-presets" class="preset-row"><button data-bet="500">500</button><button data-bet="1000">1K</button><button data-bet="5000" class="active">5K</button><button data-bet="10000">10K</button><button data-bet="50000">50K</button><button data-bet="100000">100K</button></div>
 
           <label class="field-label" for="spin-quantity"><span>NUMBER OF SPINS</span><output id="spin-quantity-output">10</output></label>
-          <div class="slider-line"><button id="quantity-minus" type="button">−</button><input id="spin-quantity" type="range" min="1" max="25" step="1" value="10"><button id="quantity-plus" type="button">+</button></div>
-          <div class="range-labels"><span>1</span><span>25</span></div>
+          <div class="slider-line"><button id="quantity-minus" type="button">−</button><input id="spin-quantity" type="range" min="1" max="10" step="1" value="10"><button id="quantity-plus" type="button">+</button></div>
+          <div class="range-labels"><span>1</span><span>10</span></div>
 
           <div class="purchase-summary">
             <div><span>SPIN VALUE</span><strong id="summary-bet">5,000 MATT</strong></div>
@@ -147,7 +147,7 @@
     <section class="fairness-section" id="fairness">
       <div class="section-heading"><p class="eyebrow">THE SPIN IS THE RECEIPT</p><h2>No hidden result server.</h2></div>
       <div class="fairness-grid">
-        <article><b>01</b><h3>Buy Credits</h3><p>The contract records 1–25 prepaid spins at the exact wager and math version you selected.</p></article>
+        <article><b>01</b><h3>Buy Credits</h3><p>The contract records 1–10 prepaid spins at the exact wager and math version you selected.</p></article>
         <article><b>02</b><h3>Click Once</h3><p>One click consumes one credit and creates one fresh Ronin VRF request. Only one spin can be pending per wallet.</p></article>
         <article><b>03</b><h3>Grid Settles Onchain</h3><p>Five reel stops create fifteen stored symbols. Twenty paylines, Wilds, Vaults, free spins, and the payout are calculated by the contract.</p></article>
         <article><b>04</b><h3>MATT Moves Last</h3><p>Winnings become claimable MATT. The paid spin's net loss is queued for protected MATT-to-RON treasury conversion.</p></article>
@@ -166,6 +166,6 @@
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
   <script src="/slots-config.js?v=2"></script>
   <script src="/slots-math-v1.js?v=1"></script>
-  <script src="/slots-gate.js?v=4"></script>
+  <script src="/slots-gate.js?v=6"></script>
 </body>
 </html>

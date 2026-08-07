@@ -9,14 +9,25 @@ const js = fs.readFileSync(path.join(publicDir, "slots.js"), "utf8");
 const gateJs = fs.readFileSync(path.join(publicDir, "slots-gate.js"), "utf8");
 const config = fs.readFileSync(path.join(publicDir, "slots-config.js"), "utf8");
 
-test("slots page exposes the agreed 5x3, twenty-line, 1-25 purchase experience", () => {
+test("slots page exposes the agreed 5x3, twenty-line, 1-10 purchase experience", () => {
   assert.match(html, /MATT'S MILLION/);
   assert.match(html, /20 PAYLINES/);
-  assert.match(html, /type="range" min="1" max="25"/);
+  assert.match(html, /type="range" min="1" max="10"/);
   assert.match(html, /ONE VERIFIED RESULT/);
   assert.match(html, /slots-math-v1\.js/);
 });
 
+test("whole-MATT input accepts international thousands separators", () => {
+  const start = js.indexOf("function normalizeWholeMattInput(value)");
+  const end = js.indexOf("function betValue()", start);
+  assert.ok(start >= 0 && end > start, "normalizer source is present");
+  const normalize = Function(js.slice(start, end) + " return normalizeWholeMattInput;")();
+  assert.equal(normalize("1000"), "1000");
+  assert.equal(normalize("1,000"), "1000");
+  assert.equal(normalize("1.000"), "1000");
+  assert.equal(normalize("1 000"), "1000");
+  assert.equal(normalize("1.5"), null);
+});
 test("live interface consumes one onchain credit per click and never creates a live result locally", () => {
   assert.match(js, /playPaid\(state\.selected\.index/);
   assert.match(js, /playBonus\(state\.selected\.id/);
@@ -26,10 +37,11 @@ test("live interface consumes one onchain credit per click and never creates a l
 });
 
 test("production config points to the verified paused Ronin deployment", () => {
-  assert.match(config, /"slotsAddress": "0xa4d1bE4bb63204D924D81E927E2ba95ce83bf589"/);
+  assert.match(config, /"slotsAddress": "0x256D9950fC658043813f5a1B811F483269a4b197"/);
   assert.match(config, /"rewardVaultAddress": "0x0c9C78880D48d0ce93E52713DDDB7F25996D234A"/);
   assert.match(config, /"converterAddress": "0xCe4CBBD4d2Ee93a678297E3a27cb14Ece80A04a2"/);
-  assert.match(config, /"vrfCoordinatorAddress": "0x16A62a921e7fEC5Bf867fF5c805b662Db757B778"/);
+  assert.match(config, /"vrfCoordinatorAddress": "0x572dCE9F1bC8A5E7346dAa1BeaafC56760cA5537"/);
+  assert.match(config, /"vrfSponsored": true/);
   assert.match(config, /"practiceEnabled": true/);
 });
 
@@ -40,7 +52,7 @@ test("risk and age acknowledgment blocks the game script until accepted", () => 
   assert.match(html, /slots-gate\.js/);
   assert.doesNotMatch(html, /<script src="\/slots\.js/);
   assert.match(gateJs, /localStorage\.setItem\(ACKNOWLEDGMENT_KEY, "accepted"\)/);
-  assert.match(gateJs, /script\.src = "\/slots\.js\?v=5"/);
+  assert.match(gateJs, /script\.src = "\/slots\.js\?v=7"/);
   assert.match(gateJs, /element\.inert = locked/);
 });
 

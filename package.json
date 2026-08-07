@@ -88,7 +88,8 @@
                     "verify:saigon":  "hardhat sourcify --endpoint https://sourcify.roninchain.com/server/ --network saigon",
                     "test:crash":  "hardhat test test/MattCrashVault.test.js",
                     "deploy:crash:ronin":  "hardhat run scripts/deploy-crash-vault.js --network ronin",
-                    "deploy:saigon":  "hardhat deploy --network saigon --tags MattToken"
+                    "deploy:saigon":  "hardhat deploy --network saigon --tags MattToken",
+                    "configure:slots-bet-limits:ronin":  "hardhat run scripts/configure-slots-bet-limits.js --network ronin"
                 },
     "devDependencies":  {
                             "@nomicfoundation/hardhat-toolbox":  "^5.0.0",
