@@ -36,7 +36,6 @@ const KNOWN_HOLDERS = new Map([
   [MATT_ADDRESS_LOWER, "MATT Contract"],
   ["0x000000000000000000000000000000000000dead", "Burn Address"],
 
-  ["0x0d5930b7d0f5531a9039935f460ce3620111dcc0", "Daruman"]
 ]);
 
 let rpcRequestId = 0;
