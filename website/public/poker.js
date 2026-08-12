@@ -141,7 +141,7 @@ async function cashOut(){
   if(!signer)await connect();
   const cashoutSeat=wallet&&state&&state.seats?state.seats.findIndex(seat=>seat&&seat.wallet.toLowerCase()===wallet.toLowerCase()):mySeat;
   await queueCashOut();
-  const stillPlaying=cashoutSeat>=0&&state&&["vrf","hand","settling"].includes(state.phase)&&(state.hand?.players||[]).includes(cashoutSeat);
+  const stillPlaying=cashoutSeat>=0&&state&&["starting","vrf","hand","settling","recovering","error"].includes(state.phase)&&(state.hand?.players||[]).includes(cashoutSeat);
   if(stillPlaying){
    announce("Leave queued. You will not be dealt into the next hand. Press CASH OUT again after this hand closes.");
    return;
@@ -269,7 +269,7 @@ function render(s){
  const effectiveSeat=wallet?walletSeat:mySeat;
  if(walletSeat>=0)mySeat=walletSeat;
  const mine=effectiveSeat>=0?s.seats[effectiveSeat]:null;
- const inCurrentHand=!!(mine&&["vrf","hand","settling"].includes(s.phase)&&(s.hand?.players||[]).includes(effectiveSeat));
+ const inCurrentHand=!!(mine&&["starting","vrf","hand","settling","recovering","error"].includes(s.phase)&&(s.hand?.players||[]).includes(effectiveSeat));
  const leaveQueued=exitQueued;
  renderHandInsights(s,effectiveSeat);
  const myStack=mine?(myInHand&&h?.stacks?h.stacks[mySeat]:mine.balance):0;
@@ -283,15 +283,15 @@ function render(s){
  $("#checkAction").disabled=!myTurn||toCall>0n;
  $("#callAction").disabled=!myTurn||toCall<=0n;
  $("#callAction").textContent=toCall>0n?"CALL "+matt(toCall,true):"CALL";
- $("#ready").disabled=!mine||leaveQueued||["vrf","hand","settling"].includes(s.phase);
- $("#cashout").disabled=!mine||(inCurrentHand&&leaveQueued);
+ $("#ready").disabled=!mine||leaveQueued||["starting","vrf","hand","settling","recovering","error"].includes(s.phase);
+ $("#cashout").disabled=!mine||(inCurrentHand&&leaveQueued)||["starting","recovering","error"].includes(s.phase);
  $("#cashout").textContent=inCurrentHand?(leaveQueued?"LEAVE QUEUED":"LEAVE AFTER HAND"):"CASH OUT";
  const selected=Number($("#seatSelect").value);
  $("#buy").disabled=!s.live||Boolean(mine)||Boolean(s.seats[selected])||busy;
  all("#seatSelect option").forEach((option,index)=>{option.disabled=Boolean(s.seats[index]);option.textContent="Seat "+(index+1)+(s.seats[index]?" · OCCUPIED":" · OPEN");});
  if(Date.now()>noticeUntil){
   if(!s.live)$("#notice").textContent=s.message||"Poker operator service is not configured.";
-  else if(s.phase==="settling")$("#notice").textContent="Finalizing this hand on Ronin. The table will recover automatically if the host restarts.";else if(s.phase==="error")$("#notice").textContent="The global table service needs operator attention. Do not start another hand.";
+  else if(s.phase==="settling")$("#notice").textContent="Finalizing this hand on Ronin. The table will recover automatically if the host restarts.";else if(["error","recovering","starting"].includes(s.phase))$("#notice").textContent="The table is reconciling safely with Ronin. Player balances remain protected and play will resume automatically.";
   else if(!wallet)$("#notice").textContent="Table is live. Connect Ronin Wallet to take a seat.";
   else if(!mine)$("#notice").textContent="Choose an open seat, set your table name, and buy in.";
   else $("#notice").textContent="You are seated as "+(mine.name||short(mine.wallet))+". Press Ready when prepared.";
