@@ -116,16 +116,41 @@ async function buyIn(){
   announce("Welcome to The Foundry. Press Ready when you want to play.");
  }finally{busy=false;}
 }
+let exitQueued=false;
+async function queueCashOut(){
+ if(token){
+  try{
+   await api("/sit-out",{});
+   exitQueued=true;
+   return;
+  }catch{
+   token=null;
+   sessionStorage.removeItem("mattPokerSession");
+  }
+ }
+ const response=await fetch("/api/poker/leave-challenge?wallet="+encodeURIComponent(wallet),{cache:"no-store"});
+ const challenge=await response.json();
+ if(!response.ok)throw new Error(challenge.error||"Unable to authorize cash-out.");
+ const signature=await signer.signMessage(challenge.message);
+ await api("/wallet-sit-out",{wallet,signature});
+ exitQueued=true;
+}
 async function cashOut(){
  if(busy)return;busy=true;
  try{
   if(!signer)await connect();
-  if(token)await api("/sit-out",{});
+  const cashoutSeat=wallet&&state&&state.seats?state.seats.findIndex(seat=>seat&&seat.wallet.toLowerCase()===wallet.toLowerCase()):mySeat;
+  await queueCashOut();
+  const stillPlaying=cashoutSeat>=0&&state&&["vrf","hand","settling"].includes(state.phase)&&(state.hand?.players||[]).includes(cashoutSeat);
+  if(stillPlaying){
+   announce("Leave queued. You will not be dealt into the next hand. Press CASH OUT again after this hand closes.");
+   return;
+  }
   announce("Confirm cash-out in Ronin Wallet.");
   const escrow=new E.Contract(C.contract,escrowAbi,signer);
   const gas=await escrow.cashOut.estimateGas();
   await (await escrow.cashOut({gasLimit:gas*125n/100n})).wait();
-  sessionStorage.removeItem("mattPokerSession");token=null;mySeat=-1;
+  sessionStorage.removeItem("mattPokerSession");token=null;mySeat=-1;exitQueued=false;
   announce("Cash-out confirmed. Your finalized MATT returned to your wallet.");
  }finally{busy=false;}
 }
@@ -180,7 +205,12 @@ function render(s){
   button.innerHTML=seatMarkup(index,seat,h);
   button.title=seat?.wallet||"Open seat "+(index+1);
  });
- const mine=mySeat>=0?s.seats[mySeat]:null;
+ const walletSeat=wallet?s.seats.findIndex(seat=>seat&&seat.wallet.toLowerCase()===wallet.toLowerCase()):-1;
+ const effectiveSeat=wallet?walletSeat:mySeat;
+ if(walletSeat>=0)mySeat=walletSeat;
+ const mine=effectiveSeat>=0?s.seats[effectiveSeat]:null;
+ const inCurrentHand=!!(mine&&["vrf","hand","settling"].includes(s.phase)&&(s.hand?.players||[]).includes(effectiveSeat));
+ const leaveQueued=exitQueued;
  const myStack=mine?(myInHand&&h?.stacks?h.stacks[mySeat]:mine.balance):0;
  $("#myBankroll").textContent=mine?matt(myStack)+" MATT":"NOT SEATED";
  const toCall=myInHand&&h?BigInt(h.currentBet||0)-BigInt(h.streetCommitted?.[mySeat]||0):0n;
@@ -192,8 +222,9 @@ function render(s){
  $("#checkAction").disabled=!myTurn||toCall>0n;
  $("#callAction").disabled=!myTurn||toCall<=0n;
  $("#callAction").textContent=toCall>0n?"CALL "+matt(toCall,true):"CALL";
- $("#ready").disabled=!mine||["vrf","hand","settling"].includes(s.phase);
- $("#cashout").disabled=!mine||["vrf","hand","settling"].includes(s.phase);
+ $("#ready").disabled=!mine||leaveQueued||["vrf","hand","settling"].includes(s.phase);
+ $("#cashout").disabled=!mine||(inCurrentHand&&leaveQueued);
+ $("#cashout").textContent=inCurrentHand?(leaveQueued?"LEAVE QUEUED":"LEAVE AFTER HAND"):"CASH OUT";
  const selected=Number($("#seatSelect").value);
  $("#buy").disabled=!s.live||Boolean(mine)||Boolean(s.seats[selected])||busy;
  all("#seatSelect option").forEach((option,index)=>{option.disabled=Boolean(s.seats[index]);option.textContent="Seat "+(index+1)+(s.seats[index]?" · OCCUPIED":" · OPEN");});

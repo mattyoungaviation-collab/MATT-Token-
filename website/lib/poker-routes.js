@@ -45,7 +45,44 @@ function createPokerRouter(opts={}){
  router.post("/session",async(req,res)=>{try{const wallet=String(req.body.wallet||"").toLowerCase(),item=challenges.get(wallet);if(!item||item.expires<now())throw Error("Challenge expired");const recovered=ethers.verifyMessage(item.challenge,req.body.signature);const seats=await seatData(),seat=seats.findIndex(s=>s&&s.wallet.toLowerCase()===wallet);if(seat<0||recovered.toLowerCase()!==seats[seat].sessionKey.toLowerCase())throw Error("Session key rejected");const token=crypto.randomBytes(32).toString("hex");tokens.set(token,{wallet,seat,sessionKey:recovered,expires:now()+86400000});challenges.delete(wallet);res.json({token,seat});}catch(e){res.status(401).json({error:e.message});}});
  router.post("/profile",async(req,res)=>{const s=session(req);if(!s)return res.status(401).json({error:"Session required"});const name=String(req.body.name||"").trim().replace(/\\s+/g," ");if(name.length<2||name.length>16||!/^[A-Za-z0-9 ._-]+$/.test(name))return res.status(400).json({error:"Table name must be 2-16 safe characters"});table.profiles=table.profiles||{};const duplicate=Object.entries(table.profiles).some(([wallet,value])=>wallet!==s.wallet&&String(value).toLowerCase()===name.toLowerCase());if(duplicate)return res.status(409).json({error:"That table name is already seated"});table.profiles[s.wallet]=name;table.seq++;save();res.json(await publicState(s));});
  router.post("/ready",async(req,res)=>{const s=session(req);if(!s)return res.status(401).json({error:"Session required"});const ready=Boolean(req.body.ready);table.ready=table.ready.filter(i=>i!==s.seat);if(ready)table.ready.push(s.seat);if(ready)table.sitOut=table.sitOut.filter(i=>i!==s.seat);if(table.phase==="waiting"&&ready){table.phase="countdown";table.countdownEndsAt=now()+60000;}table.seq++;res.json(await publicState(s));});
- router.post("/sit-out",async(req,res)=>{const s=session(req);if(!s)return res.status(401).json({error:"Session required"});if(!table.sitOut.includes(s.seat))table.sitOut.push(s.seat);table.ready=table.ready.filter(i=>i!==s.seat);res.json(await publicState(s));});
+ const leaveChallenges=new Map();
+
+router.get("/leave-challenge",async(req,res)=>{
+ try{
+  const {getAddress}=require("ethers");
+  const wallet=getAddress(String(req.query.wallet||""));
+  const nonce=require("crypto").randomBytes(24).toString("hex");
+  const message=["MATT Poker cash-out request","Wallet: "+wallet,"Nonce: "+nonce].join("\n");
+  leaveChallenges.set(wallet.toLowerCase(),{message,expiresAt:Date.now()+300000});
+  res.json({message});
+ }catch{
+  res.status(400).json({error:"A valid seated wallet is required."});
+ }
+});
+router.post("/wallet-sit-out",async(req,res)=>{
+ try{
+  const {getAddress,verifyMessage}=require("ethers");
+  const wallet=getAddress(String(req.body&&req.body.wallet||""));
+  const key=wallet.toLowerCase();
+  const challenge=leaveChallenges.get(key);
+  if(!challenge||challenge.expiresAt<Date.now()){
+   leaveChallenges.delete(key);
+   return res.status(401).json({error:"Cash-out authorization expired. Please try again."});
+  }
+  const recovered=verifyMessage(challenge.message,String(req.body&&req.body.signature||""));
+  if(recovered.toLowerCase()!==key)return res.status(401).json({error:"Cash-out authorization does not match this wallet."});
+  leaveChallenges.delete(key);
+  const snapshot=await publicState();
+  const seat=snapshot.seats.findIndex(entry=>entry&&entry.wallet.toLowerCase()===key);
+  if(seat<0)return res.status(409).json({error:"This wallet does not currently own a Poker seat."});
+  if(!table.sitOut.includes(seat))table.sitOut.push(seat);
+  table.ready=table.ready.filter(index=>index!==seat);
+  return res.json(await publicState());
+ }catch(error){
+  return res.status(400).json({error:error&&error.message||"Unable to queue cash-out."});
+ }
+});
+router.post("/sit-out",async(req,res)=>{const s=session(req);if(!s)return res.status(401).json({error:"Session required"});if(!table.sitOut.includes(s.seat))table.sitOut.push(s.seat);table.ready=table.ready.filter(i=>i!==s.seat);res.json(await publicState(s));});
  router.post("/action",async(req,res)=>{const s=session(req),h=table.hand;if(!s||table.phase!=="hand"||!h||h.turn!==s.seat)return res.status(409).json({error:"Not your turn"});try{const payload={seat:s.seat,seq:table.seq,type:req.body.type,amount:String(req.body.amount||"0")};if(ethers.verifyMessage(JSON.stringify(payload),req.body.signature).toLowerCase()!==s.sessionKey.toLowerCase())throw Error("Bad session signature");const i=s.seat,toCall=BigInt(h.currentBet)-BigInt(h.streetCommitted[i]);if(payload.type==="fold")h.folded.push(i);else if(payload.type==="check"){if(toCall!==0n)throw Error("Cannot check");}else if(payload.type==="call")take(h,i,toCall);else if(payload.type==="all-in"){const paid=take(h,i,h.stacks[i]);const total=BigInt(h.streetCommitted[i]);if(total>BigInt(h.currentBet)){h.lastRaise=(total-BigInt(h.currentBet)).toString();h.currentBet=total.toString();setNeeds(h,i);}}else if(payload.type==="raise"){const target=BigInt(payload.amount),minimum=BigInt(h.currentBet)+BigInt(h.lastRaise);if(target<minimum||target<=BigInt(h.streetCommitted[i]))throw Error("Raise too small");take(h,i,target-BigInt(h.streetCommitted[i]));h.lastRaise=(target-BigInt(h.currentBet)).toString();h.currentBet=target.toString();setNeeds(h,i);}else throw Error("Unknown action");h.needs=h.needs.filter(x=>x!==i);table.actions.push(payload);table.seq++;await setTurn(h);res.json(await publicState(s));}catch(e){res.status(400).json({error:e.message});}});
  return router;
 }
