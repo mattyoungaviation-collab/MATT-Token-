@@ -169,6 +169,66 @@ function card(code,hidden){
  const raw=String(code||""),rank=ranks[raw[0]]||raw[0],suit=suits[raw[1]]||"",red=raw[1]==="d"||raw[1]==="h";
  return '<article class="playing-card '+(red?"red":"")+'" aria-label="'+html(rank+" "+suit)+'"><span class="corner">'+html(rank)+'<i>'+suit+'</i></span><span class="pip">'+suit+'</span><span class="corner bottom">'+html(rank)+'<i>'+suit+'</i></span></article>';
 }
+let handInsightKey="";
+function insightPanel(){
+ let panel=$("#handInsights");
+ if(panel)return panel;
+ const actionPanel=document.querySelector(".action-panel");
+ if(!actionPanel)return null;
+ panel=document.createElement("section");
+ panel.id="handInsights";
+ panel.className="hand-insights";
+ panel.hidden=true;
+ panel.innerHTML='<div class="insight-heading"><span>LIVE HAND READ</span><small>PRIVATE ESTIMATE · UNKNOWN CARDS SIMULATED</small></div>'+
+  '<div class="insight-grid"><article class="insight-stat"><span>CURRENT HAND</span><strong data-insight="rating">--</strong><small data-insight="street">WAITING FOR CARDS</small></article>'+
+  '<article class="insight-stat equity"><span>CHANCE TO WIN</span><strong data-insight="equity">--</strong><small data-insight="tie">NO ESTIMATE</small></article></div>'+
+  '<div class="equity-meter"><i data-insight="meter"></i></div>'+
+  '<div class="insight-foot"><span data-insight="opponents">NO ACTIVE OPPONENTS</span><span>Estimate, not a guarantee</span></div>'+
+  '<details class="ranking-guide"><summary>HAND RANKINGS</summary><ol><li>Royal Flush</li><li>Straight Flush</li><li>Four of a Kind</li><li>Full House</li><li>Flush</li><li>Straight</li><li>Three of a Kind</li><li>Two Pair</li><li>One Pair</li><li>High Card</li></ol></details>';
+ actionPanel.prepend(panel);
+ return panel;
+}
+function renderHandInsights(s,seat){
+ const panel=insightPanel(),h=s.hand;
+ const hole=Array.isArray(h?.holeCards)?h.holeCards:[];
+ const seatedInHand=seat>=0&&h?.players?.includes(seat);
+ if(!panel||!seatedInHand||hole.length!==2||!window.MattPokerInsights){
+  if(panel)panel.hidden=true;
+  handInsightKey="";
+  return;
+ }
+ panel.hidden=false;
+ const folded=h.folded?.includes(seat);
+ if(folded){
+  panel.querySelector('[data-insight="rating"]').textContent="Folded";
+  panel.querySelector('[data-insight="street"]').textContent=String(h.street||"hand").toUpperCase();
+  panel.querySelector('[data-insight="equity"]').textContent="0.0%";
+  panel.querySelector('[data-insight="tie"]').textContent="HAND COMPLETE";
+  panel.querySelector('[data-insight="meter"]').style.setProperty("--equity","0%");
+  panel.querySelector('[data-insight="opponents"]').textContent="WAITING FOR NEXT HAND";
+  handInsightKey="folded:"+h.id;
+  return;
+ }
+ const foldedSeats=new Set(h.folded||[]);
+ const opponents=(h.players||[]).filter(player=>player!==seat&&!foldedSeats.has(player)).length;
+ const board=Array.isArray(h.board)?h.board:[];
+ const key=[h.id,h.street,hole.join(","),board.join(","),opponents].join("|");
+ if(key===handInsightKey)return;
+ handInsightKey=key;
+ try{
+  const result=window.MattPokerInsights.calculate({holeCards:hole,board,opponents});
+  const equity=Math.max(0,Math.min(100,result.equityPercent));
+  panel.querySelector('[data-insight="rating"]').textContent=result.rating;
+  panel.querySelector('[data-insight="street"]').textContent=String(h.street||"preflop").toUpperCase()+" · "+result.trials.toLocaleString()+" RUNOUTS";
+  panel.querySelector('[data-insight="equity"]').textContent=equity.toFixed(1)+"%";
+  panel.querySelector('[data-insight="tie"]').textContent="TIE "+result.tiePercent.toFixed(1)+"%";
+  panel.querySelector('[data-insight="meter"]').style.setProperty("--equity",equity.toFixed(1)+"%");
+  panel.querySelector('[data-insight="opponents"]').textContent="VS "+opponents+" ACTIVE OPPONENT"+(opponents===1?"":"S");
+ }catch{
+  panel.querySelector('[data-insight="rating"]').textContent="Reading Hand";
+  panel.querySelector('[data-insight="equity"]').textContent="--";
+ }
+}
 function seatMarkup(index,seat,hand){
  if(!seat)return '<span class="seat-number">SEAT '+(index+1)+'</span><strong>OPEN SEAT</strong><small>SELECT TO JOIN</small>';
  const inHand=hand?.players?.includes(index),folded=hand?.folded?.includes(index),allIn=hand?.allIn?.includes(index);
@@ -211,6 +271,7 @@ function render(s){
  const mine=effectiveSeat>=0?s.seats[effectiveSeat]:null;
  const inCurrentHand=!!(mine&&["vrf","hand","settling"].includes(s.phase)&&(s.hand?.players||[]).includes(effectiveSeat));
  const leaveQueued=exitQueued;
+ renderHandInsights(s,effectiveSeat);
  const myStack=mine?(myInHand&&h?.stacks?h.stacks[mySeat]:mine.balance):0;
  $("#myBankroll").textContent=mine?matt(myStack)+" MATT":"NOT SEATED";
  const toCall=myInHand&&h?BigInt(h.currentBet||0)-BigInt(h.streetCommitted?.[mySeat]||0):0n;

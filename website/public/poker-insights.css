@@ -1,0 +1,21 @@
+.hand-insights{margin:0 0 18px;padding:17px;border:1px solid #c6984259;border-radius:14px;background:radial-gradient(circle at 88% 8%,#d7ab4a1c,transparent 42%),linear-gradient(145deg,#16130d,#0b0b09);box-shadow:inset 0 1px #fff1,0 16px 38px #0005}
+.hand-insights[hidden]{display:none}
+.insight-heading,.insight-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.insight-heading span{color:#edc66e;font-size:10px;font-weight:1000;letter-spacing:.16em}
+.insight-heading small,.insight-foot{color:#847b69;font-size:9px;font-weight:850;letter-spacing:.08em}
+.insight-grid{display:grid;grid-template-columns:1.45fr .75fr;gap:10px;margin:12px 0}
+.insight-stat{padding:12px;border:1px solid #ffffff0d;border-radius:10px;background:#070806b8}
+.insight-stat span,.insight-stat strong,.insight-stat small{display:block}
+.insight-stat span{color:#8f8776;font-size:8px;font-weight:950;letter-spacing:.13em}
+.insight-stat strong{margin:4px 0 1px;color:#f5eedf;font-family:"Arial Narrow",sans-serif;font-size:clamp(17px,2.5vw,24px);letter-spacing:.02em;text-transform:uppercase}
+.insight-stat.equity strong{color:#54e59c;font-size:28px}
+.insight-stat small{color:#696458;font-size:8px}
+.equity-meter{height:5px;margin:2px 0 10px;border-radius:999px;background:#26251f;overflow:hidden}
+.equity-meter i{display:block;width:var(--equity,0%);height:100%;border-radius:inherit;background:linear-gradient(90deg,#b88230,#55e39b);box-shadow:0 0 12px #55e39b88;transition:width .45s ease}
+.ranking-guide{margin-top:12px;border-top:1px solid #ffffff0b;padding-top:9px}
+.ranking-guide summary{cursor:pointer;color:#a99b7d;font-size:9px;font-weight:950;letter-spacing:.12em;list-style:none}
+.ranking-guide summary::-webkit-details-marker{display:none}
+.ranking-guide summary:after{content:" +";color:#e4b857}
+.ranking-guide[open] summary:after{content:" -"}
+.ranking-guide ol{columns:2;margin:10px 0 0;padding-left:22px;color:#aaa18f;font-size:9px;line-height:1.8}
+@media(max-width:600px){.insight-grid{grid-template-columns:1fr}.insight-heading{align-items:flex-start;flex-direction:column;gap:3px}.ranking-guide ol{columns:1}}
