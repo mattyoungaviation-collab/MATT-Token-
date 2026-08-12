@@ -1,0 +1,1 @@
+window.MATT_POKER_CONFIG=Object.freeze({"live":true,"chainId":2020,"contract":"0x5c64c838d8e7637dC2A4418792B69AE8C9DCFb34","matt":"0xa5450417BDCa0BDfB058ffE41205400FfDA1174d","explorer":"https://explorer.roninchain.com"});

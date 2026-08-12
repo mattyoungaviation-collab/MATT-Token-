@@ -1,4 +1,4 @@
-{
+﻿{
     "name":  "matt-token",
     "version":  "1.0.0",
     "private":  true,
@@ -32,6 +32,7 @@
                     "deploy:slots:saigon":  "hardhat run scripts/deploy-slots.js --network saigon",
                     "inspect:slots:saigon":  "hardhat run scripts/inspect-slots.js --network saigon",
                     "convert:slots-loss:ronin":  "hardhat run scripts/convert-slots-loss.js --network ronin",
+                    "auto-convert:slots-loss:ronin":  "hardhat run scripts/auto-convert-slots-loss.js --network ronin",
                     "deploy:coinflip-burn:saigon":  "hardhat deploy --network saigon --tags MattCoinFlipBurn",
                     "test:plinko-v4-ui":  "node website/lib/plinko-v4-engine.test.js",
                     "inspect:slots:ronin":  "hardhat run scripts/inspect-slots.js --network ronin",
@@ -89,7 +90,14 @@
                     "test:crash":  "hardhat test test/MattCrashVault.test.js",
                     "deploy:crash:ronin":  "hardhat run scripts/deploy-crash-vault.js --network ronin",
                     "deploy:saigon":  "hardhat deploy --network saigon --tags MattToken",
-                    "configure:slots-bet-limits:ronin":  "hardhat run scripts/configure-slots-bet-limits.js --network ronin"
+                    "configure:slots-bet-limits:ronin":  "hardhat run scripts/configure-slots-bet-limits.js --network ronin",
+                    "create:poker-vrf-subscription:ronin":  "hardhat run scripts/create-poker-vrf-subscription.js --network ronin",
+                    "deploy:poker:ronin":  "hardhat run scripts/deploy-poker.js --network ronin",
+                    "activate:poker:ronin":  "hardhat run scripts/activate-poker.js --network ronin",
+                    "inspect:poker:ronin":  "hardhat run scripts/inspect-poker.js --network ronin",
+                    "test:poker":  "hardhat test test/MattPokerContracts.test.js \u0026\u0026 node --test website/lib/poker-engine.test.js website/lib/poker-page.test.js",
+                    "export:poker-verification":  "hardhat run scripts/export-poker-verification.js",
+                    "set:poker-operator:ronin":  "hardhat run scripts/set-poker-operator.js --network ronin"
                 },
     "devDependencies":  {
                             "@nomicfoundation/hardhat-toolbox":  "^5.0.0",

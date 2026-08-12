@@ -1,0 +1,3 @@
+"use strict";const test=require("node:test"),assert=require("node:assert/strict"),fs=require("fs"),path=require("path");const pub=path.join(__dirname,"..","public");
+test("Poker page exposes six seats, risk gate, and wallet-light controls",()=>{const h=fs.readFileSync(path.join(pub,"poker.html"),"utf8");assert.equal((h.match(/data-seat=/g)||[]).length,6);assert.match(h,/18 or older/);assert.match(h,/BUY IN/);assert.match(h,/CASH OUT/)});
+test("production config starts locked until a verified deployment is exported",()=>{const c=fs.readFileSync(path.join(pub,"poker-config.js"),"utf8");assert.match(c,/live:false/);assert.match(c,/chainId:2020/)});

@@ -1,0 +1,4 @@
+"use strict";const test=require("node:test"),assert=require("node:assert/strict"),E=require("./poker-engine");
+test("shuffle is deterministic and complete",()=>{const seed=E.deckSeed("secret","42",1,"0x0000000000000000000000000000000000000001"),a=E.shuffledDeck(seed),b=E.shuffledDeck(seed);assert.deepEqual(a,b);assert.equal(new Set(a).size,52)});
+test("seven-card evaluator ranks a royal flush above quads",()=>{assert.ok(E.compare(E.evaluate([8,9,10,11,12,26,27]),E.evaluate([12,25,38,51,0,1,2]))>0)});
+test("side pots conserve contested chips and keep folded cards private from settlement",()=>{const r=E.settle({players:[{seat:0,committed:"100",folded:false,cards:[8,9]},{seat:1,committed:"200",folded:false,cards:[0,13]},{seat:2,committed:"200",folded:true,cards:[1,14]}],board:[10,11,12,26,27],dealerSeat:2,rakeBps:0,rakeCap:0n});assert.equal(r.matchedPot,500n);assert.equal(Object.values(r.payouts).reduce((a,b)=>a+b,0n),500n)});

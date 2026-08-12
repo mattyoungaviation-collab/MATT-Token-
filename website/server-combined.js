@@ -17,6 +17,7 @@ const { createCrashContractRouter } = require("./lib/crash-routes-contract");
 const { installDynoRaffle } = require("./dyno-raffle-routes");
 const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 const { createLiquidityMarketRouter } = require("./liquidity-market-routes");
+const { createPokerRouter } = require("./lib/poker-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -91,6 +92,7 @@ installPlinkoHistoryIndex(app, {
   stateFile: plinkoHistoryFile,
   profiles: walletProfiles
 });
+app.use("/api/poker", createPokerRouter({ live: process.env.POKER_LIVE_ENABLED === "true", contractAddress: process.env.POKER_ESCROW_ADDRESS || "", rpcUrl: process.env.RONIN_RPC_URL || "", operatorPrivateKey: process.env.POKER_OPERATOR_PRIVATE_KEY || "", stateSecret: process.env.POKER_STATE_SECRET || "", stateFile: persistentDiskPath ? path.join(persistentDiskPath, "poker-state.enc") : "" }));
 app.use("/api/blackjack", createBlackjackRouter());
 app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
   rpcUrl: roninRpcUrl,
@@ -102,6 +104,7 @@ app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
 }) : createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
 app.get(["/crash", "/crash/"], (_req, res) => res.sendFile(path.join(publicDir, "crash.html")));
+app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.use((req, res, next) => {
   if (req.path === "/flappy-matt" || req.path.startsWith("/flappy-matt/") || req.path.startsWith("/flappy-matt.")) {
