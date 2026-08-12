@@ -1,4 +1,4 @@
-﻿{
+{
     "name":  "matt-token",
     "version":  "1.0.0",
     "private":  true,
@@ -9,7 +9,6 @@
                 },
     "scripts":  {
                     "test":  "node scripts/run-contract-tests.js",
-                    "test:plinko-v2":  "hardhat test test/MattPlinkoV2.test.js \u0026\u0026 node website/lib/plinko-v2-engine.test.js",
                     "deploy:rewards-v2:ronin":  "hardhat deploy --network ronin --tags MattDailyRewardsV2",
                     "deploy:plinko-v3:ronin":  "hardhat run scripts/deploy-plinko-v3.js --network ronin",
                     "fund:slots-vault:ronin":  "hardhat run scripts/fund-slots-vault.js --network ronin",
@@ -34,10 +33,8 @@
                     "convert:slots-loss:ronin":  "hardhat run scripts/convert-slots-loss.js --network ronin",
                     "auto-convert:slots-loss:ronin":  "hardhat run scripts/auto-convert-slots-loss.js --network ronin",
                     "deploy:coinflip-burn:saigon":  "hardhat deploy --network saigon --tags MattCoinFlipBurn",
-                    "test:plinko-v4-ui":  "node website/lib/plinko-v4-engine.test.js",
                     "inspect:slots:ronin":  "hardhat run scripts/inspect-slots.js --network ronin",
                     "activate:slots:saigon":  "hardhat run scripts/activate-slots.js --network saigon",
-                    "test:plinko-history":  "node --test website/lib/plinko-history-index.test.js",
                     "deploy:plinko-v4:ronin":  "hardhat run scripts/deploy-plinko-v4.js --network ronin",
                     "update:slots-frontend":  "node scripts/update-slots-frontend.js",
                     "inspect:plinko-v3:ronin":  "hardhat run scripts/inspect-plinko-v3.js --network ronin",
@@ -60,7 +57,7 @@
                     "deploy:ronin":  "hardhat deploy --network ronin --tags MattToken",
                     "coverage":  "hardhat coverage",
                     "inspect:coinflip-burn:ronin":  "hardhat run scripts/inspect-coin-flip-burn.js --network ronin",
-                    "start":  "node scripts/configure-crash-betting-window.js \u0026\u0026 node website/server-combined.js",
+                    "start":  "node website/server-combined.js",
                     "deploy:coinflip:saigon":  "hardhat deploy --network saigon --tags MattCoinFlip",
                     "inspect:rewards:ronin":  "hardhat run scripts/inspect-daily-rewards.js --network ronin",
                     "inspect:ronin":  "hardhat run scripts/inspect-deployment.js --network ronin",
@@ -71,7 +68,6 @@
                     "deploy:gift-boxes:saigon":  "hardhat run scripts/deploy-gift-boxes.js --network saigon",
                     "deploy:plinko-v2:ronin":  "hardhat run scripts/deploy-plinko-v2.js --network ronin",
                     "deploy:rewards:ronin":  "hardhat deploy --network ronin --tags MattDailyRewards",
-                    "test:plinko-v3-ui":  "node website/lib/plinko-v3-engine.test.js",
                     "deploy:gift-boxes:ronin":  "hardhat run scripts/deploy-gift-boxes.js --network ronin",
                     "inspect:coinflip-burn:saigon":  "hardhat run scripts/inspect-coin-flip-burn.js --network saigon",
                     "fund:slots-vault:saigon":  "hardhat run scripts/fund-slots-vault.js --network saigon",

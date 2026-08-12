@@ -9,11 +9,8 @@ const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
 const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
-const { installPlinkoHistoryIndex } = require("./plinko-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
-const { createCrashRouter } = require("./lib/crash-routes");
-const { createCrashContractRouter } = require("./lib/crash-routes-contract");
 const { installDynoRaffle } = require("./dyno-raffle-routes");
 const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 const { createLiquidityMarketRouter } = require("./liquidity-market-routes");
@@ -32,11 +29,8 @@ const burnFlipStatsFile = process.env.BURNFLIP_STATS_FILE || (persistentDiskPath
 const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-history.json") : "");
 const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
-const plinkoHistoryFile = process.env.PLINKO_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-plinko-v4-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
-const crashStateFile = process.env.CRASH_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-crash-mainnet-state.json") : "");
 const dynoRaffleStateFile = process.env.DYNO_RAFFLE_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-dyno-raffle.json") : path.join(__dirname, ".dyno-raffle.json"));
-const crashLiveEnabled = String(process.env.CRASH_LIVE_ENABLED || "false").toLowerCase() === "true";
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -87,23 +81,9 @@ installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFli
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
 installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
 installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
-installPlinkoHistoryIndex(app, {
-  rpcRequest: statsRpcRequest,
-  stateFile: plinkoHistoryFile,
-  profiles: walletProfiles
-});
 app.use("/api/poker", createPokerRouter({ live: process.env.POKER_LIVE_ENABLED === "true", contractAddress: process.env.POKER_ESCROW_ADDRESS || "", rpcUrl: process.env.RONIN_RPC_URL || "", operatorPrivateKey: process.env.POKER_OPERATOR_PRIVATE_KEY || "", stateSecret: process.env.POKER_STATE_SECRET || "", stateFile: persistentDiskPath ? path.join(persistentDiskPath, "poker-state.enc") : "" }));
 app.use("/api/blackjack", createBlackjackRouter());
-app.use("/api/crash", crashLiveEnabled ? createCrashContractRouter({
-  rpcUrl: roninRpcUrl,
-  stateFile: crashStateFile,
-  vaultAddress: process.env.CRASH_VAULT_ADDRESS,
-  tokenAddress: process.env.CRASH_TOKEN_ADDRESS,
-  operatorPrivateKey: process.env.CRASH_OPERATOR_PRIVATE_KEY,
-  liveEnabled: true
-}) : createCrashRouter({ secret: process.env.CRASH_SERVER_SECRET }));
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
-app.get(["/crash", "/crash/"], (_req, res) => res.sendFile(path.join(publicDir, "crash.html")));
 app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.use((req, res, next) => {
@@ -115,7 +95,6 @@ app.use((req, res, next) => {
 app.use("/api/flappy", (_req, res) => res.status(404).json({ error: "Not found" }));
 app.get("/blackjack.css", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.css")));
 app.get("/blackjack.js", (_req, res) => res.sendFile(path.join(publicDir, "blackjack.js")));
-app.get("/crash-live.js", (_req, res) => res.sendFile(path.join(publicDir, "crash-live.js")));
 app.get("/vendor/ethers.umd.min.js", (_req, res) => { res.set("Cache-Control", "public, max-age=31536000, immutable"); res.type("application/javascript"); res.sendFile(ethersBrowserBundle); });
 app.use((req, res) => {
   const headers = { ...req.headers, host: `127.0.0.1:${proxyPort}` };
@@ -136,11 +115,8 @@ const server = app.listen(publicPort, () => {
   console.log(burnFlipHistoryFile ? `Persistent BurnFlip history: ${burnFlipHistoryFile}` : "Persistent BurnFlip history: no Render disk detected; using memory only.");
   console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
-  console.log(plinkoHistoryFile ? `Persistent Plinko V4 history: ${plinkoHistoryFile}` : "Persistent Plinko V4 history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
   console.log(`Persistent Water Dyno raffle entries: ${dynoRaffleStateFile}`);
-  console.log(crashStateFile ? `Persistent Crash state: ${crashStateFile}` : "Persistent Crash state: no Render disk detected; do not enable mainnet mode.");
-  console.log(crashLiveEnabled && process.env.CRASH_OPERATOR_PRIVATE_KEY ? "Crash mainnet keeper: enabled and operator key configured." : "Crash mainnet keeper: locked until CRASH_LIVE_ENABLED and CRASH_OPERATOR_PRIVATE_KEY are configured.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });

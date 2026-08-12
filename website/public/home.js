@@ -135,14 +135,6 @@
   async function loadActivity() {
     const grid = $("activity-grid");
     const cards = [];
-    try {
-      const response = await fetch("/api/crash/state", { cache: "no-store" });
-      if (response.ok) {
-        const crash = await response.json();
-        const round = crash.round;
-        if (round) cards.push(activityCard(`Space Flight #${round.number} is ${String(round.phase).toUpperCase()}`, `${Number(crash.summary?.playerCount || 0)} players · ${formatMattRaw(crash.summary?.roundTotal || 0)} wagered`, "flight"));
-      }
-    } catch (error) { console.warn("Crash activity unavailable", error); }
 
     try {
       const response = await fetch("/api/burnflip/leaderboard?limit=1", { cache: "no-store" });
