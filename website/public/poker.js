@@ -7,7 +7,7 @@ const escrowAbi=[
  "function cashOut()"
 ];
 const tokenAbi=["function allowance(address,address) view returns(uint256)","function approve(address,uint256)"];
-let provider,signer,wallet,token,mySeat=-1,state,sessionWallet,busy=false,noticeUntil=0;
+let provider,signer,wallet,token,mySeat=-1,state,sessionWallet,busy=false,noticeUntil=0,boardRenderKey="",holeRenderKey="";
 
 function html(value){return String(value||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function short(address){return address?address.slice(0,6)+"…"+address.slice(-4):"OPEN";}
@@ -167,13 +167,13 @@ function render(s){
  $("#tablePlayers").textContent=occupied+" / 6";
  $("#handNumber").textContent=h?"#"+h.id:"WAITING";
  $("#phase").innerHTML='<i></i> '+String(s.phase||"waiting").replace(/-/g," ").toUpperCase();
- const end=s.phase==="countdown"?s.countdownEndsAt:h?.actionEndsAt||s.intermissionEndsAt;
+ const end=s.phase==="countdown"?s.countdownEndsAt:s.phase==="hand"?h?.actionEndsAt:s.phase==="intermission"?s.intermissionEndsAt:0;
  $("#clock").textContent=end?Math.max(0,Math.ceil((end-Date.now())/1000))+"s":"--";
  $("#pot").textContent="POT · "+matt(h?.pot||0)+" MATT";
  $("#centerPot").innerHTML="<small>TOTAL POT</small><strong>"+matt(h?.pot||0,true)+"</strong>";
- $("#board").innerHTML=Array.from({length:5},(_,i)=>h?.board?.[i]?card(h.board[i],false):'<span class="card-slot"></span>').join("");
+ const nextBoardKey=JSON.stringify(h?.board||[]);if(nextBoardKey!==boardRenderKey){$("#board").innerHTML=Array.from({length:5},(_,i)=>h?.board?.[i]?card(h.board[i],false):'<span class="card-slot"></span>').join("");boardRenderKey=nextBoardKey;}
  const myInHand=h?.players?.includes(mySeat),myFolded=h?.folded?.includes(mySeat);
- $("#hole").innerHTML=myInHand&&!myFolded?(h.holeCards?h.holeCards.map(c=>card(c,false)).join(""):card(null,true)+card(null,true)):"";
+ const nextHoleKey=JSON.stringify([h?.id||0,mySeat,myInHand,myFolded,h?.holeCards||null]);if(nextHoleKey!==holeRenderKey){$("#hole").innerHTML=myInHand&&!myFolded?(h.holeCards?h.holeCards.map(c=>card(c,false)).join(""):card(null,true)+card(null,true)):"";holeRenderKey=nextHoleKey;}
  all(".seat").forEach((button,index)=>{
   const seat=s.seats[index],folded=h?.folded?.includes(index),allIn=h?.allIn?.includes(index);
   button.className="seat seat-"+index+(seat?" occupied":" open")+(index===mySeat?" mine":"")+(h?.turn===index&&!folded?" to-act":"")+(folded?" folded":"")+(allIn?" all-in":"");
@@ -187,7 +187,7 @@ function render(s){
  $("#toCall").textContent=matt(toCall<0n?0n:toCall)+" MATT";
  const myTurn=Boolean(h&&h.turn===mySeat&&!myFolded&&!h.allIn?.includes(mySeat)&&s.phase==="hand");
  $(".action-panel").classList.toggle("live-turn",myTurn);
- $("#actionPrompt").textContent=myTurn?"YOUR TURN · "+String(h.street).toUpperCase():h?"WAITING FOR PLAYER":"WAITING FOR A HAND";
+ $("#actionPrompt").textContent=s.phase==="settling"?"FINALIZING ON RONIN":myTurn?"YOUR TURN · "+String(h.street).toUpperCase():h?"WAITING FOR PLAYER":"WAITING FOR A HAND";
  all("[data-action]").forEach(button=>button.disabled=!myTurn);
  $("#checkAction").disabled=!myTurn||toCall>0n;
  $("#callAction").disabled=!myTurn||toCall<=0n;
@@ -199,7 +199,7 @@ function render(s){
  all("#seatSelect option").forEach((option,index)=>{option.disabled=Boolean(s.seats[index]);option.textContent="Seat "+(index+1)+(s.seats[index]?" · OCCUPIED":" · OPEN");});
  if(Date.now()>noticeUntil){
   if(!s.live)$("#notice").textContent=s.message||"Poker operator service is not configured.";
-  else if(s.phase==="error")$("#notice").textContent="The global table service needs operator attention. Do not start another hand.";
+  else if(s.phase==="settling")$("#notice").textContent="Finalizing this hand on Ronin. The table will recover automatically if the host restarts.";else if(s.phase==="error")$("#notice").textContent="The global table service needs operator attention. Do not start another hand.";
   else if(!wallet)$("#notice").textContent="Table is live. Connect Ronin Wallet to take a seat.";
   else if(!mine)$("#notice").textContent="Choose an open seat, set your table name, and buy in.";
   else $("#notice").textContent="You are seated as "+(mine.name||short(mine.wallet))+". Press Ready when prepared.";

@@ -24,6 +24,8 @@ test("live client renders casino cards and deducts committed chips from the disp
  assert.match(client,/h\.stacks/);
  assert.match(client,/h\.committed/);
  assert.match(client,/parseMattInput/);
+ assert.match(client,/boardRenderKey/);
+ assert.match(client,/nextHoleKey/);
 });
 
 test("server publishes player identity and in-hand stack detail without exposing other hole cards",()=>{
@@ -32,4 +34,7 @@ test("server publishes player identity and in-hand stack detail without exposing
  assert.match(routes,/committed:h\.committed/);
  assert.match(routes,/holeCards:auth/);
  assert.doesNotMatch(routes,/holeCards:h\.holes/);
+ assert.match(routes,/lastFinalizedHandId/);
+ assert.match(routes,/participants\.has\(i\)/);
+ assert.match(routes,/phase==="settling"/);
 });
