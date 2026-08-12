@@ -169,6 +169,34 @@ function card(code,hidden){
  const raw=String(code||""),rank=ranks[raw[0]]||raw[0],suit=suits[raw[1]]||"",red=raw[1]==="d"||raw[1]==="h";
  return '<article class="playing-card '+(red?"red":"")+'" aria-label="'+html(rank+" "+suit)+'"><span class="corner">'+html(rank)+'<i>'+suit+'</i></span><span class="pip">'+suit+'</span><span class="corner bottom">'+html(rank)+'<i>'+suit+'</i></span></article>';
 }
+let showdownRenderKey="";
+function renderShowdown(s){
+ const overlay=$("#showdown"),summary=s.showdown;
+ if(!overlay)return;
+ if(s.phase!=="showdown"||!summary){
+  overlay.hidden=true;
+  showdownRenderKey="";
+  return;
+ }
+ overlay.hidden=false;
+ const key=JSON.stringify(summary);
+ if(key!==showdownRenderKey){
+  showdownRenderKey=key;
+  const winners=summary.winners||[];
+  $("#showdownTitle").textContent=winners.length>1?"SPLIT POT":"WINNING HAND";
+  $("#showdownWinners").innerHTML=winners.map(winner=>
+   '<article class="showdown-winner"><strong>'+html(winner.name||short(winner.wallet))+'</strong>'+
+   '<span>'+html(winner.hand||"Winning Hand")+'</span>'+
+   '<small>SEAT '+(Number(winner.seat)+1)+' · '+matt(winner.payout||0,true)+' MATT AWARDED</small>'+
+   (winner.cards?.length?'<div class="winner-cards">'+winner.cards.map(code=>card(code,false)).join("")+'</div>':"")+
+   '</article>'
+  ).join("");
+  $("#showdownPot").textContent=matt(summary.pot||0,true)+" MATT POT";
+ }
+ const remaining=Math.max(0,Math.ceil((Number(s.showdownEndsAt||0)-Date.now())/1000));
+ $("#showdownTimer").textContent="NEXT HAND IN "+remaining;
+ $("#showdownProgress").style.setProperty("--showdown-progress",(remaining*10)+"%");
+}
 let handInsightKey="";
 function insightPanel(){
  let panel=$("#handInsights");
@@ -247,6 +275,7 @@ function seatMarkup(index,seat,hand){
   (committed>0n?'<span class="wager-chip">IN POT · '+matt(committed,true)+'</span>':'');
 }
 function render(s){
+ renderShowdown(s);
  state=s;
  const h=s.hand,occupied=s.seats.filter(Boolean).length;
  $("#tablePlayers").textContent=occupied+" / 6";

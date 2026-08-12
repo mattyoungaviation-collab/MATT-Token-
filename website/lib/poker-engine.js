@@ -25,7 +25,7 @@ function evaluate(cards){if(cards.length<5)throw Error("five cards required");le
 function nextClockwise(seat,candidates){for(let n=1;n<=6;n++){const i=(seat+n)%6;if(candidates.includes(i))return i;}return candidates[0];}
 function settle({players,board,dealerSeat,rakeBps=0,rakeCap=0n}){
   const contributions=players.map(p=>BigInt(p.committed)),levels=[...new Set(contributions.filter(x=>x>0n).map(String))].map(BigInt).sort((a,b)=>a<b?-1:1);
-  const payouts=Object.fromEntries(players.map(p=>[p.seat,0n])),pots=[];let previous=0n,uncalled=0n;
+  const payouts=Object.fromEntries(players.map(p=>[p.seat,0n])),pots=[],awards=[];let previous=0n,uncalled=0n;
   for(const level of levels){const involved=players.filter(p=>BigInt(p.committed)>=level),amount=(level-previous)*BigInt(involved.length);previous=level;
     if(involved.length===1){payouts[involved[0].seat]+=amount;uncalled+=amount;continue;}
     pots.push({amount,eligible:involved.filter(p=>!p.folded)});
@@ -34,9 +34,10 @@ function settle({players,board,dealerSeat,rakeBps=0,rakeCap=0n}){
   let remainingRake=rake;
   for(const pot of pots){const cut=remainingRake>pot.amount?pot.amount:remainingRake;pot.amount-=cut;remainingRake-=cut;
     let winners;if(pot.eligible.length===1)winners=pot.eligible;else{let best;winners=[];for(const p of pot.eligible){const score=evaluate([...p.cards,...board]);const cmp=best?compare(score,best):1;if(cmp>0){best=score;winners=[p];}else if(cmp===0)winners.push(p);}}
+    awards.push({amount:pot.amount,winners:winners.map(w=>w.seat)});
     const share=pot.amount/BigInt(winners.length),odd=Number(pot.amount%BigInt(winners.length));for(const w of winners)payouts[w.seat]+=share;
     const order=[];let cursor=dealerSeat;while(order.length<winners.length){cursor=nextClockwise(cursor,winners.map(w=>w.seat));if(!order.includes(cursor))order.push(cursor);}for(let i=0;i<odd;i++)payouts[order[i]]+=1n;
   }
-  return{payouts,matchedPot,rake,uncalled};
+  return{payouts,matchedPot,rake,uncalled,awards};
 }
 module.exports={cardName,deckSeed,shuffledDeck,evaluate,compare,settle,nextClockwise};

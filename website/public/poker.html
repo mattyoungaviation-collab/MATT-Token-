@@ -60,8 +60,18 @@
               <div class="felt-lines" aria-hidden="true"></div>
               <div id="board" class="board" aria-label="Community cards"></div>
               <div class="center-mark">
-                <span>THE FOUNDRY</span>
-                <small>PROVABLY SEEDED ON RONIN</small>
+                <img src="/assets/matt-logo-512.png" alt="">
+                <span>MATT POKER</span>
+                <small>TEXAS HOLD'EM · VERIFIED ON RONIN</small>
+              </div>
+              <div class="felt-signature felt-signature-left" aria-hidden="true">MATT</div>
+              <div class="felt-signature felt-signature-right" aria-hidden="true">MATT</div>
+              <div id="showdown" class="showdown-overlay" hidden aria-live="polite">
+                <p>HAND COMPLETE</p>
+                <h2 id="showdownTitle">WINNING HAND</h2>
+                <div id="showdownWinners" class="showdown-winners"></div>
+                <div class="showdown-footer"><span id="showdownPot">0 MATT POT</span><strong id="showdownTimer">NEXT HAND IN 10</strong></div>
+                <i id="showdownProgress"></i>
               </div>
               <div id="centerPot" class="center-pot"><small>TOTAL POT</small><strong>0</strong></div>
               <button class="seat seat-0" data-seat="0" aria-label="Seat 1"></button>
@@ -146,6 +156,6 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
   <script src="/poker-config.js?v=6"></script>
 <script src="/poker-insights.js?v=1"></script>
-<script src="/poker.js?v=10"></script>
+<script src="/poker.js?v=11"></script>
 </body>
 </html>
