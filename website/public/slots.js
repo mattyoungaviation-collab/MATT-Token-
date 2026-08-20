@@ -7,7 +7,7 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const ZERO = "0x0000000000000000000000000000000000000000";
-  const SYMBOL_PATHS = math.SYMBOL_SLUGS.map(slug => `/assets/slots/${slug}.${slug === "dyno" ? "png" : (slug === "wild" || slug === "scatter" ? "svg" : "webp")}`);
+  const SYMBOL_PATHS = math.SYMBOL_SLUGS.map(slug => `/assets/slots/${slug}.${["dyno", "wild", "scatter"].includes(slug) ? "png" : "webp"}`);
   const CREDIT_PAID = 1;
   const CREDIT_BONUS = 2;
   const STATUS_PENDING = 1;
