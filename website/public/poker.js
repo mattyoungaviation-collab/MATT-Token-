@@ -326,13 +326,25 @@ function render(s){
   else $("#notice").textContent="You are seated as "+(mine.name||short(mine.wallet))+". Press Ready when prepared.";
  }
 }
+const POLL_INTERVAL_MS=3000;
+let pollTimer=null,polling=false;
+function schedulePoll(delay=POLL_INTERVAL_MS){
+ clearTimeout(pollTimer);pollTimer=null;
+ if(!document.hidden)pollTimer=setTimeout(poll,delay);
+}
 async function poll(){
+ if(document.hidden||polling)return;
+ polling=true;
  try{
   const response=await fetch("/api/poker/state",{cache:"no-store",headers:token?{authorization:"Bearer "+token}:{}});
   render(await response.json());
  }catch(error){if(Date.now()>noticeUntil)$("#notice").textContent="Reconnecting to the global table...";}
- setTimeout(poll,900);
+ finally{polling=false;schedulePoll();}
 }
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden){clearTimeout(pollTimer);pollTimer=null;return;}
+ poll();
+});
 function setQuickBet(kind){
  if(!state?.hand)return;
  const pot=BigInt(state.hand.pot||0),stack=BigInt(state.hand.stacks?.[mySeat]||0);
