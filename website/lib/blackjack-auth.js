@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { verifyMessage } = require("@ethersproject/wallet");
+const { verifyMessage } = require("ethers");
 
 const CHALLENGE_TTL_MS = 5 * 60_000;
 const SESSION_TTL_MS = 12 * 60 * 60_000;

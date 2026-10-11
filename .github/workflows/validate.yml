@@ -26,6 +26,7 @@ jobs:
           node --check website/lib/blackjack-service.js
           node --check website/public/blackjack.js
           node -e "require('ethers'); require('./website/lib/blackjack-chain'); require('./website/lib/blackjack-routes')"
+          node --test website/lib/blackjack-auth.test.js
       - run: npm run compile
       - name: Validate Plinko history and leaderboard
         run: |
