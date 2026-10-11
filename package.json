@@ -105,6 +105,7 @@
                             "typescript":  "^5.9.3"
                         },
     "dependencies":  {
+                         "ethers":  "^6.17.0",
                          "express":  "^5.1.0"
                      }
 }
