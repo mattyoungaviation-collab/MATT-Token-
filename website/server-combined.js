@@ -5,13 +5,15 @@ const path = require("path");
 const { fork } = require("child_process");
 const { installXFollowVerifier } = require("./x-follow-verifier-v2");
 const { installDiscordAuth } = require("./discord-auth");
+const { createStore: createDynoStore } = require("../services/dyno-api/store");
 const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
 const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
-const { installDynoRaffle } = require("./dyno-raffle-routes");
+const { createDynoRouter } = require("../services/dyno-api/router");
+const { selectDynoRuntime, createDisabledDynoRouter, disabledDynoPage } = require("../services/dyno-api/runtime");
 const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 const { createLiquidityMarketRouter } = require("./liquidity-market-routes");
 const { createPokerRouter } = require("./lib/poker-routes");
@@ -30,7 +32,6 @@ const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDisk
 const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
-const dynoRaffleStateFile = process.env.DYNO_RAFFLE_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-dyno-raffle.json") : path.join(__dirname, ".dyno-raffle.json"));
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -72,8 +73,22 @@ async function statsRpcRequest(method, params = []) {
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 installXFollowVerifier(app);
-installDiscordAuth(app);
-installDynoRaffle(app, { rpcRequest: statsRpcRequest, stateFile: dynoRaffleStateFile });
+const dynoRuntime = selectDynoRuntime();
+const dynoStore = createDynoStore({ production: dynoRuntime.production, chainId: dynoRuntime.manifest?.chainId || null });
+if (dynoRuntime.production && dynoStore.auth?.kind !== "sqlite-encrypted") throw new Error("Project DYNO production requires encrypted persistent authentication storage");
+const discordAuth = installDiscordAuth(app, { authStore: dynoStore.auth });
+app.use("/api/dyno", dynoRuntime.enabled ? createDynoRouter({ manifest: dynoRuntime.manifest, getDiscordSession: discordAuth.getDiscordSession, store: dynoStore }) : createDisabledDynoRouter(dynoStore));
+if (process.env.DYNO_INDEXER_ENABLED === "true") {
+  const manifest = dynoRuntime.manifest;
+  if (manifest.mock || !process.env[manifest.rpcUrlEnv]) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
+  const { DynoIndexer } = require("../services/dyno-indexer/indexer");
+  const { startIndexer } = require("../services/dyno-indexer/runner");
+  const indexer = new DynoIndexer({ rpcUrl: process.env[manifest.rpcUrlEnv], store: dynoStore, chainId: manifest.chainId,
+    managerAddress: manifest.raffleProxy, vaultAddress: manifest.buybackProxy, startBlock: Number(process.env.DYNO_START_BLOCK || 0), finalityBlocks: Number(process.env.DYNO_FINALITY_BLOCKS || 12),
+    managerAbi: require("../packages/abis/ProjectDynoRaffleManager.json").abi, vaultAbi: require("../packages/abis/ProjectDynoBuybackVault.json").abi });
+  const runner = startIndexer(indexer);
+  app.get("/api/dyno/indexer-health", (_req, res) => res.status(runner.status.ok ? 200 : 503).json(runner.status));
+}
 app.use("/api/gift-boxes", createGiftBoxQuoteRouter({ rpcRequest: statsRpcRequest }));
 app.use("/api/liquidity/market", createLiquidityMarketRouter());
 const walletProfiles = installWalletProfiles(app, { stateFile: walletProfilesFile });
@@ -86,6 +101,7 @@ app.use("/api/blackjack", createBlackjackRouter());
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
 app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
+app.get(["/dyno", "/dyno/"], (_req, res) => dynoRuntime.enabled ? res.sendFile(path.join(publicDir, "dyno.html")) : res.set("Cache-Control", "no-store").type("html").send(disabledDynoPage));
 app.use((req, res, next) => {
   if (req.path === "/flappy-matt" || req.path.startsWith("/flappy-matt/") || req.path.startsWith("/flappy-matt.")) {
     return res.status(404).send("Not found");
@@ -116,7 +132,6 @@ const server = app.listen(publicPort, () => {
   console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
-  console.log(`Persistent Water Dyno raffle entries: ${dynoRaffleStateFile}`);
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });

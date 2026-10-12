@@ -93,7 +93,11 @@
                     "inspect:poker:ronin":  "hardhat run scripts/inspect-poker.js --network ronin",
                     "test:poker":  "hardhat test test/MattPokerContracts.test.js \u0026\u0026 node --test website/lib/poker-engine.test.js website/lib/poker-page.test.js",
                     "export:poker-verification":  "hardhat run scripts/export-poker-verification.js",
-                    "set:poker-operator:ronin":  "hardhat run scripts/set-poker-operator.js --network ronin"
+                    "set:poker-operator:ronin":  "hardhat run scripts/set-poker-operator.js --network ronin",
+                    "check:dyno:storage": "node scripts/dyno/check-storage-config.js",
+                    "backup:dyno:storage": "node scripts/dyno/backup-storage.js",
+                    "test:dyno:runtime": "node scripts/dyno/check-backend-runtime.js",
+                    "test:dyno:storage": "node --test services/dyno-api/*.test.js services/dyno-indexer/*.test.js website/lib/discord-auth.test.js website/lib/production-dependencies.test.js"
                 },
     "devDependencies":  {
                             "@nomicfoundation/hardhat-toolbox":  "^5.0.0",
@@ -107,6 +111,7 @@
     "dependencies":  {
                          "express":  "^5.1.0",
                          "ethers":  "6.17.0",
-                         "@ethersproject/wallet":  "5.8.0"
+                         "@ethersproject/wallet":  "5.8.0",
+                         "pg": "8.16.3"
                      }
 }

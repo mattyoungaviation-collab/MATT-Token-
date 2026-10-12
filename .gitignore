@@ -21,3 +21,5 @@ website/.holder-index-cache.json
 .idea/
 .DS_Store
 Thumbs.db
+*.sqlite
+*.sqlite-*
