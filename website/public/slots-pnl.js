@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const root = document.getElementById("slots-pnl-ledger");
+  const root = document.getElementById("global-pnl");
   if (!root) return;
 
   const explorerBase = "https://explorer.roninchain.com/address/";
