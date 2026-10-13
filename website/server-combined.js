@@ -10,6 +10,7 @@ const { installBurnFlipStatsCache } = require("./burnflip-stats-cache");
 const { installBurnFlipHistoryIndex } = require("./burnflip-history-index");
 const { installBurnLeaderboardIndex } = require("./burn-leaderboard-index");
 const { installBlackjackHistoryIndex } = require("./blackjack-history-index");
+const { installSlotsPnlIndex } = require("./slots-pnl-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createDynoRouter } = require("../services/dyno-api/router");
@@ -31,6 +32,7 @@ const burnFlipStatsFile = process.env.BURNFLIP_STATS_FILE || (persistentDiskPath
 const burnFlipHistoryFile = process.env.BURNFLIP_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burnflip-history.json") : "");
 const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-burn-leaderboard.json") : "");
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
+const slotsPnlStateFile = process.env.SLOTS_PNL_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-slots-pnl.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
 
 let statsRpcId = 0;
@@ -96,6 +98,7 @@ installBurnFlipStatsCache(app, { rpcRequest: statsRpcRequest, stateFile: burnFli
 installBurnFlipHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnFlipHistoryFile });
 installBurnLeaderboardIndex(app, { rpcRequest: statsRpcRequest, stateFile: burnLeaderboardFile });
 installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blackjackHistoryFile });
+installSlotsPnlIndex(app, { rpcRequest: statsRpcRequest, stateFile: slotsPnlStateFile });
 app.use("/api/poker", createPokerRouter({ live: process.env.POKER_LIVE_ENABLED === "true", contractAddress: process.env.POKER_ESCROW_ADDRESS || "", rpcUrl: process.env.RONIN_RPC_URL || "", operatorPrivateKey: process.env.POKER_OPERATOR_PRIVATE_KEY || "", stateSecret: process.env.POKER_STATE_SECRET || "", stateFile: persistentDiskPath ? path.join(persistentDiskPath, "poker-state.enc") : "" }));
 app.use("/api/blackjack", createBlackjackRouter());
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
@@ -131,6 +134,7 @@ const server = app.listen(publicPort, () => {
   console.log(burnFlipHistoryFile ? `Persistent BurnFlip history: ${burnFlipHistoryFile}` : "Persistent BurnFlip history: no Render disk detected; using memory only.");
   console.log(burnLeaderboardFile ? `Persistent burn leaderboard: ${burnLeaderboardFile}` : "Persistent burn leaderboard: no Render disk detected; using memory only.");
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
+  console.log(slotsPnlStateFile ? `Persistent Slots PNL: ${slotsPnlStateFile}` : "Persistent Slots PNL: no disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
