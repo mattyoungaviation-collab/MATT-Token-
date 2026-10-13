@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/slots-gate.css?v=1">
   <link rel="stylesheet" href="/matt-brand.css?v=1">
   <link rel="stylesheet" href="/slots-premium.css?v=1">
+  <link rel="stylesheet" href="/slots-pnl.css?v=1">
 </head>
 <body class="slots-gated">
   <div id="access-gate" class="access-gate" role="dialog" aria-modal="true" aria-labelledby="access-gate-title" aria-describedby="access-gate-risk">
@@ -41,7 +42,7 @@
   </div>
   <header class="topbar">
     <a class="brand" href="/hub"><img src="/assets/matt-logo-512.png" alt=""><span>MATT</span><b>SLOTS</b></a>
-    <nav><a href="#machine">Play</a><a href="#paytable">Paytable</a><a href="#fairness">Fairness</a><a href="#history">History</a></nav>
+    <nav><a href="#machine">Play</a><a href="#global-pnl">Global PNL</a><a href="#paytable">Paytable</a><a href="#fairness">Fairness</a><a href="#history">History</a></nav>
     <button id="wallet-button" class="wallet-button" type="button">CONNECT RONIN</button>
   </header>
 
@@ -135,6 +136,79 @@
       </aside>
     </section>
 
+    <section class="slots-pnl-section" id="global-pnl">
+      <div class="pnl-heading">
+        <div>
+          <p class="eyebrow">EVERY SETTLED SPIN / EVERY WALLET</p>
+          <h2>Global <span>PNL Ledger</span></h2>
+          <p>Search any wallet that has played MATT Slots, inspect its verified spend and payouts, or rank the entire table by profit, loss, volume, wins, and activity.</p>
+        </div>
+        <span class="pnl-live-stamp">RONIN VERIFIED</span>
+      </div>
+
+      <div class="pnl-summary-grid" aria-label="Global Slots summary">
+        <article><span>Players Indexed</span><strong id="pnl-total-players">-</strong></article>
+        <article><span>Paid Spins</span><strong id="pnl-total-spins">-</strong></article>
+        <article><span>Total Wagered</span><strong id="pnl-total-spent">-</strong></article>
+        <article><span>Total Paid Out</span><strong id="pnl-total-won">-</strong></article>
+        <article><span>Combined Player PNL</span><strong id="pnl-global-net">-</strong></article>
+        <article class="pnl-featured"><span>Biggest Single Win</span><strong id="pnl-biggest-win">-</strong><small id="pnl-biggest-wallet">Indexing settled spins</small></article>
+      </div>
+
+      <div class="pnl-toolbar">
+        <form class="pnl-search" id="pnl-search-form" role="search">
+          <input id="pnl-search-input" type="search" inputmode="search" autocomplete="off" spellcheck="false" placeholder="Search 0x or ronin: wallet address" aria-label="Search Slots player address">
+          <button type="submit">SEARCH</button>
+          <button id="pnl-clear-search" class="pnl-clear" type="button" hidden>CLEAR</button>
+        </form>
+        <button id="pnl-refresh" class="pnl-refresh" type="button">REFRESH LEDGER</button>
+      </div>
+
+      <div class="pnl-filters" aria-label="Sort global PNL ledger">
+        <button class="pnl-filter is-active" type="button" data-pnl-sort="pnl-desc">Biggest Winners</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="pnl-asc">Biggest Losses</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="spent-desc">Highest Volume</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="won-desc">Most Won</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="biggest-desc">Biggest Single Win</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="win-rate-desc">Win Rate</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="spins-desc">Most Spins</button>
+        <button class="pnl-filter" type="button" data-pnl-sort="recent-desc">Recently Active</button>
+      </div>
+
+      <p id="pnl-status" class="pnl-status" role="status" aria-live="polite">Preparing the global Slots ledger.</p>
+
+      <article id="pnl-wallet-card" class="pnl-wallet-card" hidden>
+        <div class="pnl-wallet-identity">
+          <span class="eyebrow">PLAYER REPORT</span>
+          <strong id="pnl-wallet-title">0x...</strong>
+          <a id="pnl-wallet-explorer" href="#" target="_blank" rel="noopener">VIEW ON RONIN EXPLORER</a>
+        </div>
+        <div class="pnl-wallet-metrics">
+          <div><span>PNL</span><strong id="pnl-wallet-pnl">-</strong></div>
+          <div><span>Spent</span><strong id="pnl-wallet-spent">-</strong></div>
+          <div><span>Won</span><strong id="pnl-wallet-won">-</strong></div>
+          <div><span>Biggest Win</span><strong id="pnl-wallet-biggest">-</strong></div>
+          <div><span>Win Rate</span><strong id="pnl-wallet-rate">-</strong></div>
+          <div><span>Paid Spins</span><strong id="pnl-wallet-spins">-</strong></div>
+        </div>
+      </article>
+
+      <div class="pnl-table-wrap">
+        <table class="pnl-table">
+          <thead><tr><th>Rank</th><th>Wallet</th><th class="pnl-number">PNL</th><th class="pnl-number">Spent</th><th class="pnl-number">Won</th><th class="pnl-number">Biggest Win</th><th class="pnl-number">Win %</th><th class="pnl-number">Paid Spins</th></tr></thead>
+          <tbody id="pnl-table-body"></tbody>
+        </table>
+        <div id="pnl-empty" class="pnl-empty" hidden><strong>No settled Slots player matched that address.</strong><span>Check the complete wallet address or clear the search.</span></div>
+      </div>
+
+      <div class="pnl-pagination">
+        <span id="pnl-page-summary">Loading player rankings.</span>
+        <div><button id="pnl-previous" type="button" disabled>PREVIOUS</button><button id="pnl-next" type="button" disabled>NEXT</button></div>
+      </div>
+
+      <p class="pnl-method"><strong>Transparent calculation:</strong> Spent includes settled paid-spin wagers only, so unused refundable credits are excluded. Won includes every settled paid and bonus payout, whether claimed or still claimable. PNL equals won minus spent. Win rate is the percentage of paid spins that returned more than their wager; the Win Rate ranking prioritizes wallets with at least ten paid spins.</p>
+    </section>
+
     <section class="paytable-section" id="paytable">
       <div class="section-heading"><p class="eyebrow">RESOURCE PAYTABLE</p><h2>Match from the left.</h2><p>Every paid spin activates all twenty lines. Wild substitutes for normal resources. Vaults pay anywhere and award free spins.</p></div>
       <div id="paytable-grid" class="paytable-grid"></div>
@@ -168,6 +242,7 @@
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
   <script src="/slots-config.js?v=2"></script>
   <script src="/slots-math-v1.js?v=1"></script>
+  <script src="/slots-pnl.js?v=1"></script>
   <script src="/slots-gate.js?v=6"></script>
   <script src="/matt-brand.js?v=1"></script>
 </body>
