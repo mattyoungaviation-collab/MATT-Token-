@@ -33,6 +33,24 @@ test("production voucher gate stays shut until explicitly enabled and chain OPEN
   assert.equal((await (await fetch(armed + "/health")).json()).purchasesEnabled, true);
 });
 
+test("production wallet challenge and admin origin follow the canonical www site", async t => {
+  const store = createMemoryStore(); store.auth.kind = "sqlite-encrypted";
+  const wallet = Wallet.createRandom().address;
+  const app = express();
+  app.use("/api/dyno", createDynoRouter({ manifest: production, store, env: { DYNO_CHECKOUT_ENABLED: "false" } }));
+  const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
+  t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+  const base = `http://127.0.0.1:${server.address().port}/api/dyno`;
+  const challenge = await (await fetch(base + "/auth/nonce", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ wallet }) })).json();
+  assert.match(challenge.message, /www\.matttoken\.com/);
+  const session = "test-session";
+  store.auth.put("wallet-session", session, { wallet, expiresAt: Date.now() + 60_000 }, Date.now() + 60_000);
+  const request = origin => fetch(base + "/admin/prepare", { method: "POST", headers: { "content-type": "application/json", origin, cookie: `dyno_wallet=${session}` }, body: "{}" });
+  assert.equal((await (await request("https://evil.example")).json()).error, "ORIGIN_REJECTED");
+  assert.notEqual((await (await request("https://www.matttoken.com")).json()).error, "ORIGIN_REJECTED");
+  assert.notEqual((await (await request("https://matttoken.com")).json()).error, "ORIGIN_REJECTED");
+});
+
 async function fixture(t, { mock = false } = {}) {
   const wallet = Wallet.createRandom(), signer = Wallet.createRandom();
   const env = { DYNO_IDENTITY_SECRET: "test-identity-secret-".repeat(3), DYNO_IDENTITY_SIGNER_PRIVATE_KEY: signer.privateKey };

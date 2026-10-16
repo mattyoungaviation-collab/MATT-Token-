@@ -8,7 +8,7 @@
   "multisig": "0xBacE355D23d378a6E1adD986E53a18Dd12E6EeAc",
   "multisigThreshold": 2,
   "multisigOwnerCount": 3,
-  "websiteOrigin": "https://matttoken.com",
+  "websiteOrigin": "https://www.matttoken.com",
   "rpcProvider": "Alchemy",
   "indexerFinalityMode": "rpc-finalized",
   "legalReview": { "status": "owner-reported-reviewed", "recordedDate": "2026-10-12" },

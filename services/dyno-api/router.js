@@ -31,6 +31,8 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
   const manifest = providedManifest || JSON.parse(fs.readFileSync(selectedPath, "utf8"));
   const errors = validateManifest(manifest);
   if (errors.length) throw new Error(`Project DYNO manifest rejected: ${errors.join("; ")}`);
+  const siteOrigin = new URL(manifest.websiteOrigin || manifest.publicOAuthRedirectUri).origin;
+  const allowedBrowserOrigins = new Set([siteOrigin, new URL(manifest.publicOAuthRedirectUri).origin]);
   const checkoutEnabled = manifest.environment !== "production" || env.DYNO_CHECKOUT_ENABLED === "true";
   const db = store || createStore({ production: manifest.environment === "production", env, chainId: manifest.chainId });
   const authStore = providedAuthStore || db.auth || createMemoryAuthStore();
@@ -150,7 +152,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
     let wallet;
     try { wallet = getAddress(req.body?.wallet); } catch { return res.status(400).json({ error: "INVALID_WALLET" }); }
     if (limitRequest(req, res, "nonce-wallet", wallet.toLowerCase(), 12)) return;
-    const origin = manifest.environment === "production" ? new URL(manifest.publicOAuthRedirectUri).origin : `${req.protocol}://${req.get("host")}`;
+    const origin = manifest.environment === "production" ? siteOrigin : `${req.protocol}://${req.get("host")}`;
     const challenge = walletChallenge({ wallet, domain: new URL(origin).host, uri: `${origin}/dyno`, chainId: manifest.chainId, now: now() });
     authStore.put("wallet-challenge", wallet.toLowerCase(), challenge, Date.parse(challenge.expiresAt));
     res.json(challenge);
@@ -253,7 +255,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
     const session = sessionFor(req);
     if (!session) return res.status(401).json({ error: "WALLET_LOGIN_REQUIRED" });
     if (manifest.mock) return res.status(503).json({ error: "MOCK_ADMIN_DISABLED" });
-    if (req.headers.origin && req.headers.origin !== new URL(manifest.publicOAuthRedirectUri).origin) return res.status(403).json({ error: "ORIGIN_REJECTED" });
+    if (req.headers.origin && !allowedBrowserOrigins.has(req.headers.origin)) return res.status(403).json({ error: "ORIGIN_REJECTED" });
     try {
       const state = await readProtection({ ...protectionOptions(req), wallet: session.wallet });
       res.json(await prepareProtection({ state, request: req.body, manifest, provider }));
@@ -265,7 +267,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
       const session = sessionFor(req);
       if (!session || session.expiresAt < now()) return res.status(401).json({ error: "WALLET_LOGIN_REQUIRED" });
       if (manifest.mock) return res.status(503).json({ error: "MOCK_ADMIN_DISABLED" });
-      if (req.headers.origin && req.headers.origin !== new URL(manifest.publicOAuthRedirectUri).origin) return res.status(403).json({ error: "ORIGIN_REJECTED" });
+      if (req.headers.origin && !allowedBrowserOrigins.has(req.headers.origin)) return res.status(403).json({ error: "ORIGIN_REJECTED" });
       if (req.body?.value !== undefined && String(req.body.value) !== "0") return res.status(400).json({ error: "NONZERO_VALUE_NOT_ALLOWED" });
       if (!provider || !manager) return res.status(503).json({ error: "ADMIN_AUTHORITY_UNAVAILABLE" });
       const methods = {
