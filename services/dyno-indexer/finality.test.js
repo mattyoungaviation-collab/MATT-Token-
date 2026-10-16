@@ -15,7 +15,7 @@ function fixture() {
 test("production defaults to provider finalized head, not latest minus twelve", async () => {
   const f = fixture(), indexer = new DynoIndexer(f.options);
   assert.equal(indexer.finalityMode, "rpc-finalized");
-  assert.deepEqual(await indexer.syncOnce(), { from: 1, to: 10, logs: 0 });
+  assert.deepEqual(await indexer.syncOnce(), { from: 1, to: 10, logs: 0, head: 10 });
   assert.deepEqual(f.mutations(), { writes: 1, rollbacks: 0 });
 });
 test("missing, malformed or noncanonical finalized anchors fail without erasing data", async () => {

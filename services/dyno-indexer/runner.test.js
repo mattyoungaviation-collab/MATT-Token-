@@ -12,3 +12,13 @@ test("same-instance indexer loop prevents overlapping passes and redacts outage 
   await new Promise(resolve => setImmediate(resolve)); await outage.stop();
   assert.equal(outage.status.ok, false); assert.doesNotMatch(errors.join(""), /private-rpc-api-key/);
 });
+
+test("indexer replays backlog promptly, then returns to normal polling", async () => {
+  let passes = 0;
+  const runner = startIndexer({ syncOnce: async () => ({ to: ++passes, head: 2 }), close: async () => {} }, { intervalMs: 60000 });
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    assert.equal(passes, 2);
+    assert.equal(runner.status.indexedBlock, "2");
+  } finally { await runner.stop(); }
+});

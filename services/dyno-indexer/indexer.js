@@ -61,7 +61,7 @@ class DynoIndexer {
     const checkpoint = await this.checkpoint();
     if (checkpoint && Number(checkpoint.block_number) > finalizedHead) throw new Error("RPC accepted head behind checkpoint; refusing destructive reconciliation");
     const ancestor = await this.reconcileReorg(checkpoint);
-    const from = Math.max(this.startBlock, ancestor + 1); if (from > finalizedHead) return { from, to: finalizedHead, logs: 0 };
+    const from = Math.max(this.startBlock, ancestor + 1); if (from > finalizedHead) return { from, to: finalizedHead, logs: 0, head: finalizedHead };
     const to = Math.min(finalizedHead, from + batchSize - 1);
     const block = await this.provider.getBlock(to);
     if (!block?.hash) throw new Error("Indexer batch block unavailable");
@@ -75,7 +75,7 @@ class DynoIndexer {
     if ((await this.provider.getBlock(to))?.hash !== block.hash) throw new Error("Indexer batch reorged before commit");
     if (finalizedBlock && (await this.provider.getBlock(finalizedBlock.number))?.hash !== finalizedBlock.hash) throw new Error("Finalized anchor changed before commit");
     await this.store.applyBatch(this.chainId, logs.map(log => ({ ...log, ...this.parse(log) })), block);
-    return { from, to, logs: logs.length };
+    return { from, to, logs: logs.length, head: finalizedHead };
   }
   async close() { if (this.ownsStore) await this.store.close(); }
 }

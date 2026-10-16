@@ -26,7 +26,7 @@ function fixture(t) {
 }
 test("indexer decodes named event fields, deduplicates and resumes durable hashed checkpoints after restart", async t => {
   const f = fixture(t), store = f.open(), indexer = f.makeIndexer(store), log = f.makeLog(10, 1); f.setLogs([log, log]);
-  const result = await indexer.syncOnce(10); assert.deepEqual(result, { from: 1, to: 10, logs: 2 });
+  const result = await indexer.syncOnce(10); assert.deepEqual(result, { from: 1, to: 10, logs: 2, head: 28 });
   assert.deepEqual(indexer.parse(log).payload, { roundId: "1", ticketId: "1", wallet: address, accountCommitment: hash(100), dayIndex: "20000", directRon: "35000000000000000000", saleRon: "90071992547409930000" });
   assert.equal((await store.ledger({ roundId: "1" })).length, 1);
   await store.close(); const restarted = f.open(), resumed = f.makeIndexer(restarted);
