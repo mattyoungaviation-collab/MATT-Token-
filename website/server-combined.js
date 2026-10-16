@@ -91,7 +91,11 @@ if (process.env.DYNO_INDEXER_ENABLED === "true") {
   const indexer = new DynoIndexer({ rpcUrl: process.env[manifest.rpcUrlEnv], store: dynoStore, chainId: manifest.chainId,
     managerAddress: manifest.raffleProxy, vaultAddress: manifest.buybackProxy, startBlock: Number(process.env.DYNO_START_BLOCK || 0), finalityBlocks: Number(process.env.DYNO_FINALITY_BLOCKS || 12),
     managerAbi: require("../packages/abis/ProjectDynoRaffleManager.json").abi, vaultAbi: require("../packages/abis/ProjectDynoBuybackVault.json").abi });
-  const runner = startIndexer(indexer);
+  // Ronin RPC providers may cap eth_getLogs ranges below the indexer's
+  // generic 1,000-block maximum. Keep the production default conservative.
+  const indexBatchSize = Number(process.env.DYNO_INDEX_BATCH || 200);
+  if (!Number.isSafeInteger(indexBatchSize) || indexBatchSize < 1 || indexBatchSize > 1000) throw new Error("DYNO_INDEX_BATCH must be an integer from 1 to 1000");
+  const runner = startIndexer(indexer, { batchSize: indexBatchSize });
   app.get("/api/dyno/indexer-health", (_req, res) => res.status(runner.status.ok ? 200 : 503).json(runner.status));
 }
 app.use("/api/gift-boxes", createGiftBoxQuoteRouter({ rpcRequest: statsRpcRequest }));
