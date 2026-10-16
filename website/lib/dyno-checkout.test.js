@@ -4,7 +4,7 @@ const ethers = require("ethers");
 const source = fs.readFileSync(path.join(__dirname, "../public/dyno.js"), "utf8");
 const wallet = "0x1111111111111111111111111111111111111111";
 const tick = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
-function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPrizes, purchasesEnabled } = {}) {
+function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPrizes, purchasesEnabled, linkStatus } = {}) {
   const events = [], calls = [], routes = [], elements = new Map();
   const element = () => ({ textContent: "", innerHTML: "", disabled: false, style: {}, handlers: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, replaceChildren() {}, append() {},
@@ -33,7 +33,7 @@ function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPri
     else if (route.endsWith("/active-round")) body = { roundId: mock ? "1" : "2", status: "ACTIVE_ROUND" };
     else if (route.endsWith("/round")) body = { phase: "OPEN", eligibleCount: 500, freshness: "demo", config: mock ? undefined : roundConfig };
     else if (route.endsWith("/ledger")) body = { rows: [] };
-    else if (route.endsWith("/link-status")) body = { wallet };
+    else if (route.endsWith("/link-status")) body = linkStatus || { wallet, linked: true, discord: { verified: true, guildMember: true } };
     else if (route.endsWith("/quota")) body = { remaining, capacityRemaining: 500, resetAt: 86400, blockedReason: null };
     else if (route.endsWith("/quote")) { events.push("quote"); body = { roundId: "2", paymentModel: "RON_AND_HELD_MATT", totalRon: localRound.ticketRon, totalMatt: localRound.ticketMatt }; }
     else if (route.endsWith("/voucher")) { events.push("voucher"); body = { voucher: { roundId: "2", quantity: 1, identityVersion: 4 }, signature: "test-signature" }; }
@@ -45,6 +45,8 @@ function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPri
 }
 test("checkout restores login/quota, blocks double submission and requests voucher only after separate approval confirms", async () => {
   const f = fixture(); await tick();
+  assert.equal(f.byId("verify-discord").textContent, "DISCORD VERIFIED");
+  assert.equal(f.byId("verify-discord").disabled, true);
   assert.match(f.byId("quota").textContent, /3 of 3/); assert.equal(f.byId("purchase").disabled, false);
   f.byId("purchase").handlers.click(); await tick();
   assert.deepEqual(f.events, ["approve"]); assert.equal(f.byId("purchase").disabled, true);
@@ -57,6 +59,17 @@ test("checkout restores login/quota, blocks double submission and requests vouch
   assert.ok(f.routes.some(route => route.url.endsWith("/voucher") && route.body.roundId === "2"));
   assert.match(f.byId("transaction-status").textContent, /Confirmed in block 123/);
   assert.equal(f.byId("purchase").disabled, false);
+});
+test("return from Discord displays missing or mismatched wallet instead of looping", async () => {
+  const noWallet = fixture({ linkStatus: { wallet: null, linked: false, discord: { verified: true, guildMember: true } } });
+  await tick();
+  assert.match(noWallet.byId("transaction-status").textContent, /Reconnect the wallet/);
+  assert.equal(noWallet.byId("purchase").disabled, true);
+  const mismatch = fixture({ linkStatus: { wallet, linked: false, discord: { verified: true, guildMember: true } } });
+  await tick();
+  assert.match(mismatch.byId("transaction-status").textContent, /different wallet/);
+  assert.equal(mismatch.byId("verify-discord").disabled, false);
+  assert.equal(mismatch.byId("purchase").disabled, true);
 });
 test("purchase rejection restores controls and never displays confirmation", async () => {
   const f = fixture({ rejectPurchase: true }); await tick(); f.byId("purchase").handlers.click(); await tick();

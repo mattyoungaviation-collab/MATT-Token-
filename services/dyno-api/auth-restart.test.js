@@ -38,7 +38,7 @@ test("real HTTP wallet challenges, Discord OAuth state and sessions survive app/
   assert.equal(calls.length, 3);
   await stop(); const third = await start();
   const status = await (await third.request("/api/discord/status", { cookie: discordCookie })).json(); assert.equal(status.connected, true); assert.equal(status.username, "Private name"); assert.equal(status.discordUserId, undefined);
-  const link = await (await third.request("/api/dyno/link-status", { cookie: `${walletCookie}; ${discordCookie}` })).json(); assert.equal(link.wallet, wallet.address); assert.equal(link.discord.verified, true);
+  const link = await (await third.request("/api/dyno/link-status", { cookie: `${walletCookie}; ${discordCookie}` })).json(); assert.equal(link.wallet, wallet.address); assert.equal(link.discord.verified, true); assert.equal(link.linked, true);
   assert.equal((await third.request(`/api/discord/callback?state=${state}&code=test-code`, { cookie: flowCookie })).status, 400); assert.equal(calls.length, 3);
   assert.equal((await third.request("/api/dyno/auth/verify", { body: { wallet: wallet.address, signature } })).status, 401);
   await third.request("/api/dyno/auth/logout", { body: {}, cookie: walletCookie });

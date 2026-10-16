@@ -172,7 +172,12 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
     res.json({ wallet });
   });
   router.post("/auth/logout", (req, res) => { const id = cookieMap(req.headers.cookie)[cookieName]; if (id) authStore.delete("wallet-session", id); res.clearCookie(cookieName, { path: "/" }); res.status(204).end(); });
-  router.get("/link-status", async (req, res) => { const wallet = sessionFor(req); const discord = await getDiscordSession?.(req); res.json({ wallet: wallet?.wallet || null, discord: discord ? { verified: discord.verified, guildMember: discord.guildMember, username: discord.username } : null }); });
+  router.get("/link-status", async (req, res) => {
+    const wallet = sessionFor(req), discord = await getDiscordSession?.(req);
+    const linked = Boolean(wallet && discord?.verified && discord.guildMember && discord.wallet?.toLowerCase() === wallet.wallet.toLowerCase());
+    res.json({ wallet: wallet?.wallet || null, linked,
+      discord: discord ? { verified: discord.verified, guildMember: discord.guildMember, username: discord.username } : null });
+  });
   router.get("/quota", async (req, res) => {
     if (limitRequest(req, res, "quota-ip", clientBucket(req), 240)) return;
     const session = sessionFor(req);

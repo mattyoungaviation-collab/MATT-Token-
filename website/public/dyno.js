@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const $ = id => document.getElementById(id);
-  const state = { quantity: 1, config: null, roundId: null, round: null, wallet: null, quota: null, busy: false };
+  const state = { quantity: 1, config: null, roundId: null, round: null, wallet: null, discordLinked: false, quota: null, busy: false };
   const prizeLabels = ["≈ $5 DEFAULT", "≈ $10 DEFAULT", "≈ $100", "≈ $250", "≈ $500"];
   const defaultPrizes = ["70224700000000000000", "140449400000000000000", "1404494400000000000000", "3511236000000000000000", "7022471900000000000000"];
   // Token values remain integers: display truncation never becomes a money calculation.
@@ -78,7 +78,19 @@
       el.textContent = `NFT delivery: ${labels[delivery.status] || "verification unavailable"}.`;
     }
   }
-  function updateQuantity(){if(!state.config)return; const q=state.quantity, terms=state.config.mock?state.config.round:state.round?.config; $("ron-total").textContent=terms?`${formatUnits(BigInt(terms.ticketRon)*BigInt(q))} RON`:"Unavailable"; $("matt-total").textContent=terms?`${formatUnits(BigInt(terms.ticketMatt)*BigInt(q))} MATT`:"Unavailable"; document.querySelectorAll("[data-quantity]").forEach(button=>{button.classList.toggle("active",Number(button.dataset.quantity)===q);button.disabled=state.busy;}); $("connect-wallet").disabled=state.busy; $("verify-discord").disabled=state.busy; $("purchase").disabled=state.busy||state.config.mock||state.config.purchasesEnabled===false||state.round?.phase!=="OPEN"||!state.round?.config||!state.quota||!!state.quota.blockedReason||q>state.quota.remaining||q>state.quota.capacityRemaining;}
+  function updateQuantity(){if(!state.config)return; const q=state.quantity, terms=state.config.mock?state.config.round:state.round?.config; $("ron-total").textContent=terms?`${formatUnits(BigInt(terms.ticketRon)*BigInt(q))} RON`:"Unavailable"; $("matt-total").textContent=terms?`${formatUnits(BigInt(terms.ticketMatt)*BigInt(q))} MATT`:"Unavailable"; document.querySelectorAll("[data-quantity]").forEach(button=>{button.classList.toggle("active",Number(button.dataset.quantity)===q);button.disabled=state.busy;}); $("connect-wallet").disabled=state.busy; $("verify-discord").disabled=state.busy||state.discordLinked; $("purchase").disabled=state.busy||state.config.mock||state.config.purchasesEnabled===false||state.round?.phase!=="OPEN"||!state.round?.config||!state.discordLinked||!state.quota||!!state.quota.blockedReason||q>state.quota.remaining||q>state.quota.capacityRemaining;}
+  async function refreshLinkStatus() {
+    const link = await json("/api/dyno/link-status");
+    state.wallet = link.wallet ? window.ethers.getAddress(link.wallet) : null;
+    state.discordLinked = link.linked === true;
+    $("connect-wallet").textContent = state.wallet ? short(state.wallet) : "CONNECT RONIN";
+    $("verify-discord").textContent = state.discordLinked ? "DISCORD VERIFIED" : "VERIFY DISCORD MEMBERSHIP";
+    if (state.discordLinked) $("transaction-status").textContent = "Wallet and Discord membership verified. Check your daily allowance below.";
+    else if (link.discord?.verified && !state.wallet) $("transaction-status").textContent = "Discord verified, but wallet login is missing. Reconnect the wallet used for verification.";
+    else if (link.discord?.verified) $("transaction-status").textContent = "Discord was verified for a different wallet. Verify Discord again for this wallet, or reconnect the original wallet.";
+    else if (state.wallet) $("transaction-status").textContent = "Wallet authenticated. Discord verification is still required.";
+    updateQuantity();
+  }
   async function refreshQuota() {
     state.quota = null; updateQuantity();
     if (state.config?.mock) { $("quota").textContent = "Local demo · no purchases"; return; }
@@ -90,8 +102,8 @@
     } catch { $("quota").textContent = "Verification or fresh chain data required"; }
     updateQuantity();
   }
-  async function connect(){const provider=window.ronin?.provider||window.ethereum;if(!provider)throw new Error("Install or open a Ronin-compatible wallet.");const accounts=await provider.request({method:"eth_requestAccounts"});state.wallet=window.ethers.getAddress(accounts[0]);const challenge=await json("/api/dyno/auth/nonce",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({wallet:state.wallet})});const browser=new window.ethers.BrowserProvider(provider);const signature=await (await browser.getSigner()).signMessage(challenge.message);await json("/api/dyno/auth/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({wallet:state.wallet,signature})});$("connect-wallet").textContent=short(state.wallet);$("transaction-status").textContent="Wallet authenticated. Discord verification is still required.";await refreshQuota();}
-  function discord(){if(!state.wallet)throw new Error("Connect and authenticate your wallet first.");location.href=`/api/discord/start?wallet=${encodeURIComponent(state.wallet)}`;}
+  async function connect(){const provider=window.ronin?.provider||window.ethereum;if(!provider)throw new Error("Install or open a Ronin-compatible wallet.");const accounts=await provider.request({method:"eth_requestAccounts"});state.wallet=window.ethers.getAddress(accounts[0]);const challenge=await json("/api/dyno/auth/nonce",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({wallet:state.wallet})});const browser=new window.ethers.BrowserProvider(provider);const signature=await (await browser.getSigner()).signMessage(challenge.message);await json("/api/dyno/auth/verify",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({wallet:state.wallet,signature})});await refreshLinkStatus();await refreshQuota();}
+  function discord(){if(!state.wallet)throw new Error("Connect and authenticate your wallet first.");if(state.discordLinked)return;location.href=`/api/discord/start?wallet=${encodeURIComponent(state.wallet)}`;}
   async function purchase(){
     if(state.config?.mock)throw new Error("Purchasing is disabled in the clearly labeled local mock.");
     if(state.config?.purchasesEnabled===false)throw new Error("Project DYNO checkout is not enabled.");
@@ -121,5 +133,5 @@
   document.querySelectorAll("[data-quantity]").forEach(button=>button.addEventListener("click",()=>{state.quantity=Number(button.dataset.quantity);updateQuantity();}));
   document.querySelectorAll("[data-tab]").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(item=>item.setAttribute("aria-selected",String(item===button)));document.querySelectorAll(".tab-panel").forEach(panel=>panel.classList.add("hidden"));$(`tab-${button.dataset.tab}`).classList.remove("hidden");}));
   $("connect-wallet").addEventListener("click",()=>connect().catch(error=>{$("transaction-status").textContent=error.message;})); $("verify-discord").addEventListener("click",()=>{try{discord();}catch(error){$("transaction-status").textContent=error.message;}}); $("purchase").addEventListener("click",()=>purchase().catch(error=>{$("transaction-status").textContent=error.message;}));
-  Promise.all([json("/api/dyno/config"),json("/api/dyno/active-round")]).then(async ([config,active])=>{renderConfig(config);state.roundId=active.roundId;if(!state.roundId)throw new Error("No active raffle round; purchases remain disabled.");const round=await json(`/api/dyno/round?roundId=${encodeURIComponent(state.roundId)}`);renderRound(round);renderHistoricalFinance().catch(()=>{$("financial-history").textContent="Indexed historical totals unavailable; live contract balances above remain authoritative.";});const link=await json("/api/dyno/link-status");if(link.wallet){state.wallet=window.ethers.getAddress(link.wallet);$("connect-wallet").textContent=short(state.wallet);}await refreshQuota();await renderNftDelivery().catch(()=>{$("nft-delivery-status").textContent="NFT delivery: verification unavailable; no confirmed delivery shown.";});}).catch(error=>{$("transaction-status").textContent=error.message;updateQuantity();}); renderLedger().catch(()=>{$("ledger-body").innerHTML='<tr><td colspan="4">Ledger temporarily unavailable.</td></tr>';});
+  Promise.all([json("/api/dyno/config"),json("/api/dyno/active-round")]).then(async ([config,active])=>{renderConfig(config);state.roundId=active.roundId;if(!state.roundId)throw new Error("No active raffle round; purchases remain disabled.");const round=await json(`/api/dyno/round?roundId=${encodeURIComponent(state.roundId)}`);renderRound(round);renderHistoricalFinance().catch(()=>{$("financial-history").textContent="Indexed historical totals unavailable; live contract balances above remain authoritative.";});await refreshLinkStatus();await refreshQuota();await renderNftDelivery().catch(()=>{$("nft-delivery-status").textContent="NFT delivery: verification unavailable; no confirmed delivery shown.";});}).catch(error=>{$("transaction-status").textContent=error.message;updateQuantity();}); renderLedger().catch(()=>{$("ledger-body").innerHTML='<tr><td colspan="4">Ledger temporarily unavailable.</td></tr>';});
 })();
