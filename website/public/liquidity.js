@@ -146,7 +146,7 @@
   }
 
   function transactionLink(hash, label = "View transaction ↗") {
-    return `<a href="https://app.roninchain.com/tx/${hash}" target="_blank" rel="noopener">${label}</a>`;
+    return `<a href="https://explorer.roninchain.com/tx/${hash}" target="_blank" rel="noopener">${label}</a>`;
   }
 
   function errorMessage(error) {

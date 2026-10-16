@@ -14,7 +14,8 @@ async function fixture(t, { mock = false } = {}) {
   const commitment = identityCommitment("123456789012345678", env.DYNO_IDENTITY_SECRET);
   let nowMs = 86400 * 20000 * 1000 + 1000000;
   const block = { number: 100, hash: "0x" + "12".repeat(32), timestamp: Math.floor(nowMs / 1000) };
-  const values = { activeRoundId: 1n, getRoundStatus: { phase: 2n, eligibleCount: 500n }, checkoutPaused: false,
+  const values = { activeRoundId: 1n, getRoundStatus: { phase: 2n, eligibleCount: 500n }, mattActive: 350000000000000000000000000n,
+    getRoundTerms: { ticketRon: 35000000000000000000n, ticketMatt: 700000000000000000000000n }, checkoutPaused: false,
     accountSuspended: false, identityVersion: 3n, walletForAccount: wallet.address, accountForWallet: commitment,
     accountDayCount: 1n, walletDayCount: 0n, identitySigner: signer.address };
   const manager = Object.fromEntries(Object.keys(values).map(name => [name, async () => values[name]]));
@@ -52,6 +53,15 @@ test("authenticated quota is exact and uncached; client identity version cannot 
   f.values.accountDayCount = 3n;
   const denied = await f.request("/voucher", { quantity: 1 }, cookie);
   assert.equal(denied.status, 409); assert.deepEqual(await denied.json(), { error: "DAILY_LIMIT" });
+});
+test("wallet nonce requests are throttled without consuming on-chain ticket allowance", async t => {
+  const f = await fixture(t);
+  for (let i = 0; i < 12; i++) assert.equal((await f.request("/auth/nonce", { wallet: f.wallet.address })).status, 200);
+  const limited = await f.request("/auth/nonce", { wallet: f.wallet.address });
+  assert.equal(limited.status, 429);
+  assert.deepEqual(await limited.json(), { error: "RATE_LIMITED" });
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  assert.equal(f.values.accountDayCount, 1n);
 });
 test("invalid signature and replay are rejected without crashing; expired sessions cannot query quota/admin", async t => {
   const f = await fixture(t);
@@ -93,4 +103,16 @@ test("local mock never enables purchases even with authenticated sessions and in
   const f = await fixture(t, { mock: true }), { cookie } = await f.login();
   assert.equal((await f.request("/quota", null, cookie)).status, 503);
   assert.deepEqual(await (await f.request("/voucher", { quantity: 1 }, cookie)).json(), { error: "MOCK_PURCHASE_DISABLED" });
+});
+test("no-sale quote uses fixed chain amounts and retires swap/buyback controls", async t => {
+  const f = await fixture(t);
+  const response = await f.request("/quote?quantity=2&roundId=1");
+  assert.equal(response.status, 200);
+  const quote = await response.json();
+  assert.equal(quote.paymentModel, "RON_AND_HELD_MATT");
+  assert.equal(quote.totalRon, "70000000000000000000");
+  assert.equal(quote.totalMatt, "1400000000000000000000000");
+  assert.equal(quote.minOuts, undefined);
+  assert.equal((await f.request("/protection")).status, 410);
+  assert.equal((await f.request("/buyback")).status, 410);
 });

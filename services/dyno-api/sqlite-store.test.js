@@ -3,6 +3,7 @@ const test = require("node:test"), assert = require("node:assert/strict"), fs = 
 const { createSqliteStore, storageLocation } = require("./sqlite-store");
 const { createStore } = require("./store");
 const { identityCommitment } = require("./identity");
+const { prepareRestoredStorage } = require("../../scripts/dyno/prepare-restored-storage");
 
 function fixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "dyno-storage-test-"));
@@ -42,6 +43,18 @@ test("two database connections cannot consume the same challenge twice", t => {
   assert.equal(b.auth.take("wallet-challenge", "0xwallet").nonce, "secret-nonce");
   assert.equal(a.auth.take("wallet-challenge", "0xwallet"), null);
 });
+test("authentication throttles persist across local connections without storing a raw IP", async t => {
+  const f = fixture(t), a = f.open(), b = f.open(), now = 2_000_000;
+  assert.equal(a.auth.consumeRateLimit("nonce-ip", "192.0.2.7", { limit: 2, windowMs: 300_000, now }), true);
+  assert.equal(b.auth.consumeRateLimit("nonce-ip", "192.0.2.7", { limit: 2, windowMs: 300_000, now }), true);
+  assert.equal(a.auth.consumeRateLimit("nonce-ip", "192.0.2.7", { limit: 2, windowMs: 300_000, now }), false);
+  await a.close(); await b.close();
+  const restarted = f.open();
+  assert.equal(restarted.auth.consumeRateLimit("nonce-ip", "192.0.2.7", { limit: 2, windowMs: 300_000, now }), false);
+  assert.equal(restarted.auth.consumeRateLimit("nonce-ip", "192.0.2.7", { limit: 2, windowMs: 300_000, now: now + 300_000 }), true);
+  const bytes = fs.readFileSync(f.env.DYNO_DATABASE_FILE);
+  assert.equal(bytes.includes(Buffer.from("192.0.2.7")), false);
+});
 test("wrong storage/identity keys and unsupported databases fail closed without silently resetting data", async t => {
   const f = fixture(t), store = f.open();
   store.auth.put("wallet-session", "cookie", { wallet: "original-wallet" }, Date.now() + 10000);
@@ -67,6 +80,15 @@ test("identity observations keep an encrypted stable mapping/audit without becom
   const observation = { commitment, discordUserId, displayName: "Private identity", wallet: "0xfirst", identityVersion: 1, bindingConfirmed: false };
   store.auth.observeIdentity(observation, f.env.DYNO_IDENTITY_SECRET);
   store.auth.observeIdentity({ ...observation, wallet: "0xsecond", identityVersion: 2, bindingConfirmed: true }, f.env.DYNO_IDENTITY_SECRET);
+  const privateRows = store.auth.listIdentityObservations({ limit: 1 });
+  assert.equal(privateRows.length, 1); assert.equal(privateRows[0].discordUserId, discordUserId);
+  assert.equal(privateRows[0].wallet, "0xsecond"); assert.equal(privateRows[0].bindingConfirmed, true);
+  assert.equal("ciphertext" in privateRows[0], false);
+  const history = store.auth.listIdentityObservationHistory({ commitment, limit: 10 });
+  assert.deepEqual(history.map(row => row.wallet), ["0xsecond", "0xfirst"]);
+  assert.equal(history[0].identityVersion, 2);
+  assert.equal("ciphertext" in history[0], false);
+  assert.throws(() => store.auth.listIdentityObservationHistory({ commitment: "not-a-commitment" }), /Invalid private identity history/);
   assert.throws(() => store.auth.observeIdentity({ ...observation, commitment: hash("f") }, f.env.DYNO_IDENTITY_SECRET), /without migration/);
   const { DatabaseSync } = require("node:sqlite"), reader = new DatabaseSync(f.env.DYNO_DATABASE_FILE, { readOnly: true });
   try {
@@ -101,4 +123,36 @@ test("online SQLite backup restores private sessions and checkpoint; backup neve
   try { assert.equal(restored.auth.get("discord-session", "cookie").username, "Backed-up private name"); assert.equal((await restored.checkpoint(31337)).block_number, "10"); }
   finally { await restored.close(); }
   await assert.rejects(store.backup(destination), /new absolute destination/);
+});
+test("offline restore preparation invalidates copied auth only, preserving original backup, identity and chain history", async t => {
+  const f = fixture(t), store = f.open(), source = path.join(f.directory, "backups", "source.sqlite"), destination = path.join(f.directory, "backups", "prepared.sqlite");
+  const discordUserId = "123456789012345678", commitment = identityCommitment(discordUserId, f.env.DYNO_IDENTITY_SECRET);
+  store.auth.put("wallet-challenge", "wallet", { nonce: "old-challenge" }, Date.now() + 300000);
+  store.auth.put("discord-session", "cookie", { discordUserId }, Date.now() + 300000);
+  store.auth.observeIdentity({ commitment, discordUserId, wallet: "0xfirst", identityVersion: 1 }, f.env.DYNO_IDENTITY_SECRET);
+  await store.applyBatch(31337, [event()], { number: 10, hash: hash("1") });
+  await store.backup(source);
+  const preview = prepareRestoredStorage(source, destination);
+  assert.equal(preview.authRecordsToInvalidate, 2); assert.equal(fs.existsSync(destination), false);
+  const result = prepareRestoredStorage(source, destination, { apply: true });
+  assert.equal(result.authRecordsInvalidated, 2);
+  assert.throws(() => prepareRestoredStorage(source, destination, { apply: true }), /Destination must be a new/);
+  const copied = createSqliteStore({ env: { ...f.env, DYNO_DATABASE_FILE: destination }, production: true, chainId: 31337 });
+  try {
+    assert.equal(copied.auth.get("wallet-challenge", "wallet"), null);
+    assert.equal(copied.auth.get("discord-session", "cookie"), null);
+    assert.equal((await copied.checkpoint(31337)).block_number, "10");
+    assert.equal((await copied.ledger({ roundId: "1" })).length, 1);
+    assert.doesNotThrow(() => copied.auth.observeIdentity({ commitment, discordUserId, wallet: "0xfirst", identityVersion: 1 }, f.env.DYNO_IDENTITY_SECRET));
+  } finally { await copied.close(); }
+  const original = createSqliteStore({ env: { ...f.env, DYNO_DATABASE_FILE: source }, production: true });
+  try { assert.equal(original.auth.get("wallet-challenge", "wallet").nonce, "old-challenge"); }
+  finally { await original.close(); }
+});
+test("restore preparation refuses unrelated databases and never creates their destination", t => {
+  const f = fixture(t), source = path.join(f.directory, "unrelated.sqlite"), destination = path.join(f.directory, "prepared.sqlite");
+  const { DatabaseSync } = require("node:sqlite"), db = new DatabaseSync(source);
+  db.exec("CREATE TABLE unrelated(value TEXT)"); db.close();
+  assert.throws(() => prepareRestoredStorage(source, destination, { apply: true }), /supported Project DYNO database/);
+  assert.equal(fs.existsSync(destination), false);
 });

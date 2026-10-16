@@ -19,8 +19,8 @@ async function readPurchaseState({ provider, manager, chainId, roundId, commitme
   // Do not sign for yesterday just because a node has not served today's block yet.
   if (Math.floor(block.timestamp / 86400) !== dayIndex) reject("STALE_CHAIN_STATE", 503);
   const at = { blockTag: block.number };
-  const [activeRoundId, round, paused, suspended, version, boundWallet, boundAccount, accountUsed, walletUsed, signer] = await Promise.all([
-    manager.activeRoundId(at), manager.getRoundStatus(roundId, at), manager.checkoutPaused(at),
+  const [activeRoundId, round, heldMatt, paused, suspended, version, boundWallet, boundAccount, accountUsed, walletUsed, signer] = await Promise.all([
+    manager.activeRoundId(at), manager.getRoundStatus(roundId, at), manager.mattActive(roundId, at), manager.checkoutPaused(at),
     manager.accountSuspended(commitment, at), manager.identityVersion(commitment, at),
     manager.walletForAccount(commitment, at), manager.accountForWallet(wallet, at),
     manager.accountDayCount(commitment, dayIndex, at), manager.walletDayCount(wallet, dayIndex, at), manager.identitySigner(at),
@@ -29,7 +29,7 @@ async function readPurchaseState({ provider, manager, chainId, roundId, commitme
   if (!confirmation || confirmation.hash !== block.hash) reject("CHAIN_STATE_CHANGED", 503);
   const accountCount = Number(accountUsed), walletCount = Number(walletUsed), identityVersion = Number(version);
   const eligibleCount = Number(round.eligibleCount), phase = Number(round.phase);
-  if (![accountCount, walletCount].every(n => Number.isInteger(n) && n >= 0 && n <= 3) ||
+  if (typeof heldMatt !== "bigint" || heldMatt < 0n || ![accountCount, walletCount].every(n => Number.isInteger(n) && n >= 0 && n <= 3) ||
       !Number.isInteger(identityVersion) || identityVersion < 0 || identityVersion > 0xffffffff ||
       !Number.isInteger(eligibleCount) || eligibleCount < 0 || eligibleCount > 1000 || !Number.isInteger(phase)) reject("MALFORMED_CHAIN_STATE", 503);
   const walletMatches = getAddress(boundWallet) === getAddress(wallet);

@@ -92,7 +92,19 @@ function createSqliteStore({ env = process.env, production = false, chainId = nu
     },
     take(scope, id, now = Date.now()) { return transaction(() => { const value = this.get(scope, id, now); this.delete(scope, id); return value; }); },
     delete(scope, id) { db.prepare("DELETE FROM auth_records WHERE scope=? AND key_digest=?").run(scope, digest(scope, id)); },
-    prune(now = Date.now()) { db.prepare("DELETE FROM auth_records WHERE expires_at<=?").run(now); },
+    prune(now = Date.now()) {
+      db.prepare("DELETE FROM auth_records WHERE expires_at<=?").run(now);
+      db.prepare("DELETE FROM auth_rate_limits WHERE window_start<?").run(now - 86_400_000);
+    },
+    consumeRateLimit(scope, id, { limit, windowMs, now = Date.now() }) {
+      if (!scope || !id || !Number.isSafeInteger(limit) || limit < 1 || !Number.isSafeInteger(windowMs) || windowMs < 1000 || !Number.isSafeInteger(now) || now < 0) throw new Error("Invalid authentication rate limit");
+      const keyDigest = digest(`rate:${scope}`, id), windowStart = Math.floor(now / windowMs) * windowMs;
+      return transaction(() => {
+        db.prepare("INSERT INTO auth_rate_limits(scope,key_digest,window_start,request_count) VALUES(?,?,?,1) ON CONFLICT(scope,key_digest) DO UPDATE SET window_start=excluded.window_start,request_count=CASE WHEN auth_rate_limits.window_start=excluded.window_start THEN auth_rate_limits.request_count+1 ELSE 1 END")
+          .run(scope, keyDigest, windowStart);
+        return db.prepare("SELECT request_count FROM auth_rate_limits WHERE scope=? AND key_digest=?").get(scope, keyDigest).request_count <= limit;
+      });
+    },
     observeIdentity(observation, identitySecret) {
       transaction(() => {
         bindIdentityKey(identitySecret);
@@ -105,6 +117,39 @@ function createSqliteStore({ env = process.env, production = false, chainId = nu
         const oldRecord = previous ? open(previous.ciphertext, context) : null;
         if (!oldRecord || oldRecord.wallet !== record.wallet || oldRecord.identityVersion !== record.identityVersion) db.prepare("INSERT INTO identity_observation_audit(commitment,ciphertext,created_at) VALUES(?,?,?)").run(record.commitment, seal(record, `audit:${record.commitment}`), record.observedAt);
       });
+    },
+    listIdentityObservations({ limit = 50, offset = 0 } = {}) {
+      const count = Number(limit), start = Number(offset);
+      if (!Number.isSafeInteger(count) || count < 1 || count > 250 || !Number.isSafeInteger(start) || start < 0) throw new Error("Invalid private export pagination");
+      return db.prepare("SELECT commitment,ciphertext FROM identity_observations ORDER BY updated_at DESC,commitment LIMIT ? OFFSET ?")
+        .all(count, start)
+        .map(row => {
+          const record = open(row.ciphertext, `identity:${row.commitment}`);
+          return {
+            commitment: row.commitment,
+            discordUserId: record.discordUserId,
+            displayName: record.displayName,
+            wallet: record.wallet,
+            identityVersion: record.identityVersion,
+            chainId: record.chainId,
+            blockNumber: record.blockNumber,
+            blockHash: record.blockHash,
+            bindingConfirmed: record.bindingConfirmed,
+            observedAt: record.observedAt,
+          };
+        });
+    },
+    listIdentityObservationHistory({ commitment, limit = 50, offset = 0 } = {}) {
+      const count = Number(limit), start = Number(offset);
+      if (!/^0x[0-9a-fA-F]{64}$/.test(String(commitment)) || !Number.isSafeInteger(count) || count < 1 || count > 250 || !Number.isSafeInteger(start) || start < 0) throw new Error("Invalid private identity history request");
+      return db.prepare("SELECT id,ciphertext,created_at FROM identity_observation_audit WHERE commitment=? ORDER BY id DESC LIMIT ? OFFSET ?")
+        .all(commitment, count, start)
+        .map(row => {
+          const record = open(row.ciphertext, `audit:${commitment}`);
+          return { auditId: row.id, commitment, discordUserId: record.discordUserId, displayName: record.displayName, wallet: record.wallet,
+            identityVersion: record.identityVersion, chainId: record.chainId, blockNumber: record.blockNumber, blockHash: record.blockHash,
+            bindingConfirmed: record.bindingConfirmed, observedAt: record.observedAt, auditCreatedAt: row.created_at };
+        });
     },
   };
   const store = {

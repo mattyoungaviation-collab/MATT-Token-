@@ -9,6 +9,14 @@ contract MockRoninVRFCoordinator {
     uint256 public nonce;
     uint256 public fee = 0.01 ether;
     mapping(bytes32 requestHash => address consumer) public consumers;
+    mapping(bytes32 requestHash => address refundAddress) public refundAddresses;
+    uint256 public fulfillmentRefund;
+
+    receive() external payable {}
+
+    function setFulfillmentRefund(uint256 amount) external {
+        fulfillmentRefund = amount;
+    }
 
     function setFee(uint256 newFee) external {
         fee = newFee;
@@ -26,6 +34,7 @@ contract MockRoninVRFCoordinator {
         require(msg.value >= fee, "fee");
         requestHash = keccak256(abi.encode(block.chainid, msg.sender, consumer, ++nonce));
         consumers[requestHash] = consumer;
+        refundAddresses[requestHash] = refundAddress;
         uint256 refund = msg.value - fee;
         if (refund != 0) {
             (bool success,) = refundAddress.call{value: refund}("");
@@ -35,5 +44,10 @@ contract MockRoninVRFCoordinator {
 
     function fulfill(bytes32 requestHash, uint256 randomSeed) external {
         IMockVRFConsumer(consumers[requestHash]).rawFulfillRandomSeed(requestHash, randomSeed);
+        if (fulfillmentRefund != 0) {
+            // The real coordinator sends its refund after the callback with 10,000 gas.
+            (bool sent,) = refundAddresses[requestHash].call{value: fulfillmentRefund, gas: 10_000}("");
+            require(sent, "refund");
+        }
     }
 }

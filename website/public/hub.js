@@ -1,7 +1,7 @@
 const MATT_ADDRESS = '0xa5450417BDCa0BDfB058ffE41205400FfDA1174d';
 const RONIN_CHAIN_ID = 2020;
 const RONIN_RPC_URL = 'https://api.roninchain.com/rpc';
-const RONIN_EXPLORER_ADDRESS_URL = 'https://app.roninchain.com/explorer/address/';
+const RONIN_EXPLORER_ADDRESS_URL = 'https://explorer.roninchain.com/address/';
 const WALLETCONNECT_PROJECT_ID = '10907bb3eaa077bbb82e0559005400d7';
 const WALLETCONNECT_MODULE_URL = 'https://esm.sh/@walletconnect/ethereum-provider@2?bundle';
 const DAILY_MISSIONS = ['connect', 'flip', 'verify'];

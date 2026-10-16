@@ -61,6 +61,11 @@
     },
     {
       "inputs": [],
+      "name": "InsufficientExecutionGas",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "InvalidConfiguration",
       "type": "error"
     },
@@ -578,6 +583,32 @@
     },
     {
       "inputs": [],
+      "name": "SWAP_CALL_GAS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "SWAP_CALL_RESERVE_GAS",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "UPGRADE_INTERFACE_VERSION",
       "outputs": [
         {
@@ -1001,7 +1032,7 @@
         },
         {
           "internalType": "address",
-          "name": "callerConfirmation",
+          "name": "confirmation",
           "type": "address"
         }
       ],
@@ -1261,6 +1292,19 @@
           "internalType": "uint64",
           "name": "",
           "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "terminalSlotCount",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
         }
       ],
       "stateMutability": "view",

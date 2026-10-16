@@ -1,0 +1,49 @@
+{
+  "kind": "Project DYNO read-only Katana depth recheck and disposable fork probe",
+  "sourceChainId": 2020,
+  "sourceBlockNumber": 62240831,
+  "sourceBlockHash": "0xc1bd3c3906b4614b5207d5ea4727220587fd4c7d315f40a9214226725431c5d8",
+  "sourceTimestamp": 1791950449,
+  "readOnly": true,
+  "mainPool": {
+    "address": "0xa517e05e96728e80284f2ae157ddf309449d7ce8",
+    "feeMillionths": 10000,
+    "activeLiquidity": "559693515464927480659785",
+    "previousActiveLiquidityAt62231264": "12901449465314715282793056",
+    "mattBalanceBaseUnits": "2701903942287332244853047760",
+    "wronBalanceBaseUnits": "2157987577144244804748",
+    "tick": -106024,
+    "observationCardinality": 32,
+    "oneHourObservationReadable": true
+  },
+  "otherDirectTiers": [
+    { "feeMillionths": 100, "activeLiquidity": "0", "wronBalanceBaseUnits": "300" },
+    { "feeMillionths": 3000, "activeLiquidity": "0", "wronBalanceBaseUnits": "6" }
+  ],
+  "stablecoinRouteDiagnosticOnly": {
+    "firstHop": "MATT/USDC Katana V3 0.3%",
+    "activeLiquidity": "2010467936955680",
+    "usdcBalanceBaseUnits": "2570426",
+    "usdcDecimals": 6,
+    "note": "A USDC route is outside the selected direct MATT/WRON architecture; this first hop also has only 2.570426 USDC on the pinned block."
+  },
+  "spotOnlyDisposableFork": {
+    "referenceWindowSeconds": 0,
+    "saleSlippageBps": 200,
+    "exploratoryMinimumLiquidity": "1",
+    "ticketMattBaseUnits": "700000000000000000000000",
+    "completed": 100,
+    "firstFailure": null,
+    "firstTicketRonBaseUnits": "17129827680306342678",
+    "ticket100RonBaseUnits": "5230745159743145844",
+    "totalSaleRonBaseUnits": "965558056669243124887"
+  },
+  "productionReady": false,
+  "limitations": [
+    "No real swap, approval, deployment or asset transfer occurred.",
+    "A 100-sale path is not a full 1000-ticket demonstration.",
+    "The fork excludes other traders, arbitrage, liquidity changes and MEV.",
+    "Spot-only mode is susceptible to price manipulation and does not prevent cumulative price decline.",
+    "The mandatory production liquidity floor remains unreviewed."
+  ]
+}

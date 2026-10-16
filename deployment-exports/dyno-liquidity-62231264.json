@@ -1,0 +1,51 @@
+{
+  "kind": "Project DYNO read-only liquidity recheck and disposable fork probes",
+  "sourceChainId": 2020,
+  "sourceBlockNumber": 62231264,
+  "sourceBlockHash": "0x79ba1a79adfffbff053bd8f67c80e771fc55cf0dd3abfe8533cfc946f4d116af",
+  "pool": "0xa517e05e96728e80284f2ae157ddf309449d7ce8",
+  "poolFeeMillionths": 10000,
+  "activeLiquidity": "12901449465314715282793056",
+  "previousActiveLiquidityAt62193581": "978047612579429951516957",
+  "poolMattBalanceBaseUnits": "2601994652588620075313971345",
+  "poolWronBalanceBaseUnits": "2313592516717595847028",
+  "tick": -105014,
+  "observationIndex": 6,
+  "observationCardinality": 32,
+  "observationCardinalityNext": 32,
+  "oneHourObservationReadableAtSourceBlock": true,
+  "forkOnly": true,
+  "productionReady": false,
+  "probes": {
+    "oneHundredSalesOneHourApart": {
+      "ticketMattBaseUnits": "700000000000000000000000",
+      "saleSlippageBps": 200,
+      "completed": 100,
+      "firstFailure": null,
+      "firstSaleRonBaseUnits": "19061481745818536800",
+      "sale100RonBaseUnits": "7875762918807777240",
+      "totalSaleRonBaseUnits": "1682911586251648605364",
+      "limitation": "One holder and no independent market activity; 100 tickets are not the required 1000. The fork time was advanced one hour between sales."
+    },
+    "oneHundredRapidSales": {
+      "saleSlippageBps": 200,
+      "completed": 23,
+      "sale24Failure": "Error(OLD)",
+      "cause": "The pool's rolling 32-observation history no longer covered the trailing 3600 seconds after rapid local trades. The guard fails closed; this is not a successful capacity result.",
+      "totalSaleRonBaseUnits": "435714044450417247626"
+    },
+    "independentBuybackSize": {
+      "ronInBaseUnits": "136567200000000000000",
+      "buybackSlippageBps": 200,
+      "referenceMinimumMattBaseUnits": "4918123794092024533777769",
+      "unprotectedLocalMattBaseUnits": "4904209636971104050865364",
+      "failure": "V3TooLittleReceived",
+      "note": "The 136.5672 RON amount is an old illustrative planning slice, not the actual future funded slice. The unprotected local call was diagnostic only; no production guard was changed."
+    }
+  },
+  "limitations": [
+    "All swaps were on disposable Hardhat forks; no real transaction was sent.",
+    "Exploratory fork manifest sets minimum liquidity to 1; this is not a production floor.",
+    "No full 1000-ticket path, actual funded DCA slice, MEV/other-trader activity, or production contract deployment was tested."
+  ]
+}

@@ -1,0 +1,137 @@
+/* Project DYNO grand-prize artwork and owner-supplied trait reference. */
+.nft-stage {
+  display: block;
+  min-height: 0;
+  margin: 0;
+  align-self: center;
+  border-radius: 30px;
+  background: linear-gradient(145deg, #101e32, #07101e);
+}
+
+.nft-art-wrap {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #04acf0;
+}
+
+.nft-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.nft-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: end;
+  padding: 20px 22px 16px;
+}
+
+.nft-stage .nft-caption h2 {
+  margin: 5px 0 3px;
+  font-size: 1.55rem;
+}
+
+.nft-stage .nft-caption p,
+.nft-stage .nft-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: .7rem;
+}
+
+.nft-stage .nft-kicker {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--gold);
+  font-size: .56rem;
+  font-weight: 950;
+  letter-spacing: .13em;
+}
+
+.nft-stage .escrow-note {
+  max-width: 150px;
+  padding: 7px 9px;
+  border: 1px solid #ffc85755;
+  border-radius: 8px;
+  background: none;
+  color: #f4d998;
+  font-size: .56rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-align: right;
+}
+
+.trait-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  padding: 0 22px 18px;
+}
+
+.nft-stage .trait-list > span {
+  padding: 9px 10px;
+  border: 1px solid #ffffff12;
+  border-radius: 9px;
+  background: #070d16;
+  color: #eaf4ff;
+  font-size: .65rem;
+  font-weight: 750;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.trait-list small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: .52rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.nft-stage .nft-source {
+  padding: 0 22px 20px;
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .nft-stage { min-height: 0; }
+  .nft-caption { display: block; }
+  .nft-stage .escrow-note {
+    display: block;
+    max-width: none;
+    margin-top: 12px;
+    text-align: left;
+  }
+  .trait-list {
+    grid-template-columns: 1fr 1fr;
+    padding-inline: 16px;
+  }
+  .nft-caption,
+  .nft-stage .nft-source { padding-inline: 16px; }
+}
+
+.footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.footer-social a {
+  margin-left: 0;
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+.footer-social a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .footer-social { margin-left: 0; }
+}

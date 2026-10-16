@@ -183,7 +183,7 @@
       if (!settlement) return;
       if (settlement.status === "pending") $("#settlement-tx").textContent = "Settlement pending on Ronin";
       else if (settlement.status === "failed") $("#settlement-tx").textContent = `Failed: ${settlement.message}`;
-      else if (settlement.txHash) $("#settlement-tx").innerHTML = `<a target="_blank" rel="noopener" href="https://app.roninchain.com/tx/${settlement.txHash}">${short(settlement.txHash)}</a>`;
+      else if (settlement.txHash) $("#settlement-tx").innerHTML = `<a target="_blank" rel="noopener" href="https://explorer.roninchain.com/tx/${settlement.txHash}">${short(settlement.txHash)}</a>`;
       await refreshAccount();
     } catch {}
   }

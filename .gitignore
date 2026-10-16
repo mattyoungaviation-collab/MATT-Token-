@@ -12,6 +12,10 @@ coverage/
 .tmp-cache/
 .tmp-config/
 .tmp-data/
+# Private disk database files, journal/WAL files, and SQLite backups must never be published.
+*.sqlite
+*.sqlite-*
+.codex-tx/
 
 # Runtime caches
 website/.holder-index-cache.json

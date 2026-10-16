@@ -21,7 +21,7 @@ function createBlackjackRouter() {
     res.json({
       ...health,
       contractRoundId,
-      explorerBaseUrl: "https://app.roninchain.com/tx/",
+      explorerBaseUrl: "https://explorer.roninchain.com/tx/",
       realWagers: true,
       supportedActions: ["hit", "stand", "surrender"]
     });

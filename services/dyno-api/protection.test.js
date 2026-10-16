@@ -1,0 +1,143 @@
+"use strict";
+const test = require("node:test"), assert = require("node:assert/strict"), express = require("express");
+const { Wallet, Interface } = require("ethers");
+const { readProtection, prepareProtection } = require("./protection");
+const { createDynoRouter } = require("./router"), { createMemoryStore } = require("./store");
+const local = require("../../config/project-dyno.local.json");
+function fixture() {
+  const manifest = { ...structuredClone(local), mock: false }, nowSeconds = 2000000;
+  const block = { number: 100, hash: "0x" + "ab".repeat(32), timestamp: nowSeconds }, calls = [];
+  const values = { phase: 2n, sale: 200n, buyback: 300n, deviation: 1000n, window: 3600n, liquidity: 900719925474099312345n, active: false, owner: true, admin: manifest.multisig };
+  const read = (name, get) => async (...args) => { calls.push({ name, at: args.at(-1) }); return get(); };
+  const manager = { multisig: read("multisig", () => manifest.multisig), activeRoundId: read("active", () => 1n), checkoutPaused: read("paused", () => false), getRoundStatus: read("round", () => ({ phase: values.phase })),
+    getSwapProtection: read("settings", () => ({ priceGuard: manifest.priceGuard, saleSlippageBps: values.sale, buybackSlippageBps: 200n, ticketMatt: 700000n * 10n ** 18n })) };
+  const vault = { hasRole: read("role", () => true), getSchedule: read("schedule", () => ({ state: values.active ? 1n : 0n })), roundId: read("id", () => 1n), guard: read("guard", () => manifest.priceGuard), slippageBps: read("slippage", () => values.buyback), executionPaused: read("vaultPaused", () => false) };
+  const guard = { admin: read("admin", () => values.admin), referenceWindow: read("window", () => values.window), maximumDeviationBps: read("deviation", () => values.deviation), minimumHarmonicLiquidity: read("liquidity", () => values.liquidity),
+    validate: read("validate", () => undefined), saleMinOut: async (_amount, slip, at) => { calls.push({ name: "quote", slip, at }); return 1000n - slip; } };
+  const safe = { isOwner: read("owner", () => values.owner) };
+  const provider = { getBlock: async () => block, send: async (method, params) => { if (method === "eth_chainId") return "0x7a69"; calls.push({ method, params }); return "0x"; } };
+  return { options: { manifest, manager, vault, guardFactory: () => guard, provider, safe, roundId: "1", nowSeconds }, values, block, calls };
+}
+test("block-pinned live settings keep exact liquidity, independent slippage and real owner checks", async () => {
+  const f = fixture(), s = await readProtection({ ...f.options, wallet: Wallet.createRandom().address });
+  assert.equal(s.canPropose, true); assert.equal(s.current.minimumLiquidity, "900719925474099312345"); assert.equal(s.current.buybackSlippageBps, "200");
+  assert.ok(f.calls.every(call => call.at.blockTag === 100));
+  f.values.phase = 8n; f.values.active = true;
+  const active = await readProtection(f.options); assert.equal(active.buybackEditable, true); assert.equal(active.saleEditable, false); assert.equal(active.current.buybackSlippageBps, "300");
+  f.values.owner = false; await assert.rejects(readProtection({ ...f.options, wallet: Wallet.createRandom().address }), /MULTISIG_OWNER_REQUIRED/);
+  f.values.admin = Wallet.createRandom().address; await assert.rejects(readProtection(f.options), /CONTROL_MISMATCH/);
+});
+test("guard drafts simulate only fixed target/calldata and expose old/new risks without submission", async () => {
+  const f = fixture(), state = await readProtection(f.options);
+  const request = { kind: "guard", expected: state.current, referenceWindowSeconds: "1800", maximumDeviationBps: "2000", minimumLiquidity: "123456789012345678901" };
+  const draft = await prepareProtection({ ...f.options, state, request });
+  assert.equal(draft.target, local.priceGuard); assert.equal(draft.value, "0"); assert.equal(draft.submitted, false); assert.equal(draft.simulated, true);
+  assert.deepEqual(draft.args, ["1800", "2000", "123456789012345678901"]);
+  const decoded = new Interface(["function setProtection(uint32,uint16,uint128)"]).decodeFunctionData("setProtection", draft.data);
+  assert.equal(decoded[2], 123456789012345678901n); assert.equal(f.calls.at(-1).method, "eth_call");
+  assert.equal(f.calls.at(-1).params[0].from, local.multisig); assert.equal(draft.before.maximumDeviationBps, "1000");
+  assert.ok(draft.warnings.some(s => s.includes("FAILED/MISSED")));
+  const spotDraft = await prepareProtection({ ...f.options, state, request: { ...request, referenceWindowSeconds: "0" } });
+  assert.equal(spotDraft.args[0], "0");
+  assert.ok(spotDraft.warnings.some(s => s.includes("spot price")));
+});
+
+test("emergency admin needs live matching authority and prepares a direct-wallet simulation without Safe approval", async () => {
+  const f = fixture(), emergency = Wallet.createRandom().address;
+  f.options.manifest.emergencyAdmin = emergency; f.values.owner = false;
+  f.options.manager.emergencyAdmin = async () => emergency;
+  const original = f.options.guardFactory();
+  original.governanceManager = async () => f.options.manifest.raffleProxy;
+  original.isAdmin = async () => true;
+  const state = await readProtection({ ...f.options, wallet: emergency });
+  assert.equal(state.executionMode, "emergency-wallet"); assert.equal(state.executionFrom, emergency);
+  const draft = await prepareProtection({ ...f.options, state, request: { kind: "sale", value: "500", expected: state.current } });
+  assert.equal(f.calls.at(-1).params[0].from, emergency); assert.equal(draft.submitted, false);
+  await assert.rejects(readProtection({ ...f.options, wallet: Wallet.createRandom().address }), /MULTISIG_OWNER_REQUIRED/);
+  f.options.manager.emergencyAdmin = async () => Wallet.createRandom().address;
+  await assert.rejects(readProtection({ ...f.options, wallet: emergency }), /CONTROL_MISMATCH/);
+});
+test("invalid limits, stale previews, wrong phases, simulation failures and reorgs fail closed", async () => {
+  const f = fixture(), state = await readProtection(f.options);
+  const prepare = request => prepareProtection({ ...f.options, state, request: { expected: state.current, ...request } });
+  for (const value of ["1001", "-1", "2.5", "1e2"]) await assert.rejects(prepare({ kind: "sale", value }), /INVALID_PROTECTION/);
+  await assert.rejects(prepare({ kind: "sale", value: "200", expected: {} }), /PROTECTION_CHANGED/);
+  await assert.rejects(prepare({ kind: "buyback", value: "200" }), /PROTECTION_PHASE/);
+  for (const fields of [{ referenceWindowSeconds: "4294967296" }, { maximumDeviationBps: "10001" }, { minimumLiquidity: "0" }, { minimumLiquidity: (2n ** 128n).toString() }])
+    await assert.rejects(prepare({ kind: "guard", referenceWindowSeconds: "3600", maximumDeviationBps: "1000", minimumLiquidity: "1", ...fields }), /INVALID_PROTECTION/);
+  f.options.provider.send = async () => { throw new Error("SIMULATION_REVERT"); };
+  await assert.rejects(prepare({ kind: "sale", value: "0" }), /SIMULATION_REVERT/);
+  f.options.provider.send = async () => "0x"; f.block.hash = "0x" + "cd".repeat(32);
+  await assert.rejects(prepare({ kind: "sale", value: "0" }), /CHAIN_DATA_CHANGED/);
+});
+test("HTTP requires wallet signature and actual Safe ownership; live quotes ignore stale manifest slippage", async t => {
+  const f = fixture(), owner = Wallet.createRandom();
+  const store = createMemoryStore();
+  store.auth.listIdentityObservations = () => [{ commitment: "0x" + "ab".repeat(32), discordUserId: "123456789012345678", displayName: " =HYPERLINK(\"bad\")", wallet: owner.address, identityVersion: 1, chainId: 31337, blockNumber: 100, blockHash: f.block.hash, bindingConfirmed: true, observedAt: f.options.nowSeconds * 1000 }];
+  store.auth.listIdentityObservationHistory = ({ commitment }) => [{ auditId: 7, commitment, discordUserId: "123456789012345678", displayName: "Private", wallet: owner.address, identityVersion: 1, chainId: 31337, blockNumber: 100, blockHash: f.block.hash, bindingConfirmed: true, observedAt: f.options.nowSeconds * 1000, auditCreatedAt: f.options.nowSeconds * 1000 }];
+  const app = express(); app.use("/api/dyno", createDynoRouter({ manifest: f.options.manifest, store, now: () => f.options.nowSeconds * 1000,
+    chainProvider: f.options.provider, raffleManager: f.options.manager, buybackVault: f.options.vault, protectionGuardFactory: f.options.guardFactory, multisigContract: f.options.safe }));
+  const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
+  t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+  const url = `http://127.0.0.1:${server.address().port}/api/dyno`;
+  const request = (route, body, cookie) => fetch(url + route, { headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) }, ...(body ? { method: "POST", body: JSON.stringify(body) } : {}) });
+  assert.equal((await request("/admin/protection")).status, 401);
+  assert.equal((await request("/admin/identities")).status, 401);
+  assert.equal((await request(`/admin/identity-history?commitment=0x${"ab".repeat(32)}`)).status, 401);
+  const nonce = await (await request("/auth/nonce", { wallet: owner.address })).json();
+  const login = await request("/auth/verify", { wallet: owner.address, signature: await owner.signMessage(nonce.message) });
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  let response = await request("/admin/protection", null, cookie), state = await response.json(); assert.equal(response.status, 200);
+  response = await request("/admin/identities", null, cookie);
+  assert.equal(response.status, 200); assert.equal(response.headers.get("cache-control"), "no-store");
+  const privateData = await response.json(); assert.equal(privateData.private, true); assert.equal(privateData.rows[0].discordUserId, "123456789012345678");
+  response = await request(`/admin/identity-history?commitment=0x${"ab".repeat(32)}`, null, cookie);
+  assert.equal(response.status, 200); assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal((await response.json()).rows[0].auditId, "7");
+  assert.equal((await request("/admin/identity-history?commitment=invalid", null, cookie)).status, 400);
+  response = await request("/admin/identities.csv", null, cookie);
+  assert.equal(response.status, 200); assert.match(await response.text(), /"' =HYPERLINK/);
+  assert.equal((await request("/admin/identities?limit=251", null, cookie)).status, 400);
+  response = await request("/admin/protection/prepare", { kind: "sale", value: "500", expected: state.current }, cookie);
+  assert.equal(response.status, 200); assert.equal((await response.json()).method, "setLiveSaleSlippage");
+  response = await request("/admin/prepare", { contract: "manager", method: "setReviewer", args: [owner.address, true] }, cookie);
+  assert.equal(response.status, 200);
+  const adminDraft = await response.json();
+  assert.equal(adminDraft.value, "0"); assert.equal(adminDraft.authorityBlock, "100"); assert.equal(adminDraft.executionMode, "multisig"); assert.equal(adminDraft.simulated, true);
+  assert.equal(f.calls.at(-1).method, "eth_call"); assert.equal(f.calls.at(-1).params[0].from, f.options.manifest.multisig);
+  const send = f.options.provider.send;
+  f.options.provider.send = async (method, params) => { if (method === "eth_call") throw new Error("private-rpc-detail"); return send(method, params); };
+  response = await request("/admin/prepare", { contract: "manager", method: "setReviewer", args: [owner.address, true] }, cookie);
+  assert.equal(response.status, 409); assert.deepEqual(await response.json(), { error: "ADMIN_SIMULATION_FAILED" });
+  f.options.provider.send = send;
+  assert.equal((await request("/admin/prepare", { contract: "manager", method: "setReviewer", args: [owner.address, true], value: "1" }, cookie)).status, 400);
+  assert.equal((await request("/admin/prepare", { contract: "vault", method: "setReviewer", args: [owner.address, true] }, cookie)).status, 400);
+  response = await fetch(url + "/admin/prepare", { method: "POST", headers: { "content-type": "application/json", cookie, origin: "https://unrelated.example" }, body: JSON.stringify({ contract: "manager", method: "setReviewer", args: [owner.address, true] }) });
+  assert.equal(response.status, 403);
+  f.values.sale = 500n;
+  assert.equal((await request("/admin/protection/prepare", { kind: "sale", value: "200", expected: state.current }, cookie)).status, 409);
+  const quote = await (await request("/quote?quantity=2")).json(); assert.equal(quote.saleSlippageBps, "500"); assert.deepEqual(quote.minOuts, ["500", "500"]);
+  f.values.owner = false; assert.equal((await request("/admin/protection", null, cookie)).status, 403);
+  assert.equal((await request("/admin/identities", null, cookie)).status, 403);
+  assert.equal((await request(`/admin/identity-history?commitment=0x${"ab".repeat(32)}`, null, cookie)).status, 403);
+  assert.equal((await request("/admin/protection/prepare", { kind: "guard", expected: state.current }, cookie)).status, 403);
+  // Same signed session, now explicitly enabled ON CHAIN as emergency admin;
+  // Safe ownership stays false. Never authorize solely from the manifest.
+  f.options.manifest.emergencyAdmin = owner.address;
+  f.options.manager.emergencyAdmin = async () => owner.address;
+  const guard = f.options.guardFactory();
+  guard.governanceManager = async () => f.options.manifest.raffleProxy; guard.isAdmin = async () => true;
+  response = await request("/admin/protection", null, cookie);
+  assert.equal(response.status, 200); assert.equal((await response.json()).executionMode, "emergency-wallet");
+  response = await request("/admin/prepare", { contract: "manager", method: "setEmergencyAdmin", args: [Wallet.createRandom().address] }, cookie);
+  assert.equal(response.status, 200); assert.equal((await response.json()).executionFrom, owner.address);
+  response = await request("/admin/prepare", { contract: "manager", method: "setVrfRefundReceiver", args: [Wallet.createRandom().address] }, cookie);
+  assert.equal(response.status, 200);
+  const receiverDraft = await response.json();
+  assert.equal(receiverDraft.submitted, false);
+  assert.equal(receiverDraft.target, f.options.manifest.raffleProxy);
+  f.options.manager.emergencyAdmin = async () => Wallet.createRandom().address;
+  assert.equal((await request("/admin/prepare", { contract: "manager", method: "setEmergencyAdmin", args: [owner.address] }, cookie)).status, 503);
+  f.options.provider.getBlock = async () => { throw new Error("private-rpc-secret"); };
+  response = await request("/protection"); assert.equal(response.status, 503); assert.deepEqual(await response.json(), { error: "PROTECTION_UNAVAILABLE" });
+});

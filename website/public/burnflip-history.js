@@ -117,7 +117,7 @@
         <td class="numeric">${matt(record.amountRaw)}</td>
         <td class="numeric">${matt(record.payoutRaw)}</td>
         <td class="numeric ${netClass(record.netRaw)}">${matt(record.netRaw)}</td>
-        <td><a href="https://app.roninchain.com/tx/${record.transactionHash}" target="_blank" rel="noopener">${short(record.transactionHash)}</a></td>
+        <td><a href="https://explorer.roninchain.com/tx/${record.transactionHash}" target="_blank" rel="noopener">${short(record.transactionHash)}</a></td>
       </tr>`).join('') : '<tr><td colspan="7">No settled BurnFlip bets found for this wallet.</td></tr>';
   }
 
@@ -132,7 +132,7 @@
       const rows = payload.players.map(player => `
         <tr>
           <td>${player.rank}</td>
-          <td><a href="https://app.roninchain.com/address/${player.wallet}" target="_blank" rel="noopener">${short(player.wallet)}</a></td>
+          <td><a href="https://explorer.roninchain.com/address/${player.wallet}" target="_blank" rel="noopener">${short(player.wallet)}</a></td>
           <td class="numeric">${Number(player.flips).toLocaleString()}</td>
           <td class="numeric positive">${Number(player.wins).toLocaleString()}</td>
           <td class="numeric negative">${Number(player.losses).toLocaleString()}</td>

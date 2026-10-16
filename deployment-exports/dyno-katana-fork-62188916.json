@@ -1,0 +1,29 @@
+{
+  "localForkOnly": true,
+  "sourceChainId": 2020,
+  "blockNumber": 62188916,
+  "blockHash": "0x06060ef84433e7778020a8682662e27d3883940aa0912393bed518f5e581346a",
+  "verificationDate": "2026-10-12",
+  "router": "0x5f0acdd3ec767514ff1bf7e79949640bf94576bd",
+  "saleSlippageBps": 200,
+  "buybackSlippageBps": 200,
+  "referenceWindowSeconds": 3600,
+  "maximumDeviationBps": 1000,
+  "minimumLiquidity": "1",
+  "liquidityFloorApprovedForProduction": false,
+  "saleProbeCaveat": "Ticket inventory was acquired using an artificial 200 RON fork bootstrap buy; these outputs are not quoted production receipts.",
+  "buyProbeCaveat": "Pool restored to independent pre-bootstrap snapshot before buyback; not a full-round pool path or guaranteed future slice.",
+  "sales": [
+    { "ticket": 0, "mattIn": "700000000000000000000000", "minimum": "20470872889779646582", "actualRon": "21336727435329516691", "gasUsed": "232893" },
+    { "ticket": 1, "mattIn": "700000000000000000000000", "minimum": "20470872889779646582", "actualRon": "21296885027102327748", "gasUsed": "232872" },
+    { "ticket": 2, "mattIn": "700000000000000000000000", "minimum": "20470872889779646582", "actualRon": "21257154112315903444", "gasUsed": "232903" }
+  ],
+  "illustrativeBuy": {
+    "ron": "136567200000000000000",
+    "minimum": "4395726107816705478473308",
+    "deliveredMatt": "4442406592160096035198191",
+    "gasUsed": "260238"
+  },
+  "productionReady": false,
+  "remaining": ["full-round pool-path/impact analysis", "transient/sustained real-pool manipulation simulations", "reviewed liquidity floor", "compiled live router bytecode equivalence", "VRF request/callback integration", "application and keeper completion", "scoped security review and deployment approval"]
+}

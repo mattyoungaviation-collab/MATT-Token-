@@ -1,0 +1,35 @@
+{
+  "localForkOnly": true,
+  "productionReady": false,
+  "sourceChainId": 2020,
+  "sourceBlock": 62188916,
+  "sourceBlockHash": "0x06060ef84433e7778020a8682662e27d3883940aa0912393bed518f5e581346a",
+  "publicImpersonatedMattHolder": "0x6EA3e4bD286FD84ca09B0781fEDCaB44b103706a",
+  "holderBalanceAtSourceBlock": "750220969234529155288866476",
+  "route": {
+    "v3Pool": "0xa517e05e96728e80284f2ae157ddf309449d7ce8",
+    "fee": 10000,
+    "v3OtherPools": [
+      { "fee": 100, "address": "0x76CB6899c97Ee0585aaFfddfe5a94027507DE76A", "activeLiquidity": "0" },
+      { "fee": 500, "address": null },
+      { "fee": 2500, "address": null },
+      { "fee": 3000, "address": "0x6e6EAe2556C068169A507cE32259182024d47BF8", "activeLiquidity": "0" }
+    ],
+    "v2Pair": "0x92804d10806aaf51B82E8fEeedAdbB8218E2c2f9",
+    "v2ReserveMatt": "227846516729909915137899",
+    "v2ReserveWron": "6470451379047739335"
+  },
+  "probes": [
+    { "gapSeconds": 0, "saleSlippageBps": 200, "completed": 6, "firstFailedSale": 7, "failure": "V3TooLittleReceived", "saleRonTotal": "124050939845543645066", "spotTickAtFailure": "-104308", "meanTickAtFailure": "-104102" },
+    { "gapSeconds": 3600, "saleSlippageBps": 200, "completed": 52, "firstFailedSale": 53, "failure": "V3TooLittleReceived", "saleRonTotal": "1012619386132603720095" },
+    { "gapSeconds": 3600, "saleSlippageBps": 1000, "completed": 52, "firstFailedSale": 53, "failure": "V3TooLittleReceived", "saleRonTotal": "1012619386132603720095", "referenceMinimumRon": "15338337405898964567", "unprotectedLocalQuoteRon": "15123735386303854713", "spotTickAtFailure": "-106136", "meanTickAtFailure": "-106136" }
+  ],
+  "simulationLimitations": [
+    "One public holder supplies tokens for economic modeling; not a valid participant or daily quota simulation.",
+    "No external market trading, liquidity changes or MEV is modeled.",
+    "One-hour spacing advances only local fork time; it is not a forecast of a long real round.",
+    "Exploratory minimum liquidity of 1 is not approved for production.",
+    "A single source block and finite fee-tier/pair survey cannot rule out future or other market routes."
+  ],
+  "conclusion": "Current approved single-pool route cannot demonstrate completion of 1000 sales at 700000 MATT per ticket even with the existing maximum 10 percent slippage tolerance. Market depth or an approved design change is required before opening."
+}

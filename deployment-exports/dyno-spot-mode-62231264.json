@@ -1,0 +1,44 @@
+{
+  "kind": "Project DYNO local spot-only market-liveness probe",
+  "sourceChainId": 2020,
+  "sourceBlockNumber": 62231264,
+  "sourceBlockHash": "0x79ba1a79adfffbff053bd8f67c80e771fc55cf0dd3abfe8533cfc946f4d116af",
+  "localForkOnly": true,
+  "productionReady": false,
+  "guard": {
+    "referenceWindowSeconds": 0,
+    "saleSlippageBps": 200,
+    "illustrativeBuybackSlippageBps": 300,
+    "exploratoryMinimumLiquidity": "1",
+    "warning": "Spot-only pricing removes historical-price and spot/reference deviation checks. The liquidity floor of 1 is not a production setting."
+  },
+  "rapidSales": {
+    "ticketMattBaseUnits": "700000000000000000000000",
+    "completed": 100,
+    "firstFailure": null,
+    "firstTicketRonBaseUnits": "19061481745818536800",
+    "ticket100RonBaseUnits": "7875762918807777240",
+    "totalSaleRonBaseUnits": "1682911586251648605364"
+  },
+  "longerPath": {
+    "completed": 850,
+    "firstFailure": null,
+    "sourceHolderMaximumTicketInputs": 857,
+    "ticket850RonBaseUnits": "60952879698292323",
+    "totalSaleRonBaseUnits": "2201942123828757204963",
+    "warning": "Severe cumulative price decline despite each swap satisfying a 2% current-spot minimum. One holder/no other market participants is not a real-world full-round forecast."
+  },
+  "illustrativeIndependentBuyback": {
+    "ronInBaseUnits": "136567200000000000000",
+    "minimumMattBaseUnits": "4766783052333844052181864",
+    "deliveredMattBaseUnits": "4904209636971104050865364",
+    "passed": true,
+    "note": "Illustrative old planning slice; actual slice depends on measured eligible sale receipts. This independent probe resets the pool after local inventory acquisition."
+  },
+  "limitations": [
+    "No real transactions, funds or deployment.",
+    "Full 1000-sale path not run from the source holder because it held fewer than 700 million MATT.",
+    "No market makers, external arbitrage, MEV or attacker trades in the local path.",
+    "Economic viability, reviewed liquidity floor and production acceptance remain open."
+  ]
+}

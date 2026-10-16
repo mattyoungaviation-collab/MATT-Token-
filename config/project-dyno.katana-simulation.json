@@ -1,0 +1,15 @@
+{
+  "environment": "local-fork-only",
+  "productionReady": false,
+  "chainId": 2020,
+  "matt": "0xa5450417bdca0bdfb058ffe41205400ffda1174d",
+  "wron": "0xe514d9DEB7966c8BE0ca922de8a064264eA6bcd4",
+  "router": "0x5f0acdd3ec767514ff1bf7e79949640bf94576bd",
+  "routerCodeHash": "0x6d021fbcd3954a370f1a74b4819b269d70825d09137d18b21f6956b1e1dc78fe",
+  "pool": "0xa517e05e96728e80284f2ae157ddf309449d7ce8",
+  "factory": "0x1f0B70d9A137e3cAEF0ceAcD312BC5f81Da0cC0c",
+  "poolFee": 10000,
+  "minimumLiquidity": "1",
+  "liquidityFloorWarning": "Exploratory floor only; NOT approved for production. Measure and review a real floor before launch.",
+  "routerSource": "https://github.com/ronin-chain/katana-operation-contracts/blob/mainnet/broadcast/DeployKatanaOperationMainnet.s.sol/2020/run-latest.json"
+}

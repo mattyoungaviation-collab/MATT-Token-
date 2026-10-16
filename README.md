@@ -1,5 +1,11 @@
 # MATT Token and Ecosystem Games
 
+## Project DYNO
+
+This repository includes the local-first Project DYNO build: fixed 35 RON + 700,000 MATT tickets with **no automatic MATT sale or buyback**, a UUPS raffle manager, local mocks, tests, owner-selected encrypted SQLite storage on `/var/data` (plus a legacy PostgreSQL index adapter), identity/voucher API, reorg-aware indexer, keeper, replay/reconciliation tooling, and the responsive `/dyno` public/admin page. Legacy vault/Katana modules remain in source but are inactive for this payment model. See [the current no-sale revision](docs/project-dyno/NO-SALE-REVISION.md); older swap notes are historical.
+
+Start with [docs/project-dyno/README.md](docs/project-dyno/README.md). Nothing in the repository authorizes a live deployment or asset movement; production configuration intentionally remains incomplete and fail-closed.
+
 **Built by Matt. Backed by Matt.**
 
 This repository contains the live MATT token source, ecosystem contracts, and website. The existing MATT token is not modified by the BurnFlip refactor.

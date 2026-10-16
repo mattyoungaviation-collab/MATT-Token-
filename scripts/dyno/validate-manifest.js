@@ -4,14 +4,20 @@ const fs = require("fs");
 const path = require("path");
 const { JsonRpcProvider, isAddress, getAddress, Contract } = require("ethers");
 
-const ADDRESS_FIELDS = ["multisig", "raffleProxy", "raffleImplementation", "buybackProxy", "buybackImplementation", "matt", "wron", "router", "pool", "swapAdapter", "priceGuard", "nftCollection", "nftDepositor", "vrfCoordinator", "identitySigner", "keeper"];
-const CODE_FIELDS = ["raffleProxy", "raffleImplementation", "buybackProxy", "buybackImplementation", "matt", "wron", "router", "pool", "swapAdapter", "priceGuard", "vrfCoordinator"];
+const ADDRESS_FIELDS = ["multisig", "raffleProxy", "raffleImplementation", "buybackProxy", "buybackImplementation", "matt", "nftCollection", "nftDepositor", "vrfCoordinator", "identitySigner", "keeper"];
+const CODE_FIELDS = ["raffleProxy", "raffleImplementation", "buybackProxy", "buybackImplementation", "matt", "vrfCoordinator"];
 
 function validateManifest(manifest, { production = manifest.environment === "production" } = {}) {
   const errors = [];
-  if (manifest.schemaVersion !== 1) errors.push("schemaVersion must be 1");
+  if (manifest.schemaVersion !== 2 || manifest.paymentModel !== "RON_AND_HELD_MATT") errors.push("schemaVersion 2 and RON_AND_HELD_MATT payment model are required");
   if (!Number.isSafeInteger(manifest.chainId) || manifest.chainId <= 0) errors.push("chainId must be a positive integer");
+  if (production && manifest.chainId !== 2020) errors.push("production raffle chainId must be Ronin 2020");
   if (production && manifest.mock) errors.push("production manifest cannot enable mocks");
+  if (production && (!isAddress(manifest.emergencyAdmin || "") || manifest.emergencyAdmin === "0x0000000000000000000000000000000000000000" || manifest.emergencyAdminMode !== "full-unilateral-contract-admin")) errors.push("owner-selected nonzero full unilateral emergencyAdmin is required");
+  if (production && manifest.indexerFinalityMode !== "rpc-finalized") errors.push("production indexerFinalityMode must be rpc-finalized; verify provider finalized-tag support before enabling indexing");
+  if (production && (!/^0x[0-9a-fA-F]{64}$/.test(manifest.termsHash || "") || /^0x0{64}$/.test(manifest.termsHash))) errors.push("approved nonzero no-sale termsHash is required");
+  if (production && (!Number.isInteger(manifest.vrfCallbackGasLimit) || manifest.vrfCallbackGasLimit < 100000)) errors.push("measured vrfCallbackGasLimit is required");
+  if (production && !/^[1-9][0-9]*$/.test(String(manifest.vrfGasPrice || ""))) errors.push("exact nonzero vrfGasPrice is required");
   if (manifest.prizeDelivery !== "manual") errors.push("prizeDelivery must be manual for the owner-selected delivery implementation");
   if (!Number.isSafeInteger(manifest.nftChainId) || manifest.nftChainId <= 0) errors.push("nftChainId must identify the external NFT delivery chain");
   if (!manifest.nftRpcUrlEnv) errors.push("nftRpcUrlEnv is required for manual NFT receipt verification");
@@ -21,31 +27,36 @@ function validateManifest(manifest, { production = manifest.environment === "pro
     const value = manifest[field];
     if (!isAddress(value || "") || getAddress(value) === "0x0000000000000000000000000000000000000000") errors.push(`${field} must be a nonzero address`);
   }
-  for (const field of ["minimumLiquidity", "operationsBudget", "discordGuildId", "discordApplicationId", "publicOAuthRedirectUri"]) {
+  for (const field of ["operationsBudget", "discordGuildId", "discordApplicationId", "publicOAuthRedirectUri"]) {
     if (manifest[field] === null || manifest[field] === undefined || String(manifest[field]).trim() === "") errors.push(`${field} is required`);
   }
   if (!Number.isInteger(manifest.mattDecimals) || manifest.mattDecimals < 0 || manifest.mattDecimals > 36) errors.push("mattDecimals is invalid");
   const round = manifest.round || {};
+  const baseUnitString = value => typeof value === "string" && /^\d+$/.test(value);
+  for (const [field, value] of Object.entries({
+    operationsBudget: manifest.operationsBudget,
+    "round.ticketRon": round.ticketRon, "round.ticketMatt": round.ticketMatt,
+    "round.nextDynoReserve": round.nextDynoReserve,
+  })) if (!baseUnitString(value)) errors.push(`${field} must be an exact decimal base-unit string`);
+  if (!Array.isArray(round.ronPrizes) || round.ronPrizes.some(value => !baseUnitString(value))) errors.push("round.ronPrizes must contain exact decimal base-unit strings");
   try {
     if (round.capacity !== 1000) errors.push("round.capacity must be exactly 1000");
     if (BigInt(round.ticketRon) !== 35n * 10n ** 18n) errors.push("ticketRon must be exactly 35 RON");
     if (BigInt(round.ticketMatt) !== 700000n * 10n ** BigInt(manifest.mattDecimals)) errors.push("ticketMatt must be exactly 700,000 MATT");
     const prizes = (round.ronPrizes || []).map(BigInt);
+    const reserve = BigInt(round.nextDynoReserve);
+    if (reserve !== 10000n * 10n ** 18n) errors.push("nextDynoReserve must be exactly 10,000 RON for this round");
     if (prizes.length !== 5) errors.push("exactly five RON prizes are required");
     else {
-      const expected = ["70224700000000000000", "140449400000000000000", "1404494400000000000000", "3511236000000000000000", "7022471900000000000000"].map(BigInt);
-      if (prizes.some((value, index) => value !== expected[index])) errors.push("active prize fixture must be 70.2247, 140.4494, 1,404.4944, 3,511.2360, 7,022.4719 RON");
+      if (prizes.some((value, index) => value <= 0n || (index > 0 && value <= prizes[index - 1]))) errors.push("RON prizes must be positive and strictly ascending in draw order");
       const total = prizes.reduce((sum, value) => sum + value, 0n);
-      if (total !== 12148876400000000000000n) errors.push("RON prize total must be 12,148.8764");
-      if (total + BigInt(round.nextDynoReserve) > BigInt(round.ticketRon) * 1000n) errors.push("prizes plus reserve exceed direct receipts");
+      if (total + reserve > BigInt(round.ticketRon) * 1000n) errors.push("prizes plus reserve exceed direct receipts");
     }
-    if (BigInt(manifest.minimumLiquidity || 0) <= 0n) errors.push("minimumLiquidity must be nonzero");
     if (BigInt(manifest.operationsBudget || 0) <= 0n) errors.push("operationsBudget must be nonzero");
   } catch (error) { errors.push(`integer field is malformed: ${error.message}`); }
   if (round.reviewDurationSeconds < 86400) errors.push("reviewDurationSeconds must be at least 86400");
-  for (const field of ["saleSlippageBps", "buybackSlippageBps"]) if (!Number.isInteger(round[field]) || round[field] < 0 || round[field] > 1000) errors.push(`${field} must be 0..1000`);
-  if (manifest.referenceWindowSeconds !== 3600) errors.push("referenceWindowSeconds must be 3600 for the initial manifest");
-  if (manifest.maximumDeviationBps !== 1000) errors.push("maximumDeviationBps must be 1000 for the initial manifest");
+  for (const field of ["saleSlippageBps", "buybackSlippageBps"]) if (round[field] !== 0) errors.push(`${field} must be zero when no swaps occur`);
+  for (const field of ["swapAdapter", "priceGuard"]) if (manifest[field] !== null && manifest[field] !== undefined) errors.push(`${field} must be null in the no-sale model`);
   return errors;
 }
 

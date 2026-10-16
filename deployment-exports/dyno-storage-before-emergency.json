@@ -1,0 +1,1335 @@
+{
+  "ProjectDynoRaffleManager": {
+    "storage": [
+      {
+        "label": "buybackVault",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IProjectDynoBuybackVault)15300",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:144"
+      },
+      {
+        "label": "multisig",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_address",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:145"
+      },
+      {
+        "label": "identitySigner",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_address",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:146"
+      },
+      {
+        "label": "activeRoundId",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_uint256",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:147"
+      },
+      {
+        "label": "nextRoundId",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_uint256",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:148"
+      },
+      {
+        "label": "nextTicketId",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_uint256",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:149"
+      },
+      {
+        "label": "checkoutPaused",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_bool",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:150"
+      },
+      {
+        "label": "reviewPaused",
+        "offset": 1,
+        "slot": "6",
+        "type": "t_bool",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:151"
+      },
+      {
+        "label": "claimsPaused",
+        "offset": 2,
+        "slot": "6",
+        "type": "t_bool",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:152"
+      },
+      {
+        "label": "_rounds",
+        "offset": 0,
+        "slot": "7",
+        "type": "t_mapping(t_uint256,t_struct(Round)10837_storage)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:154"
+      },
+      {
+        "label": "_tickets",
+        "offset": 0,
+        "slot": "8",
+        "type": "t_mapping(t_uint256,t_struct(Ticket)10867_storage)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:155"
+      },
+      {
+        "label": "_eligibleTicketIds",
+        "offset": 0,
+        "slot": "9",
+        "type": "t_mapping(t_uint256,t_array(t_uint256)dyn_storage)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:156"
+      },
+      {
+        "label": "reviewFlags",
+        "offset": 0,
+        "slot": "10",
+        "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_struct(ReviewFlag)10894_storage))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:157"
+      },
+      {
+        "label": "walletForAccount",
+        "offset": 0,
+        "slot": "11",
+        "type": "t_mapping(t_bytes32,t_address)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:158"
+      },
+      {
+        "label": "accountForWallet",
+        "offset": 0,
+        "slot": "12",
+        "type": "t_mapping(t_address,t_bytes32)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:159"
+      },
+      {
+        "label": "identityVersion",
+        "offset": 0,
+        "slot": "13",
+        "type": "t_mapping(t_bytes32,t_uint32)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:160"
+      },
+      {
+        "label": "accountSuspended",
+        "offset": 0,
+        "slot": "14",
+        "type": "t_mapping(t_bytes32,t_bool)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:161"
+      },
+      {
+        "label": "accountDayCount",
+        "offset": 0,
+        "slot": "15",
+        "type": "t_mapping(t_bytes32,t_mapping(t_uint64,t_uint8))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:162"
+      },
+      {
+        "label": "walletDayCount",
+        "offset": 0,
+        "slot": "16",
+        "type": "t_mapping(t_address,t_mapping(t_uint64,t_uint8))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:163"
+      },
+      {
+        "label": "usedVoucherNonce",
+        "offset": 0,
+        "slot": "17",
+        "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_bool))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:164"
+      },
+      {
+        "label": "claimNonce",
+        "offset": 0,
+        "slot": "18",
+        "type": "t_mapping(t_address,t_uint256)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:165"
+      },
+      {
+        "label": "prizeAmount",
+        "offset": 0,
+        "slot": "19",
+        "type": "t_mapping(t_uint256,t_mapping(t_uint8,t_uint256))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:166"
+      },
+      {
+        "label": "prizePaid",
+        "offset": 0,
+        "slot": "20",
+        "type": "t_mapping(t_uint256,t_mapping(t_uint8,t_bool))",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:167"
+      },
+      {
+        "label": "refundPaid",
+        "offset": 0,
+        "slot": "21",
+        "type": "t_mapping(t_uint256,t_bool)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:168"
+      },
+      {
+        "label": "reviewer",
+        "offset": 0,
+        "slot": "22",
+        "type": "t_mapping(t_address,t_bool)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:169"
+      },
+      {
+        "label": "nftPrizeChainId",
+        "offset": 0,
+        "slot": "23",
+        "type": "t_mapping(t_uint256,t_uint256)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:171"
+      },
+      {
+        "label": "reportedNftDelivery",
+        "offset": 0,
+        "slot": "24",
+        "type": "t_mapping(t_uint256,t_bytes32)",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:172"
+      },
+      {
+        "label": "__gap",
+        "offset": 0,
+        "slot": "25",
+        "type": "t_array(t_uint256)26_storage",
+        "contract": "ProjectDynoRaffleManager",
+        "src": "contracts\\dyno\\ProjectDynoRaffleManager.sol:797"
+      }
+    ],
+    "types": {
+      "t_bool": {
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_string_storage": {
+        "label": "string",
+        "numberOfBytes": "32"
+      },
+      "t_struct(EIP712Storage)393_storage": {
+        "label": "struct EIP712Upgradeable.EIP712Storage",
+        "members": [
+          {
+            "label": "_hashedName",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "_hashedVersion",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "1"
+          },
+          {
+            "label": "_name",
+            "type": "t_string_storage",
+            "offset": 0,
+            "slot": "2"
+          },
+          {
+            "label": "_version",
+            "type": "t_string_storage",
+            "offset": 0,
+            "slot": "3"
+          }
+        ],
+        "numberOfBytes": "128"
+      },
+      "t_struct(InitializableStorage)147_storage": {
+        "label": "struct Initializable.InitializableStorage",
+        "members": [
+          {
+            "label": "_initialized",
+            "type": "t_uint64",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "_initializing",
+            "type": "t_bool",
+            "offset": 8,
+            "slot": "0"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_struct(ReentrancyGuardStorage)330_storage": {
+        "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+        "members": [
+          {
+            "label": "_status",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "0"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_uint256": {
+        "label": "uint256",
+        "numberOfBytes": "32"
+      },
+      "t_uint64": {
+        "label": "uint64",
+        "numberOfBytes": "8"
+      },
+      "t_address": {
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_array(t_uint256)26_storage": {
+        "label": "uint256[26]",
+        "numberOfBytes": "832"
+      },
+      "t_array(t_uint256)5_storage": {
+        "label": "uint256[5]",
+        "numberOfBytes": "160"
+      },
+      "t_array(t_uint256)6_storage": {
+        "label": "uint256[6]",
+        "numberOfBytes": "192"
+      },
+      "t_array(t_uint256)dyn_storage": {
+        "label": "uint256[]",
+        "numberOfBytes": "32"
+      },
+      "t_contract(IProjectDynoBuybackVault)15300": {
+        "label": "contract IProjectDynoBuybackVault",
+        "numberOfBytes": "20"
+      },
+      "t_enum(FlagStatus)10737": {
+        "label": "enum ProjectDynoRaffleManager.FlagStatus",
+        "members": [
+          "NONE",
+          "PENDING",
+          "UPHELD",
+          "DISMISSED"
+        ],
+        "numberOfBytes": "1"
+      },
+      "t_enum(Phase)10725": {
+        "label": "enum ProjectDynoRaffleManager.Phase",
+        "members": [
+          "NONE",
+          "DRAFT",
+          "OPEN",
+          "REVIEW",
+          "FROZEN",
+          "RANDOMNESS_PENDING",
+          "RANDOMNESS_READY",
+          "WINNERS_ASSIGNED",
+          "SETTLED",
+          "CANCELLED"
+        ],
+        "numberOfBytes": "1"
+      },
+      "t_enum(TicketStatus)10732": {
+        "label": "enum ProjectDynoRaffleManager.TicketStatus",
+        "members": [
+          "NONE",
+          "ELIGIBLE",
+          "REFUND_CREDITED",
+          "REFUND_PAID",
+          "CANCELLED_CREDITED",
+          "CANCELLED_PAID"
+        ],
+        "numberOfBytes": "1"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_bytes32)": {
+        "label": "mapping(address => bytes32)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_mapping(t_uint64,t_uint8))": {
+        "label": "mapping(address => mapping(uint64 => uint8))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_address)": {
+        "label": "mapping(bytes32 => address)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_mapping(t_bytes32,t_bool))": {
+        "label": "mapping(bytes32 => mapping(bytes32 => bool))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_mapping(t_uint64,t_uint8))": {
+        "label": "mapping(bytes32 => mapping(uint64 => uint8))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_uint32)": {
+        "label": "mapping(bytes32 => uint32)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_array(t_uint256)dyn_storage)": {
+        "label": "mapping(uint256 => uint256[])",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_bool)": {
+        "label": "mapping(uint256 => bool)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_bytes32)": {
+        "label": "mapping(uint256 => bytes32)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_mapping(t_uint256,t_struct(ReviewFlag)10894_storage))": {
+        "label": "mapping(uint256 => mapping(uint256 => struct ProjectDynoRaffleManager.ReviewFlag))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_mapping(t_uint8,t_bool))": {
+        "label": "mapping(uint256 => mapping(uint8 => bool))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_mapping(t_uint8,t_uint256))": {
+        "label": "mapping(uint256 => mapping(uint8 => uint256))",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_struct(ReviewFlag)10894_storage)": {
+        "label": "mapping(uint256 => struct ProjectDynoRaffleManager.ReviewFlag)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_struct(Round)10837_storage)": {
+        "label": "mapping(uint256 => struct ProjectDynoRaffleManager.Round)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_struct(Ticket)10867_storage)": {
+        "label": "mapping(uint256 => struct ProjectDynoRaffleManager.Ticket)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint256,t_uint256)": {
+        "label": "mapping(uint256 => uint256)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint64,t_uint8)": {
+        "label": "mapping(uint64 => uint8)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint8,t_bool)": {
+        "label": "mapping(uint8 => bool)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint8,t_uint256)": {
+        "label": "mapping(uint8 => uint256)",
+        "numberOfBytes": "32"
+      },
+      "t_struct(ReviewFlag)10894_storage": {
+        "label": "struct ProjectDynoRaffleManager.ReviewFlag",
+        "members": [
+          {
+            "label": "status",
+            "type": "t_enum(FlagStatus)10737",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "reasonCode",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "1"
+          },
+          {
+            "label": "evidenceHash",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "2"
+          },
+          {
+            "label": "reporter",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "3"
+          }
+        ],
+        "numberOfBytes": "128"
+      },
+      "t_struct(Round)10837_storage": {
+        "label": "struct ProjectDynoRaffleManager.Round",
+        "members": [
+          {
+            "label": "phase",
+            "type": "t_enum(Phase)10725",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "configHash",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "1"
+          },
+          {
+            "label": "config",
+            "type": "t_struct(RoundConfig)10780_storage",
+            "offset": 0,
+            "slot": "2"
+          },
+          {
+            "label": "reviewEndsAt",
+            "type": "t_uint64",
+            "offset": 0,
+            "slot": "22"
+          },
+          {
+            "label": "frozenAt",
+            "type": "t_uint64",
+            "offset": 8,
+            "slot": "22"
+          },
+          {
+            "label": "snapshotVersion",
+            "type": "t_uint32",
+            "offset": 16,
+            "slot": "22"
+          },
+          {
+            "label": "snapshotDigest",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "23"
+          },
+          {
+            "label": "vrfRequestHash",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "24"
+          },
+          {
+            "label": "randomSeed",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "25"
+          },
+          {
+            "label": "eligibleCount",
+            "type": "t_uint16",
+            "offset": 0,
+            "slot": "26"
+          },
+          {
+            "label": "pendingFlags",
+            "type": "t_uint32",
+            "offset": 2,
+            "slot": "26"
+          },
+          {
+            "label": "upheldFlags",
+            "type": "t_uint32",
+            "offset": 6,
+            "slot": "26"
+          },
+          {
+            "label": "directActive",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "27"
+          },
+          {
+            "label": "saleActive",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "28"
+          },
+          {
+            "label": "operationsBalance",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "29"
+          },
+          {
+            "label": "refundLiability",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "30"
+          },
+          {
+            "label": "prizeLiability",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "31"
+          },
+          {
+            "label": "treasuryLiability",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "32"
+          },
+          {
+            "label": "firstTicketId",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "33"
+          },
+          {
+            "label": "lastTicketId",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "34"
+          },
+          {
+            "label": "cancellationCursor",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "35"
+          },
+          {
+            "label": "nftDeposited",
+            "type": "t_bool",
+            "offset": 0,
+            "slot": "36"
+          },
+          {
+            "label": "cancellationRefundsComplete",
+            "type": "t_bool",
+            "offset": 1,
+            "slot": "36"
+          },
+          {
+            "label": "nftReturned",
+            "type": "t_bool",
+            "offset": 2,
+            "slot": "36"
+          },
+          {
+            "label": "settled",
+            "type": "t_bool",
+            "offset": 3,
+            "slot": "36"
+          },
+          {
+            "label": "winnerTicketIds",
+            "type": "t_array(t_uint256)6_storage",
+            "offset": 0,
+            "slot": "37"
+          }
+        ],
+        "numberOfBytes": "1376"
+      },
+      "t_struct(RoundConfig)10780_storage": {
+        "label": "struct ProjectDynoRaffleManager.RoundConfig",
+        "members": [
+          {
+            "label": "matt",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "nftCollection",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "1"
+          },
+          {
+            "label": "nftTokenId",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "2"
+          },
+          {
+            "label": "nftDepositor",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "3"
+          },
+          {
+            "label": "treasury",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "4"
+          },
+          {
+            "label": "swapAdapter",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "5"
+          },
+          {
+            "label": "priceGuard",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "6"
+          },
+          {
+            "label": "vrfCoordinator",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "7"
+          },
+          {
+            "label": "ticketRon",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "8"
+          },
+          {
+            "label": "ticketMatt",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "9"
+          },
+          {
+            "label": "capacity",
+            "type": "t_uint16",
+            "offset": 0,
+            "slot": "10"
+          },
+          {
+            "label": "ronPrizes",
+            "type": "t_array(t_uint256)5_storage",
+            "offset": 0,
+            "slot": "11"
+          },
+          {
+            "label": "nextDynoReserve",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "16"
+          },
+          {
+            "label": "saleSlippageBps",
+            "type": "t_uint16",
+            "offset": 0,
+            "slot": "17"
+          },
+          {
+            "label": "buybackSlippageBps",
+            "type": "t_uint16",
+            "offset": 2,
+            "slot": "17"
+          },
+          {
+            "label": "reviewDuration",
+            "type": "t_uint32",
+            "offset": 4,
+            "slot": "17"
+          },
+          {
+            "label": "vrfCallbackGasLimit",
+            "type": "t_uint32",
+            "offset": 8,
+            "slot": "17"
+          },
+          {
+            "label": "vrfGasPrice",
+            "type": "t_uint64",
+            "offset": 12,
+            "slot": "17"
+          },
+          {
+            "label": "minimumOperationsFunding",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "18"
+          },
+          {
+            "label": "termsHash",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "19"
+          }
+        ],
+        "numberOfBytes": "640"
+      },
+      "t_struct(Ticket)10867_storage": {
+        "label": "struct ProjectDynoRaffleManager.Ticket",
+        "members": [
+          {
+            "label": "id",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "roundId",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "1"
+          },
+          {
+            "label": "originalWallet",
+            "type": "t_address",
+            "offset": 0,
+            "slot": "2"
+          },
+          {
+            "label": "accountCommitment",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "3"
+          },
+          {
+            "label": "purchasedAt",
+            "type": "t_uint64",
+            "offset": 0,
+            "slot": "4"
+          },
+          {
+            "label": "dayIndex",
+            "type": "t_uint64",
+            "offset": 8,
+            "slot": "4"
+          },
+          {
+            "label": "directRon",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "5"
+          },
+          {
+            "label": "saleRon",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "6"
+          },
+          {
+            "label": "eligibleIndex",
+            "type": "t_uint16",
+            "offset": 0,
+            "slot": "7"
+          },
+          {
+            "label": "status",
+            "type": "t_enum(TicketStatus)10732",
+            "offset": 2,
+            "slot": "7"
+          },
+          {
+            "label": "refundAmount",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "8"
+          },
+          {
+            "label": "reasonCode",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "9"
+          },
+          {
+            "label": "evidenceHash",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "10"
+          },
+          {
+            "label": "winningBitmap",
+            "type": "t_uint8",
+            "offset": 0,
+            "slot": "11"
+          }
+        ],
+        "numberOfBytes": "384"
+      },
+      "t_uint16": {
+        "label": "uint16",
+        "numberOfBytes": "2"
+      },
+      "t_uint32": {
+        "label": "uint32",
+        "numberOfBytes": "4"
+      },
+      "t_uint8": {
+        "label": "uint8",
+        "numberOfBytes": "1"
+      }
+    },
+    "layoutVersion": "1.2",
+    "flat": true,
+    "namespaces": {
+      "erc7201:openzeppelin.storage.EIP712": [
+        {
+          "contract": "EIP712Upgradeable",
+          "label": "_hashedName",
+          "type": "t_bytes32",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\cryptography\\EIP712Upgradeable.sol:38",
+          "offset": 0,
+          "slot": "0"
+        },
+        {
+          "contract": "EIP712Upgradeable",
+          "label": "_hashedVersion",
+          "type": "t_bytes32",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\cryptography\\EIP712Upgradeable.sol:40",
+          "offset": 0,
+          "slot": "1"
+        },
+        {
+          "contract": "EIP712Upgradeable",
+          "label": "_name",
+          "type": "t_string_storage",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\cryptography\\EIP712Upgradeable.sol:42",
+          "offset": 0,
+          "slot": "2"
+        },
+        {
+          "contract": "EIP712Upgradeable",
+          "label": "_version",
+          "type": "t_string_storage",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\cryptography\\EIP712Upgradeable.sol:43",
+          "offset": 0,
+          "slot": "3"
+        }
+      ],
+      "erc7201:openzeppelin.storage.ReentrancyGuard": [
+        {
+          "contract": "ReentrancyGuardUpgradeable",
+          "label": "_status",
+          "type": "t_uint256",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\ReentrancyGuardUpgradeable.sol:43",
+          "offset": 0,
+          "slot": "0"
+        }
+      ],
+      "erc7201:openzeppelin.storage.Initializable": [
+        {
+          "contract": "Initializable",
+          "label": "_initialized",
+          "type": "t_uint64",
+          "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+          "offset": 0,
+          "slot": "0"
+        },
+        {
+          "contract": "Initializable",
+          "label": "_initializing",
+          "type": "t_bool",
+          "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+          "offset": 8,
+          "slot": "0"
+        }
+      ]
+    }
+  },
+  "ProjectDynoBuybackVault": {
+    "storage": [
+      {
+        "label": "raffleManager",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:33"
+      },
+      {
+        "label": "scheduleState",
+        "offset": 20,
+        "slot": "0",
+        "type": "t_enum(ScheduleState)35813",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:34"
+      },
+      {
+        "label": "roundId",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:35"
+      },
+      {
+        "label": "treasury",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_address",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:36"
+      },
+      {
+        "label": "matt",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_contract(IERC20)3017",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:37"
+      },
+      {
+        "label": "adapter",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_contract(IProjectDynoSwapAdapter)41644",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:38"
+      },
+      {
+        "label": "guard",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_contract(IProjectDynoPriceGuard)41611",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:39"
+      },
+      {
+        "label": "slippageBps",
+        "offset": 20,
+        "slot": "5",
+        "type": "t_uint16",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:40"
+      },
+      {
+        "label": "executionPaused",
+        "offset": 22,
+        "slot": "5",
+        "type": "t_bool",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:41"
+      },
+      {
+        "label": "originalBudget",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:43"
+      },
+      {
+        "label": "slice",
+        "offset": 0,
+        "slot": "7",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:44"
+      },
+      {
+        "label": "dust",
+        "offset": 0,
+        "slot": "8",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:45"
+      },
+      {
+        "label": "t0",
+        "offset": 0,
+        "slot": "9",
+        "type": "t_uint64",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:46"
+      },
+      {
+        "label": "endTime",
+        "offset": 8,
+        "slot": "9",
+        "type": "t_uint64",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:47"
+      },
+      {
+        "label": "successfulSpend",
+        "offset": 0,
+        "slot": "10",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:48"
+      },
+      {
+        "label": "mattDelivered",
+        "offset": 0,
+        "slot": "11",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:49"
+      },
+      {
+        "label": "successCount",
+        "offset": 0,
+        "slot": "12",
+        "type": "t_uint16",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:50"
+      },
+      {
+        "label": "failedCount",
+        "offset": 2,
+        "slot": "12",
+        "type": "t_uint16",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:51"
+      },
+      {
+        "label": "missedCount",
+        "offset": 4,
+        "slot": "12",
+        "type": "t_uint16",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:52"
+      },
+      {
+        "label": "returnedAmount",
+        "offset": 0,
+        "slot": "13",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:53"
+      },
+      {
+        "label": "returnLiability",
+        "offset": 0,
+        "slot": "14",
+        "type": "t_uint256",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:54"
+      },
+      {
+        "label": "_slotStatus",
+        "offset": 0,
+        "slot": "15",
+        "type": "t_mapping(t_uint16,t_enum(SlotStatus)35818)",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:56"
+      },
+      {
+        "label": "slotMattOut",
+        "offset": 0,
+        "slot": "16",
+        "type": "t_mapping(t_uint16,t_uint256)",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:57"
+      },
+      {
+        "label": "slotFailureReason",
+        "offset": 0,
+        "slot": "17",
+        "type": "t_mapping(t_uint16,t_bytes32)",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:58"
+      },
+      {
+        "label": "__gap",
+        "offset": 0,
+        "slot": "18",
+        "type": "t_array(t_uint256)32_storage",
+        "contract": "ProjectDynoBuybackVault",
+        "src": "contracts\\dyno\\ProjectDynoBuybackVault.sol:244"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_struct(RoleData)26_storage)": {
+        "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+        "numberOfBytes": "32"
+      },
+      "t_struct(AccessControlStorage)36_storage": {
+        "label": "struct AccessControlUpgradeable.AccessControlStorage",
+        "members": [
+          {
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+            "offset": 0,
+            "slot": "0"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_struct(InitializableStorage)147_storage": {
+        "label": "struct Initializable.InitializableStorage",
+        "members": [
+          {
+            "label": "_initialized",
+            "type": "t_uint64",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "_initializing",
+            "type": "t_bool",
+            "offset": 8,
+            "slot": "0"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_struct(ReentrancyGuardStorage)330_storage": {
+        "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+        "members": [
+          {
+            "label": "_status",
+            "type": "t_uint256",
+            "offset": 0,
+            "slot": "0"
+          }
+        ],
+        "numberOfBytes": "32"
+      },
+      "t_struct(RoleData)26_storage": {
+        "label": "struct AccessControlUpgradeable.RoleData",
+        "members": [
+          {
+            "label": "hasRole",
+            "type": "t_mapping(t_address,t_bool)",
+            "offset": 0,
+            "slot": "0"
+          },
+          {
+            "label": "adminRole",
+            "type": "t_bytes32",
+            "offset": 0,
+            "slot": "1"
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "t_uint256": {
+        "label": "uint256",
+        "numberOfBytes": "32"
+      },
+      "t_uint64": {
+        "label": "uint64",
+        "numberOfBytes": "8"
+      },
+      "t_array(t_uint256)32_storage": {
+        "label": "uint256[32]",
+        "numberOfBytes": "1024"
+      },
+      "t_contract(IERC20)3017": {
+        "label": "contract IERC20",
+        "numberOfBytes": "20"
+      },
+      "t_contract(IProjectDynoPriceGuard)41611": {
+        "label": "contract IProjectDynoPriceGuard",
+        "numberOfBytes": "20"
+      },
+      "t_contract(IProjectDynoSwapAdapter)41644": {
+        "label": "contract IProjectDynoSwapAdapter",
+        "numberOfBytes": "20"
+      },
+      "t_enum(ScheduleState)35813": {
+        "label": "enum ProjectDynoBuybackVault.ScheduleState",
+        "members": [
+          "NONE",
+          "ACTIVE",
+          "CLOSED"
+        ],
+        "numberOfBytes": "1"
+      },
+      "t_enum(SlotStatus)35818": {
+        "label": "enum ProjectDynoBuybackVault.SlotStatus",
+        "members": [
+          "PENDING",
+          "SUCCESS",
+          "FAILED",
+          "MISSED"
+        ],
+        "numberOfBytes": "1"
+      },
+      "t_mapping(t_uint16,t_bytes32)": {
+        "label": "mapping(uint16 => bytes32)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint16,t_enum(SlotStatus)35818)": {
+        "label": "mapping(uint16 => enum ProjectDynoBuybackVault.SlotStatus)",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_uint16,t_uint256)": {
+        "label": "mapping(uint16 => uint256)",
+        "numberOfBytes": "32"
+      },
+      "t_uint16": {
+        "label": "uint16",
+        "numberOfBytes": "2"
+      }
+    },
+    "layoutVersion": "1.2",
+    "flat": true,
+    "namespaces": {
+      "erc7201:openzeppelin.storage.ReentrancyGuard": [
+        {
+          "contract": "ReentrancyGuardUpgradeable",
+          "label": "_status",
+          "type": "t_uint256",
+          "src": "@openzeppelin\\contracts-upgradeable\\utils\\ReentrancyGuardUpgradeable.sol:43",
+          "offset": 0,
+          "slot": "0"
+        }
+      ],
+      "erc7201:openzeppelin.storage.AccessControl": [
+        {
+          "contract": "AccessControlUpgradeable",
+          "label": "_roles",
+          "type": "t_mapping(t_bytes32,t_struct(RoleData)26_storage)",
+          "src": "@openzeppelin\\contracts-upgradeable\\access\\AccessControlUpgradeable.sol:62",
+          "offset": 0,
+          "slot": "0"
+        }
+      ],
+      "erc7201:openzeppelin.storage.Initializable": [
+        {
+          "contract": "Initializable",
+          "label": "_initialized",
+          "type": "t_uint64",
+          "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+          "offset": 0,
+          "slot": "0"
+        },
+        {
+          "contract": "Initializable",
+          "label": "_initializing",
+          "type": "t_bool",
+          "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+          "offset": 8,
+          "slot": "0"
+        }
+      ]
+    }
+  }
+}

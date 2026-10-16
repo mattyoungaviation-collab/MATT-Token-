@@ -104,6 +104,7 @@ app.use("/api/blackjack", createBlackjackRouter());
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
 app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
+app.get(["/project-dyno", "/project-dyno/", "/raffle", "/raffle/"], (_req, res) => res.sendFile(path.join(publicDir, "project-dyno.html")));
 app.get(["/dyno", "/dyno/"], (_req, res) => dynoRuntime.enabled ? res.sendFile(path.join(publicDir, "dyno.html")) : res.set("Cache-Control", "no-store").type("html").send(disabledDynoPage));
 app.use((req, res, next) => {
   if (req.path === "/flappy-matt" || req.path.startsWith("/flappy-matt/") || req.path.startsWith("/flappy-matt.")) {

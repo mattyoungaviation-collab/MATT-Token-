@@ -2,13 +2,13 @@
   "use strict";
   const path = location.pathname.replace(/\/+$/, "") || "/";
   const surfaces = {
-    "/":["home","MATT ECOSYSTEM"],"/hub":["hub","HUB"],"/poker":["poker","POKER"],"/slots":["slots","SLOTS"],
+    "/":["home","MATT ECOSYSTEM"],"/hub":["hub","HUB"],"/project-dyno":["dyno","PROJECT DYNO"],"/raffle":["dyno","PROJECT DYNO"],"/dyno":["dyno","DYNO ENTRY"],"/poker":["poker","POKER"],"/slots":["slots","SLOTS"],
     "/blackjack":["blackjack","BLACKJACK"],"/gift-boxes":["gift-boxes","GIFT BOXES"],
     "/liquidity":["liquidity","POOL MANAGER"],"/rock-paper-scissors":["rps","ROCK PAPER SCISSORS"]
   };
   const [surface,label] = surfaces[path] || ["ecosystem","MATT"];
   document.body.classList.add("matt-suite","matt-surface-"+surface);
-  const links = [["/","HOME"],["/hub","HUB"],["/poker","POKER"],["/slots","SLOTS"],["/blackjack","BLACKJACK"],["/gift-boxes","BOXES"],["/liquidity","LIQUIDITY"]];
+  const links = [["/","HOME"],["/project-dyno","DYNO"],["/hub","HUB"],["/poker","POKER"],["/slots","SLOTS"],["/blackjack","BLACKJACK"],["/gift-boxes","BOXES"],["/liquidity","LIQUIDITY"]];
   const rail = document.createElement("div");
   rail.className = "matt-suite-rail";
   rail.innerHTML =

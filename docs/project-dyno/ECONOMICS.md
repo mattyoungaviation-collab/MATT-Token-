@@ -1,0 +1,11 @@
+# Economics and accounting
+
+All values are integer base units. At 1,000 eligible tickets, direct receipts are 35,000 RON. Updated prizes total 12,148.8764 RON; next-Dyno transfer is 10,000 RON; direct-treasury remainder is 12,851.1236 RON. RON amounts are authoritative. Dollar labels use the owner’s $0.0712/RON planning rate and are not an oracle.
+
+Those prize and remainder figures are the current first-round draft, not a validator-enforced permanent fixture. Before opening, the five published RON prize quantities can be revised in the manifest; if a DRAFT was already created, cancel it and create a new one with a new ID/hash. The manifest requires exact decimal base-unit strings, positive strictly ascending draw amounts, the fixed 10,000 RON reserve and a prize-plus-reserve total no greater than 35,000 RON. The contract independently enforces positive ascending prizes and solvency. A cancelled draft's unused operations RON becomes a backed treasury claim, not ticket revenue. Publish the final five quantities and recalculated remainder before any real opening transaction.
+
+Current no-sale model: exactly 700,000 MATT is transferred into the manager for each ticket and **not swapped**. At 1,000 eligible tickets, the manager holds 700,000,000 MATT. A disqualified or cancelled ticket receives a backed claim for its original 35 RON and 700,000 MATT. After settlement, eligible-ticket MATT is allocated to the configured multisig, which claims it separately. A failed token transfer does not erase the liability.
+
+Direct RON receipts, held eligible MATT, RON refund liability, MATT refund liability, MATT treasury liability, operations, prize liability and failed RON treasury liability are separate buckets. Forced RON is unclassified excess. VRF refunds during a pending request return to operations. Settlement allocates held eligible MATT to the multisig and transforms direct RON receipts into prizes/reserve/remainder. Nothing sweeps unpaid claims.
+
+No ticket MATT is sold by DYNO, so sale proceeds and the former 168-hour buyback budget are zero. The 12,851.1236 RON direct remainder stays allocated to the multisig. Any personal sale of MATT or separately funded buyback would be outside this raffle and needs its own explicit decision, accounting and disclosure. No price outcome is promised.

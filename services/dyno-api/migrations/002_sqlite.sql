@@ -5,6 +5,10 @@ CREATE TABLE IF NOT EXISTS auth_records (
   expires_at INTEGER NOT NULL, PRIMARY KEY(scope,key_digest)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS auth_expiry ON auth_records(expires_at);
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+  scope TEXT NOT NULL, key_digest TEXT NOT NULL, window_start INTEGER NOT NULL,
+  request_count INTEGER NOT NULL, PRIMARY KEY(scope,key_digest)
+) STRICT;
 CREATE TABLE IF NOT EXISTS identity_observations (
   commitment TEXT PRIMARY KEY, discord_digest TEXT UNIQUE NOT NULL,
   ciphertext BLOB NOT NULL, updated_at INTEGER NOT NULL

@@ -8,7 +8,7 @@ const commitment = "0x" + "ab".repeat(32), hash = "0x" + "12".repeat(32);
 function fixture(overrides = {}) {
   const nowSeconds = 86400 * 20000 + 1000;
   const calls = [];
-  const values = { activeRoundId: 1n, getRoundStatus: { phase: 2n, eligibleCount: 998n }, checkoutPaused: false,
+  const values = { activeRoundId: 1n, getRoundStatus: { phase: 2n, eligibleCount: 998n }, mattActive: 698600000000000000000000000n, checkoutPaused: false,
     accountSuspended: false, identityVersion: 0n, walletForAccount: ZeroAddress, accountForWallet: ZeroHash,
     accountDayCount: 0n, walletDayCount: 0n, identitySigner: signer, ...overrides };
   const manager = Object.fromEntries(Object.entries(values).map(([name, value]) => [name, async (...args) => { calls.push({ name, args }); return value; }]));
@@ -21,7 +21,7 @@ test("all eligibility and global daily counters are read at one hashed block; fi
   const f = fixture(), state = await readPurchaseState(f.input);
   assert.equal(state.remaining, 3); assert.equal(state.capacityRemaining, 2); assert.equal(state.identityVersion, 1);
   assert.equal(state.blockHash, hash); assert.equal(state.blockNumber, "100"); assert.equal(state.advisory, true);
-  assert.equal(f.calls.length, 10);
+  assert.equal(f.calls.length, 11);
   for (const call of f.calls) assert.deepEqual(call.args.at(-1), { blockTag: 100 });
   assert.equal(f.calls.find(c => c.name === "accountDayCount").args[1], 20000);
   assert.throws(() => requirePurchasable(state, 3, signer), { code: "CAPACITY" });
@@ -59,6 +59,8 @@ test("chain mismatch, stale/future blocks, reorgs and malformed counters are rej
   const reorg = fixture(); reorg.input.provider.getBlock = async tag => tag === "latest" ? reorg.block : { ...reorg.block, hash: ZeroHash };
   await assert.rejects(readPurchaseState(reorg.input), { code: "CHAIN_STATE_CHANGED" });
   await assert.rejects(readPurchaseState(fixture({ walletDayCount: 4n }).input), { code: "MALFORMED_CHAIN_STATE" });
+  const oldManager = fixture(); delete oldManager.input.manager.mattActive;
+  await assert.rejects(readPurchaseState(oldManager.input)); // Old sale-model proxy cannot authorize new vouchers.
 });
 test("UTC midnight never uses the previous day's counters, and the new day reads fresh counters", async () => {
   const f = fixture(); f.input.nowSeconds = 86400 * 20001; f.block.timestamp = f.input.nowSeconds - 1;

@@ -5,7 +5,7 @@ window.MATT_DAILY_REWARDS_CONFIG = Object.freeze({
   rewardAmountMatt: "1000000",
   cooldownSeconds: 86400,
   xHandle: "crafting_skill",
-  xUrl: "https://x.com/crafting_skill",
+  xUrl: "https://x.com/crafting_skill?s=11",
   explorerAddressBase: "https://explorer.roninchain.com/address/",
   explorerTransactionBase: "https://explorer.roninchain.com/tx/",
   migrationNotice: "Daily rewards are temporarily paused while verified X OAuth rewards V2 is deployed."

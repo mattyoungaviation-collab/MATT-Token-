@@ -1,0 +1,64 @@
+{
+  "kind": "read-only-chain-and-disposable-fork-liquidity-check",
+  "observedAtUtc": "2026-10-13T01:45:49.588Z",
+  "productionReady": false,
+  "chainId": 2020,
+  "pool": "0xa517e05e96728e80284f2ae157ddf309449d7ce8",
+  "feeMillionths": 10000,
+  "current": {
+    "block": 62193581,
+    "hash": "0x9d703ba02607bd5ff9bbe6c4d58287ec58bb38b7a458af37c02668970b25ba78",
+    "activeLiquidity": "978047612579429951516957",
+    "poolMattBaseUnits": "2695495101134584701280492603",
+    "poolWronBaseUnits": "1057931521725955338091",
+    "spotTick": -104570,
+    "oneHourHistoryReadable": true
+  },
+  "laterReadOnlyRecheck": {
+    "block": 62193744,
+    "hash": "0x60f13a4bdeaf54b8bd781cc67bd1b79bd457285ec03265e9585a0a6520ad3af1",
+    "activeLiquidity": "978047612579429951516957",
+    "spotTick": -104570
+  },
+  "priorTested": {
+    "block": 62188916,
+    "hash": "0x06060ef84433e7778020a8682662e27d3883940aa0912393bed518f5e581346a",
+    "activeLiquidity": "2198241025945659722278523",
+    "poolMattBaseUnits": "2625470763578095349946265810",
+    "poolWronBaseUnits": "1187242609125774927447",
+    "spotTick": -104101
+  },
+  "forkProbes": {
+    "ticketMattBaseUnits": "700000000000000000000000",
+    "hourlyGapSeconds": 3600,
+    "referenceWindowSeconds": 3600,
+    "maximumSpotReferenceDeviationBps": 1000,
+    "exploratoryLiquidityFloor": "1",
+    "defaultSaleSlippageBps200": {
+      "completed": 0,
+      "firstFailure": "V3TooLittleReceived",
+      "referenceMinimumRonBaseUnits": "19975454924275547712",
+      "unprotectedLocalQuoteRonBaseUnits": "19856332288910598156"
+    },
+    "adjustableMaximumSaleSlippageBps1000": {
+      "completed": 100,
+      "boundedSimulationLimit": 100,
+      "firstTicketRonBaseUnits": "19856332288910598156",
+      "ticket100RonBaseUnits": "1804663823177172874",
+      "totalSaleRonBaseUnits": "794870359249274256154",
+      "firstFailureWithinLimit": null
+    },
+    "independentHourlyBuy": {
+      "ronInputBaseUnits": "136567200000000000000",
+      "mattDeliveredBaseUnits": "4582521232508648122131284",
+      "bootstrappedThreeSaleProbe": "passed only after a 200 RON local inventory buy moved the pool; not a current-state checkout capacity result"
+    }
+  },
+  "limitations": [
+    "No live swap, liquidity addition or asset movement occurred",
+    "100-sale path excludes other market participants, MEV and full 1000-ticket completion",
+    "A 10% slippage setting cannot prevent cumulative price deterioration",
+    "Exploratory liquidity floor of 1 is not a production-approved threshold",
+    "Future promised liquidity has not been demonstrated at this observed block"
+  ]
+}
