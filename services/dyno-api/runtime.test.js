@@ -7,8 +7,9 @@ test("production is disabled by default even with an unreadable or mock manifest
   assert.equal(selectDynoRuntime({ NODE_ENV: "production", DYNO_LIVE_ENABLED: "false" }).enabled, false);
 });
 test("invalid enable switches and disabled-production indexing fail closed", () => {
-  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED"]) assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", [key]: "TRUE" }), /must be true or false/);
+  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED", "DYNO_CHECKOUT_ENABLED"]) assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", [key]: "TRUE" }), /must be true or false/);
   assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", DYNO_INDEXER_ENABLED: "true" }), /cannot run/);
+  assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", DYNO_CHECKOUT_ENABLED: "true" }), /checkout cannot run/);
 });
 test("production read-only preview needs an explicit switch and never enables checkout", () => {
   const runtime = selectDynoRuntime({ NODE_ENV: "production", DYNO_LIVE_ENABLED: "false", DYNO_INDEXER_ENABLED: "false", DYNO_PUBLIC_READ_ONLY_ENABLED: "true" });

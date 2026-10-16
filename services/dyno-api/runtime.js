@@ -5,7 +5,7 @@ const { validateManifest } = require("../../scripts/dyno/validate-manifest");
 
 // A storage-only production release must not silently select local demo contracts.
 function selectDynoRuntime(env = process.env) {
-  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED"]) {
+  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED", "DYNO_CHECKOUT_ENABLED"]) {
     if (env[key] && !["true", "false"].includes(env[key])) throw new Error(`${key} must be true or false`);
   }
   const production = env.NODE_ENV === "production";
@@ -13,6 +13,7 @@ function selectDynoRuntime(env = process.env) {
   const readOnly = production && !enabled && env.DYNO_PUBLIC_READ_ONLY_ENABLED === "true";
   if (!enabled) {
     if (env.DYNO_INDEXER_ENABLED === "true") throw new Error("DYNO indexer cannot run while live DYNO is disabled");
+    if (env.DYNO_CHECKOUT_ENABLED === "true") throw new Error("DYNO checkout cannot run while live DYNO is disabled");
     if (!readOnly) return { enabled: false, readOnly: false, production: true, manifest: null };
     const filename = env.DYNO_MANIFEST || path.join(__dirname, "../../config/project-dyno.ronin.example.json");
     let manifest;

@@ -7,6 +7,31 @@ const { createDynoRouter } = require("./router");
 const { createMemoryStore } = require("./store");
 const { identityCommitment } = require("./identity");
 const local = require("../../config/project-dyno.local.json");
+const production = require("../../config/project-dyno.ronin.example.json");
+
+test("production voucher gate stays shut until explicitly enabled and chain OPEN", async t => {
+  const block = { number: 100, hash: "0x" + "12".repeat(32), timestamp: Math.floor(Date.now() / 1000) };
+  const provider = { send: async () => "0x7e4", getBlock: async () => block };
+  let phase = 1n;
+  const manager = { activeRoundId: async () => 1n, getRoundStatus: async () => ({ phase }), checkoutPaused: async () => false };
+  async function serve(checkoutEnabled) {
+    const store = createMemoryStore(); store.auth.kind = "sqlite-encrypted";
+    const app = express(); app.use("/api/dyno", createDynoRouter({ manifest: production, store, chainProvider: provider,
+      raffleManager: manager, env: { DYNO_CHECKOUT_ENABLED: String(checkoutEnabled) } }));
+    const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    return `http://127.0.0.1:${server.address().port}/api/dyno`;
+  }
+  const shut = await serve(false);
+  assert.equal((await (await fetch(shut + "/health")).json()).purchasesEnabled, false);
+  assert.equal((await (await fetch(shut + "/config")).json()).purchasesEnabled, false);
+  const denied = await fetch(shut + "/voucher", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+  assert.equal(denied.status, 503); assert.equal((await denied.json()).error, "DYNO_CHECKOUT_DISABLED");
+  const armed = await serve(true);
+  assert.equal((await (await fetch(armed + "/health")).json()).purchasesEnabled, false);
+  phase = 2n;
+  assert.equal((await (await fetch(armed + "/health")).json()).purchasesEnabled, true);
+});
 
 async function fixture(t, { mock = false } = {}) {
   const wallet = Wallet.createRandom(), signer = Wallet.createRandom();

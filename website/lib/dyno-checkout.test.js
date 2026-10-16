@@ -4,7 +4,7 @@ const ethers = require("ethers");
 const source = fs.readFileSync(path.join(__dirname, "../public/dyno.js"), "utf8");
 const wallet = "0x1111111111111111111111111111111111111111";
 const tick = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
-function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPrizes } = {}) {
+function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPrizes, purchasesEnabled } = {}) {
   const events = [], calls = [], routes = [], elements = new Map();
   const element = () => ({ textContent: "", innerHTML: "", disabled: false, style: {}, handlers: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, replaceChildren() {}, append() {},
@@ -14,7 +14,7 @@ function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPri
   const document = { getElementById: byId, createElement: element, createTextNode: text => text,
     querySelector: () => element(), querySelectorAll: selector => selector === "[data-quantity]" ? quantities : [] };
   const localRound = require("../../config/project-dyno.local.json").round;
-  const config = { mock, environment: "local", paymentModel: "RON_AND_HELD_MATT", chainId: 31337, matt: wallet, nftCollection: wallet, raffleProxy: wallet, round: mock ? localRound : null };
+  const config = { mock, environment: "local", paymentModel: "RON_AND_HELD_MATT", chainId: 31337, matt: wallet, nftCollection: wallet, raffleProxy: wallet, round: mock ? localRound : null, purchasesEnabled };
   const roundConfig = { ...localRound, matt: wallet, nftCollection: wallet, nftTokenId: "1358", ronPrizes: chainPrizes || localRound.ronPrizes };
   let releaseApproval;
   const approval = new Promise(resolve => { releaseApproval = resolve; });
@@ -69,6 +69,13 @@ test("zero allowance and local mock leave checkout disabled", async () => {
   const empty = fixture({ remaining: 0 }); await tick(); assert.equal(empty.byId("purchase").disabled, true);
   const demo = fixture({ mock: true }); await tick(); assert.equal(demo.byId("purchase").disabled, true);
   assert.match(demo.byId("quota").textContent, /Local demo/); assert.deepEqual(demo.events, []);
+});
+test("production checkout switch disables purchase even when the round is OPEN", async () => {
+  const f = fixture({ purchasesEnabled: false }); await tick();
+  assert.equal(f.byId("purchase").disabled, true);
+  f.byId("purchase").handlers.click(); await tick();
+  assert.deepEqual(f.events, []);
+  assert.match(f.byId("transaction-status").textContent, /checkout is not enabled/i);
 });
 test("live prize cards use chain configuration rather than stale deployment defaults", async () => {
   const chainPrizes = ["100", "200", "300", "400", "500"].map(value => String(BigInt(value) * 10n ** 18n));

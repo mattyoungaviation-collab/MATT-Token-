@@ -31,6 +31,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
   const manifest = providedManifest || JSON.parse(fs.readFileSync(selectedPath, "utf8"));
   const errors = validateManifest(manifest);
   if (errors.length) throw new Error(`Project DYNO manifest rejected: ${errors.join("; ")}`);
+  const checkoutEnabled = manifest.environment !== "production" || env.DYNO_CHECKOUT_ENABLED === "true";
   const db = store || createStore({ production: manifest.environment === "production", env, chainId: manifest.chainId });
   const authStore = providedAuthStore || db.auth || createMemoryAuthStore();
   const financialCache = new Map();
@@ -65,9 +66,27 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
   }
   router.use((req, res, next) => { if (/^\/(auth|link-status|quota|voucher)(\/|$)/.test(req.path)) res.set("Cache-Control", "no-store"); next(); });
 
-  router.get("/health", async (_req, res) => res.json({ ok: await db.health(), database: db.kind, authentication: authStore.kind, environment: manifest.environment, mock: manifest.mock }));
+  router.get("/health", async (_req, res) => {
+    let chainOpen = false;
+    if (checkoutEnabled && !manifest.mock && provider && manager) {
+      try {
+        const pinned = await atBlock({ provider, chainId: manifest.chainId, nowSeconds: Math.floor(now() / 1000) }, async at => {
+          const roundId = await manager.activeRoundId(at);
+          if (roundId === 0n) return { open: false };
+          const [round, paused] = await Promise.all([manager.getRoundStatus(roundId, at), manager.checkoutPaused(at)]);
+          return { open: round.phase === 2n && paused === false };
+        });
+        chainOpen = pinned.open;
+      } catch { /* An unavailable or stale chain never advertises purchases. */ }
+    }
+    const healthy = await db.health();
+    res.set("Cache-Control", "no-store").json({ ok: healthy, database: db.kind, authentication: authStore.kind,
+      environment: manifest.environment, mock: manifest.mock, enabled: !manifest.mock,
+      purchasesEnabled: healthy && checkoutEnabled && chainOpen });
+  });
   router.get("/config", (_req, res) => res.json({
     environment: manifest.environment, mock: manifest.mock, chainId: manifest.chainId, raffleProxy: manifest.raffleProxy,
+    purchasesEnabled: checkoutEnabled && !manifest.mock,
     buybackProxy: manifest.buybackProxy, matt: manifest.matt, mattDecimals: manifest.mattDecimals, nftCollection: manifest.nftCollection, nftTokenId: manifest.nftTokenId,
     prizeDelivery: manifest.prizeDelivery, paymentModel: manifest.paymentModel, nftChainId: manifest.nftChainId,
     round: manifest.mock ? manifest.round : null, disclosure: manifest.mock ? "LOCAL MOCK DATA — purchases are disabled." : "Round prices and prizes must be read from the live contract; ticket MATT is held, not sold, and disqualified/cancelled tickets can claim both original assets.",
@@ -160,6 +179,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
     catch (error) { stateError(res, error); }
   });
   router.post("/voucher", express.json({ limit: "12kb" }), async (req, res) => {
+    if (!checkoutEnabled) return res.status(503).json({ error: "DYNO_CHECKOUT_DISABLED", purchasesEnabled: false });
     if (limitRequest(req, res, "voucher-ip", clientBucket(req), 120)) return;
     const session = sessionFor(req);
     if (session && limitRequest(req, res, "voucher-wallet", session.wallet.toLowerCase(), 15)) return;

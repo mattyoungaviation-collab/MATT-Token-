@@ -78,7 +78,7 @@
       el.textContent = `NFT delivery: ${labels[delivery.status] || "verification unavailable"}.`;
     }
   }
-  function updateQuantity(){if(!state.config)return; const q=state.quantity, terms=state.config.mock?state.config.round:state.round?.config; $("ron-total").textContent=terms?`${formatUnits(BigInt(terms.ticketRon)*BigInt(q))} RON`:"Unavailable"; $("matt-total").textContent=terms?`${formatUnits(BigInt(terms.ticketMatt)*BigInt(q))} MATT`:"Unavailable"; document.querySelectorAll("[data-quantity]").forEach(button=>{button.classList.toggle("active",Number(button.dataset.quantity)===q);button.disabled=state.busy;}); $("connect-wallet").disabled=state.busy; $("verify-discord").disabled=state.busy; $("purchase").disabled=state.busy||state.config.mock||state.round?.phase!=="OPEN"||!state.round?.config||!state.quota||!!state.quota.blockedReason||q>state.quota.remaining||q>state.quota.capacityRemaining;}
+  function updateQuantity(){if(!state.config)return; const q=state.quantity, terms=state.config.mock?state.config.round:state.round?.config; $("ron-total").textContent=terms?`${formatUnits(BigInt(terms.ticketRon)*BigInt(q))} RON`:"Unavailable"; $("matt-total").textContent=terms?`${formatUnits(BigInt(terms.ticketMatt)*BigInt(q))} MATT`:"Unavailable"; document.querySelectorAll("[data-quantity]").forEach(button=>{button.classList.toggle("active",Number(button.dataset.quantity)===q);button.disabled=state.busy;}); $("connect-wallet").disabled=state.busy; $("verify-discord").disabled=state.busy; $("purchase").disabled=state.busy||state.config.mock||state.config.purchasesEnabled===false||state.round?.phase!=="OPEN"||!state.round?.config||!state.quota||!!state.quota.blockedReason||q>state.quota.remaining||q>state.quota.capacityRemaining;}
   async function refreshQuota() {
     state.quota = null; updateQuantity();
     if (state.config?.mock) { $("quota").textContent = "Local demo · no purchases"; return; }
@@ -94,6 +94,7 @@
   function discord(){if(!state.wallet)throw new Error("Connect and authenticate your wallet first.");location.href=`/api/discord/start?wallet=${encodeURIComponent(state.wallet)}`;}
   async function purchase(){
     if(state.config?.mock)throw new Error("Purchasing is disabled in the clearly labeled local mock.");
+    if(state.config?.purchasesEnabled===false)throw new Error("Project DYNO checkout is not enabled.");
     if(!state.wallet)throw new Error("Connect and authenticate your wallet first.");
     if(state.busy)return;
     state.busy=true; const quantity=state.quantity; updateQuantity();
