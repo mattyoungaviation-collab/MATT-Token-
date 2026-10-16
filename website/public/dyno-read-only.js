@@ -21,7 +21,7 @@
     $("progress").textContent = `${Number(round.eligibleCount).toLocaleString()} / 1,000`;
     $("freshness").textContent = round.chainBlock ? `Ronin block ${round.chainBlock} · unfinalized` : "Chain state unavailable";
     $("ticket-price").textContent = `${units(round.config.ticketRon)} RON + ${units(round.config.ticketMatt)} MATT`;
-    $("raffle-link").href = `https://app.roninchain.com/address/${encodeURIComponent(config.raffleProxy)}`;
+    $("raffle-link").href = `https://explorer.roninchain.com/address/${encodeURIComponent(config.raffleProxy)}`;
     $("prizes").replaceChildren(...round.config.ronPrizes.map((amount, index) => {
       const article = document.createElement("article"), label = document.createElement("small"), value = document.createElement("strong");
       label.textContent = `DRAW ${index + 1}`; value.textContent = `${units(amount)} RON`;
