@@ -14,6 +14,7 @@ const { installSlotsPnlIndex } = require("./slots-pnl-index");
 const { installWalletProfiles } = require("./wallet-profiles");
 const { createBlackjackRouter } = require("./lib/blackjack-routes");
 const { createDynoRouter } = require("../services/dyno-api/router");
+const { createReadOnlyDynoRouter } = require("../services/dyno-api/read-only-router");
 const { selectDynoRuntime, createDisabledDynoRouter, disabledDynoPage } = require("../services/dyno-api/runtime");
 const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 const { createLiquidityMarketRouter } = require("./liquidity-market-routes");
@@ -79,7 +80,9 @@ const dynoRuntime = selectDynoRuntime();
 const dynoStore = createDynoStore({ production: dynoRuntime.production, chainId: dynoRuntime.manifest?.chainId || null });
 if (dynoRuntime.production && dynoStore.auth?.kind !== "sqlite-encrypted") throw new Error("Project DYNO production requires encrypted persistent authentication storage");
 const discordAuth = installDiscordAuth(app, { authStore: dynoStore.auth });
-app.use("/api/dyno", dynoRuntime.enabled ? createDynoRouter({ manifest: dynoRuntime.manifest, getDiscordSession: discordAuth.getDiscordSession, store: dynoStore }) : createDisabledDynoRouter(dynoStore));
+app.use("/api/dyno", dynoRuntime.enabled
+  ? createDynoRouter({ manifest: dynoRuntime.manifest, getDiscordSession: discordAuth.getDiscordSession, store: dynoStore })
+  : dynoRuntime.readOnly ? createReadOnlyDynoRouter({ manifest: dynoRuntime.manifest }) : createDisabledDynoRouter(dynoStore));
 if (process.env.DYNO_INDEXER_ENABLED === "true") {
   const manifest = dynoRuntime.manifest;
   if (manifest.mock || !process.env[manifest.rpcUrlEnv]) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
@@ -105,7 +108,10 @@ app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin
 app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
 app.get(["/project-dyno", "/project-dyno/", "/raffle", "/raffle/"], (_req, res) => res.sendFile(path.join(publicDir, "project-dyno.html")));
-app.get(["/dyno", "/dyno/"], (_req, res) => dynoRuntime.enabled ? res.sendFile(path.join(publicDir, "dyno.html")) : res.set("Cache-Control", "no-store").type("html").send(disabledDynoPage));
+app.get(["/dyno", "/dyno/"], (_req, res) => dynoRuntime.enabled
+  ? res.sendFile(path.join(publicDir, "dyno.html"))
+  : dynoRuntime.readOnly ? res.set("Cache-Control", "no-store").sendFile(path.join(publicDir, "dyno-read-only.html"))
+    : res.set("Cache-Control", "no-store").type("html").send(disabledDynoPage));
 app.use((req, res, next) => {
   if (req.path === "/flappy-matt" || req.path.startsWith("/flappy-matt/") || req.path.startsWith("/flappy-matt.")) {
     return res.status(404).send("Not found");

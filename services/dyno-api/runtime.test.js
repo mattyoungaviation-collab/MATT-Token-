@@ -3,12 +3,18 @@ const test = require("node:test"), assert = require("node:assert/strict"), expre
 const { selectDynoRuntime, createDisabledDynoRouter, disabledDynoPage } = require("./runtime");
 
 test("production is disabled by default even with an unreadable or mock manifest", () => {
-  assert.deepEqual(selectDynoRuntime({ NODE_ENV: "production", DYNO_MANIFEST: "not-a-real-file" }), { enabled: false, production: true, manifest: null });
+  assert.deepEqual(selectDynoRuntime({ NODE_ENV: "production", DYNO_MANIFEST: "not-a-real-file" }), { enabled: false, readOnly: false, production: true, manifest: null });
   assert.equal(selectDynoRuntime({ NODE_ENV: "production", DYNO_LIVE_ENABLED: "false" }).enabled, false);
 });
 test("invalid enable switches and disabled-production indexing fail closed", () => {
-  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED"]) assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", [key]: "TRUE" }), /must be true or false/);
+  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED"]) assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", [key]: "TRUE" }), /must be true or false/);
   assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", DYNO_INDEXER_ENABLED: "true" }), /cannot run/);
+});
+test("production read-only preview needs an explicit switch and never enables checkout", () => {
+  const runtime = selectDynoRuntime({ NODE_ENV: "production", DYNO_LIVE_ENABLED: "false", DYNO_INDEXER_ENABLED: "false", DYNO_PUBLIC_READ_ONLY_ENABLED: "true" });
+  assert.equal(runtime.enabled, false); assert.equal(runtime.readOnly, true);
+  assert.equal(runtime.manifest.raffleProxy, "0x519aa3D0479501d4630dCFa7d9D8691577702776");
+  assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", DYNO_PUBLIC_READ_ONLY_ENABLED: "true", DYNO_INDEXER_ENABLED: "true" }), /cannot run/);
 });
 test("live production requires an explicit nonmock production manifest", () => {
   assert.throws(() => selectDynoRuntime({ NODE_ENV: "production", DYNO_LIVE_ENABLED: "true" }), /explicit production manifest/);

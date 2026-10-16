@@ -5,14 +5,23 @@ const { validateManifest } = require("../../scripts/dyno/validate-manifest");
 
 // A storage-only production release must not silently select local demo contracts.
 function selectDynoRuntime(env = process.env) {
-  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED"]) {
+  for (const key of ["DYNO_LIVE_ENABLED", "DYNO_INDEXER_ENABLED", "DYNO_PUBLIC_READ_ONLY_ENABLED"]) {
     if (env[key] && !["true", "false"].includes(env[key])) throw new Error(`${key} must be true or false`);
   }
   const production = env.NODE_ENV === "production";
   const enabled = !production || env.DYNO_LIVE_ENABLED === "true";
+  const readOnly = production && !enabled && env.DYNO_PUBLIC_READ_ONLY_ENABLED === "true";
   if (!enabled) {
     if (env.DYNO_INDEXER_ENABLED === "true") throw new Error("DYNO indexer cannot run while live DYNO is disabled");
-    return { enabled: false, production: true, manifest: null };
+    if (!readOnly) return { enabled: false, readOnly: false, production: true, manifest: null };
+    const filename = env.DYNO_MANIFEST || path.join(__dirname, "../../config/project-dyno.ronin.example.json");
+    let manifest;
+    try { manifest = JSON.parse(fs.readFileSync(filename, "utf8")); }
+    catch { throw new Error("Project DYNO read-only manifest could not be loaded"); }
+    if (manifest.environment !== "production" || manifest.mock !== false || validateManifest(manifest, { production: true }).length) {
+      throw new Error("Project DYNO read-only manifest validation failed");
+    }
+    return { enabled: false, readOnly: true, production: true, manifest };
   }
   if (production && !env.DYNO_MANIFEST) throw new Error("Live Project DYNO requires an explicit production manifest");
   const filename = env.DYNO_MANIFEST || path.join(__dirname, "../../config/project-dyno.local.json");
@@ -26,7 +35,7 @@ function selectDynoRuntime(env = process.env) {
       if (!key || !env[key]) throw new Error("Live Project DYNO required private configuration is missing");
     }
   }
-  return { enabled: true, production, manifest };
+  return { enabled: true, readOnly: false, production, manifest };
 }
 
 function createDisabledDynoRouter(store) {
