@@ -65,7 +65,38 @@
     }
     details.append(summary, grid); host.replaceChildren(details);
   }
-  async function renderLedger() { const result=await json("/api/dyno/ledger?limit=50"); const body=$("ledger-body"); if(!result.rows.length){body.innerHTML='<tr><td colspan="4">No indexed Project DYNO events yet.</td></tr>';return;} body.replaceChildren(...result.rows.map(row=>{const tr=document.createElement("tr"); for(const value of [row.block_number,row.event_name,short(`0x${row.tx_hash}`),JSON.stringify(row.payload)]){const td=document.createElement("td");td.textContent=value;tr.append(td);}return tr;})); }
+  function ledgerSummary(row) {
+    const p = row.payload || {};
+    try {
+      if (row.event_name === "TicketPurchased") return `Ticket #${p.ticketId} · ${short(p.wallet)} · ${formatUnits(p.directRon)} RON`;
+      if (row.event_name === "RoundOpened") return `Round #${p.roundId} · ${formatUnits(p.ticketRon)} RON + ${formatUnits(p.ticketMatt)} MATT per ticket`;
+      if (row.event_name === "RefundCredited") return `Ticket #${p.ticketId} · ${formatUnits(p.amount)} RON owed`;
+      if (row.event_name === "WinnerAssigned") return `Draw ${Number(p.prizeIndex) + 1} · ticket #${p.ticketId}`;
+    } catch { /* Keep malformed indexed data visible in the expandable record. */ }
+    return Object.entries(p).filter(([key]) => /^(roundId|ticketId|prizeIndex)$/.test(key)).map(([key, value]) => `${key}: ${value}`).join(" · ") || "View event data";
+  }
+  async function renderLedger() {
+    const result = await json("/api/dyno/ledger?limit=50"), body = $("ledger-body");
+    if (!result.rows.length) { body.innerHTML = '<tr><td colspan="4">No indexed Project DYNO events yet.</td></tr>'; return; }
+    body.replaceChildren(...result.rows.map(row => {
+      const tr = document.createElement("tr");
+      const block = document.createElement("td"), event = document.createElement("td"), tx = document.createElement("td"), detail = document.createElement("td");
+      block.textContent = row.block_number;
+      event.textContent = row.event_name.replace(/([a-z])([A-Z])/g, "$1 $2");
+      const hash = String(row.tx_hash || "").replace(/^0x/, "");
+      if (/^[a-fA-F0-9]{64}$/.test(hash)) {
+        const link = document.createElement("a");
+        link.href = `https://explorer.roninchain.com/tx/0x${hash}`;
+        link.target = "_blank"; link.rel = "noopener noreferrer"; link.className = "ledger-link";
+        link.textContent = short(`0x${hash}`); tx.append(link);
+      } else tx.textContent = "Unavailable";
+      const summary = document.createElement("span"), raw = document.createElement("details"), toggle = document.createElement("summary"), code = document.createElement("code");
+      summary.textContent = ledgerSummary(row); raw.className = "ledger-detail";
+      toggle.textContent = "Raw event data"; code.textContent = JSON.stringify(row.payload || {});
+      raw.append(toggle, code); detail.append(summary, raw); tr.append(block, event, tx, detail);
+      return tr;
+    }));
+  }
   async function renderNftDelivery() {
     if (!state.roundId) return;
     const delivery = await json(`/api/dyno/prize-delivery?roundId=${encodeURIComponent(state.roundId)}`);

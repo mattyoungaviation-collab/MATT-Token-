@@ -135,3 +135,35 @@
 @media (max-width: 600px) {
   .footer-social { margin-left: 0; }
 }
+
+.hero-entry {
+  display: inline-flex;
+  margin-top: 24px;
+  padding: 12px 17px;
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  color: #06101d;
+  background: var(--cyan);
+  font-size: .82rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+.hero-entry:focus-visible,
+.nft-traits summary:focus-visible,
+.ledger-detail summary:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+#checkout { scroll-margin-top: 88px; }
+.nft-traits { width: 100%; border-top: 1px solid #ffffff16; }
+.nft-traits summary {
+  padding: 15px 22px;
+  color: var(--cyan);
+  cursor: pointer;
+  font-size: .72rem;
+  font-weight: 850;
+}
+.nft-traits[open] summary { margin-bottom: 8px; }
+.ledger-detail summary { color: var(--cyan); cursor: pointer; margin-top: 6px; }
+.ledger-detail code { display: block; margin-top: 8px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ledger-link { color: var(--cyan); white-space: nowrap; }
+@media (max-width: 600px) {
+  .nft-traits summary { padding-inline: 16px; }
+}
