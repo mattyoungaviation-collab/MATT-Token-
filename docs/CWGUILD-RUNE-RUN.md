@@ -1,6 +1,6 @@
 # CWGUILD Rune Run
 
-Rune Run is a contractless, hold-to-play memory game on Ronin mainnet. Players do not wager, transfer, or approve CWGUILD. The server checks a public token balance, verifies wallet ownership with a plain-text signature, issues a six-rune sequence, then reveals a randomized recall rule after the preview. A successful player has eight seconds to answer and can earn one prize per wallet per UTC day from a dedicated operator wallet.
+Rune Run is a contractless, hold-to-play memory game on Ronin mainnet. Players do not wager, transfer, or approve CWGUILD. The server checks a public token balance, verifies wallet ownership with a plain-text signature, then runs a five-round press-your-luck ladder. After each win, the player must either Cash Out or explicitly accept the next round. Rewards remain provisional and unpaid until Cash Out; a wrong answer or timeout forfeits the entire provisional reward. Each wallet gets one ladder attempt per UTC day.
 
 ## Verified token
 
@@ -23,7 +23,7 @@ Keep `CWGUILD_LIVE_ENABLED=false` until all of these are complete:
 1. Create a dedicated reward-only Ronin wallet. Do not reuse an owner, treasury, deployer, or personal wallet.
 2. Put only the pilot reward budget and enough RON for gas in that wallet.
 3. Store its private key only in the host's encrypted secret manager as `CWGUILD_OPERATOR_PRIVATE_KEY`.
-4. Choose explicit `CWGUILD_MIN_BALANCE` and `CWGUILD_PRIZE_AMOUNT` values.
+4. Choose explicit `CWGUILD_MIN_BALANCE` and base-round `CWGUILD_PRIZE_AMOUNT` values.
 5. Set `CWGUILD_STATE_FILE` to persistent private storage, such as `/var/data/cwguild-arcade-state.json` on Render.
 6. Confirm the page displays the correct reward wallet and pool balance.
 7. Turn on `CWGUILD_LIVE_ENABLED=true`, complete a low-value test run, and verify the transaction on Ronin Explorer.
@@ -34,7 +34,19 @@ The service refuses to start live mode without a persistent state file, payout s
 
 Rune Run has a hard lifetime payout ceiling of **2,000,000 CWGUILD**. Confirmed, submitted, and in-flight claims all count against the ceiling, so concurrent winners cannot push the game over the limit.
 
-The server provides wallet signatures, short-lived challenges, short-lived game sessions, request throttling, one prize per wallet per UTC day, persistent claim records, serialized transaction nonces, and at-most-once payout tracking. The post-pattern recall round randomizes both the starting position and direction, and its eight-second server-enforced timer makes a simple screen recording insufficient on its own.
+The reward ladder uses the configured base-round prize at these fixed multipliers:
+
+| Round | Signal length | Timer | Total provisional reward |
+| --- | ---: | ---: | ---: |
+| 1 | 6 | 8 seconds | 1× base |
+| 2 | 7 | 7 seconds | 3× base |
+| 3 | 8 | 6 seconds | 7× base |
+| 4 | 9 | 5 seconds | 15× base |
+| 5 | 10 | 4 seconds | 30× base |
+
+With a 100 CWGUILD base prize, the cash-out choices are 100, 300, 700, 1,500, and 3,000 CWGUILD. Choosing the next round is an explicit risk action and does not transfer player tokens.
+
+The server provides wallet signatures, short-lived challenges, server-timed rounds, request throttling, one ladder attempt per wallet per UTC day, persistent run and claim records, serialized transaction nonces, and at-most-once payout tracking. Every post-pattern recall round randomizes both the starting position and direction. The sequence grows while the server-enforced timer shrinks, making a simple screen recording insufficient on its own.
 
 These controls do not make a browser memory game bot-proof, cannot prevent all recording or automation, and do not prevent someone from moving a qualifying token balance between wallets. Use a small, capped pilot reward wallet. For material rewards, add identity/allowlist controls or wait for a reviewed on-chain design before enabling live payouts.
 

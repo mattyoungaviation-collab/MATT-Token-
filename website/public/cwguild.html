@@ -5,12 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#081411">
   <title>CWGUILD Rune Run | Contractless Ronin Skill Game</title>
-  <meta name="description" content="Hold CWGUILD, complete a daily memory run, and earn a server-paid CWGUILD prize on Ronin—without wagering or token approvals.">
+  <meta name="description" content="Climb a five-round CWGUILD memory ladder. Cash out a provisional reward or risk it on a harder round—without wagering or token approvals.">
   <link rel="icon" href="/assets/matt-logo-512.png">
-  <link rel="stylesheet" href="/cwguild.css?v=2">
+  <link rel="stylesheet" href="/cwguild.css?v=3">
   <style>
     @media (min-width: 851px) {.status-grid{grid-template-columns:repeat(5,1fr)}}
     .recall-rule{width:min(640px,100%);margin:0 auto 22px;padding:14px 18px;border:1px solid #f5bc5b88;border-radius:12px;background:#251b0d;color:#ffe1a2;text-align:center;font-weight:950;letter-spacing:.06em}
+    .ladder-card{margin:0 auto 24px;width:min(1000px,calc(100% - 32px));padding:22px;border:1px solid #ffffff1a;border-radius:18px;background:#0b1714}
+    .ladder-card h2{margin:0 0 6px;font-size:clamp(22px,4vw,34px)}.ladder-card>p{margin:0 0 18px;color:#aabbb5}
+    .ladder{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0;margin:0;list-style:none}.ladder li{display:grid;gap:6px;padding:14px;border:1px solid #ffffff14;border-radius:12px;background:#07110f}.ladder li.current{border-color:#f5bc5b;background:#211a0e}.ladder b{color:#f5bc5b}.ladder span{font-size:12px;color:#9fb0aa}.ladder strong{font-size:14px}
+    .decision-panel{width:min(680px,100%);margin:0 auto 22px;padding:22px;border:2px solid #f5bc5b;border-radius:16px;background:#211a0e;text-align:center}.decision-panel[hidden]{display:none}.decision-panel span{font-size:12px;font-weight:900;letter-spacing:.14em;color:#f5bc5b}.decision-panel strong{display:block;margin:8px 0;font-size:clamp(28px,6vw,48px)}.decision-panel p{margin:0 0 18px;color:#ffe1a2}.decision-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.decision-actions button{min-height:54px;border:1px solid #f5bc5b;border-radius:10px;font-weight:950;cursor:pointer}.decision-actions button:disabled{opacity:.55}.cash-out{background:#f5bc5b;color:#111}.risk-next{background:#57171b;color:#fff;border-color:#ff6872!important}
+    @media(max-width:760px){.ladder{grid-template-columns:1fr}.ladder li{grid-template-columns:auto 1fr auto;align-items:center}.decision-actions{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -25,8 +30,8 @@
       <div class="hero-copy">
         <p class="eyebrow">CONTRACTLESS SKILL ARCADE</p>
         <h1>RUNE<br><span>RUN</span></h1>
-        <p class="lead">Remember the six-rune signal. After it disappears, the server reveals a random starting point and direction. Solve the recall round before the clock runs out—your tokens never leave your wallet.</p>
-        <div class="trust-pills" aria-label="Game safety details"><span>0 CWGUILD wager</span><span>No token approval</span><span>8-second recall</span><span>One prize / UTC day</span></div>
+        <p class="lead">Climb five increasingly brutal memory rounds. After every win, cash out your provisional reward or explicitly risk all of it on a longer, faster signal. Lose or time out and it drops to zero.</p>
+        <div class="trust-pills" aria-label="Game safety details"><span>0 CWGUILD wager</span><span>No token approval</span><span>4–8 second recall</span><span>One attempt / UTC day</span></div>
       </div>
       <div class="hero-mark" aria-hidden="true"><div>ᚱ</div><span>CW</span></div>
     </section>
@@ -34,9 +39,21 @@
     <section class="status-grid" aria-label="Rune Run status">
       <article><span>YOUR CWGUILD</span><strong id="wallet-balance">Connect wallet</strong><small id="wallet-address">Not connected</small></article>
       <article><span>HOLD TO ENTER</span><strong id="minimum-balance">—</strong><small>Balance check only</small></article>
-      <article class="prize"><span>DAILY PRIZE</span><strong id="prize-amount">—</strong><small id="prize-mode">Checking reward pool</small></article>
+      <article class="prize"><span>TOP CASH OUT</span><strong id="prize-amount">—</strong><small id="prize-mode">Checking reward pool</small></article>
       <article><span>REWARD POOL</span><strong id="pool-balance">—</strong><small id="pool-address">Server-paid wallet</small></article>
       <article><span>PAYOUT CEILING</span><strong id="max-payout">—</strong><small id="payout-remaining">Lifetime safety cap</small></article>
+    </section>
+
+    <section class="ladder-card" aria-labelledby="ladder-title">
+      <p class="eyebrow">PRESS YOUR LUCK</p><h2 id="ladder-title">The reward ladder</h2>
+      <p>Each amount is provisional until Cash Out. Accepting the next round risks the entire amount already earned.</p>
+      <ol class="ladder" id="ladder" aria-label="Round difficulty and rewards">
+        <li><b>R1</b><span>6 signals · 8s</span><strong>100 CWGUILD</strong></li>
+        <li><b>R2</b><span>7 signals · 7s</span><strong>300 CWGUILD</strong></li>
+        <li><b>R3</b><span>8 signals · 6s</span><strong>700 CWGUILD</strong></li>
+        <li><b>R4</b><span>9 signals · 5s</span><strong>1,500 CWGUILD</strong></li>
+        <li><b>R5</b><span>10 signals · 4s</span><strong>3,000 CWGUILD</strong></li>
+      </ol>
     </section>
 
     <section class="game-shell">
@@ -45,9 +62,7 @@
         <div class="timer" aria-label="Time remaining"><span>TIME</span><strong id="timer">—</strong></div>
       </div>
 
-      <div class="sequence" id="sequence" aria-label="Six-rune progress">
-        <i></i><i></i><i></i><i></i><i></i><i></i>
-      </div>
+      <div class="sequence" id="sequence" aria-label="Rune progress"></div>
 
       <div class="recall-rule" id="recall-rule" role="status" aria-live="assertive" hidden></div>
 
@@ -59,6 +74,12 @@
       </div>
 
       <p class="game-message" id="game-message" role="status" aria-live="polite">Connect a Ronin wallet holding CWGUILD. Rune Run only requests a sign-in signature.</p>
+      <div class="decision-panel" id="decision-panel" hidden>
+        <span id="decision-round">ROUND CLEARED</span>
+        <strong id="pending-reward">—</strong>
+        <p>UNPAID REWARD · THE NEXT LOSS OR TIMEOUT FORFEITS ALL OF IT</p>
+        <div class="decision-actions"><button class="cash-out" id="cash-out" type="button">CASH OUT</button><button class="risk-next" id="risk-next" type="button">I ACCEPT THE RISK</button></div>
+      </div>
       <button class="start-button" id="start-game" type="button" disabled>CONNECT RONIN TO PLAY</button>
       <a class="transaction" id="transaction-link" href="#" target="_blank" rel="noopener" hidden>VIEW PRIZE TRANSACTION ↗</a>
     </section>
@@ -68,20 +89,20 @@
       <ol>
         <li><b>01</b><span><strong>Hold</strong> The server reads your public CWGUILD balance on Ronin.</span></li>
         <li><b>02</b><span><strong>Sign</strong> A plain-text wallet signature proves the connected address is yours.</span></li>
-        <li><b>03</b><span><strong>Run</strong> Memorize the signal, then follow the server's random start position and direction in eight seconds.</span></li>
-        <li><b>04</b><span><strong>Win</strong> The operator wallet sends the configured prize directly to the winner.</span></li>
+        <li><b>03</b><span><strong>Run</strong> Memorize a longer signal each round, then follow the random start position and direction before the shrinking timer ends.</span></li>
+        <li><b>04</b><span><strong>Decide</strong> Cash Out to request payment, or explicitly accept the next round and risk the entire unpaid reward.</span></li>
       </ol>
     </section>
 
     <section class="disclosure">
       <div><span>CENTRALIZED PAYOUT DISCLOSURE</span><strong>Verify the wallet, token, and transaction.</strong></div>
-      <p>Rune Run does not use a game contract. Eligibility and results are checked by this server, and prizes are sent from a project-controlled operator wallet. Total Rune Run payouts stop at 2,000,000 CWGUILD. The operator can pause payouts, and a server outage can interrupt a run. Never approve CWGUILD for this game—Rune Run does not need an allowance.</p>
+      <p>Rune Run does not use a game contract. Eligibility and results are checked by this server, and cashed-out rewards are sent from a project-controlled operator wallet. On-screen rewards are provisional and unpaid until Cash Out; accepting another round puts the entire provisional reward at risk, and a loss or timeout forfeits it. Each wallet gets one ladder attempt per UTC day. Total Rune Run payouts stop at 2,000,000 CWGUILD. The operator can pause payouts, and a server outage can interrupt a run. Never approve CWGUILD for this game—Rune Run does not need an allowance.</p>
       <div class="addresses"><a id="token-link" href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener"><span>CWGUILD TOKEN</span><code>0x58DB…2F7b4</code></a><a id="operator-link" href="#" target="_blank" rel="noopener"><span>REWARD WALLET</span><code id="operator-address">Not configured</code></a></div>
     </section>
   </main>
 
   <footer><a href="/hub">← MATT HUB</a><span>CWGUILD Rune Run on Ronin</span><a href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener">VERIFY TOKEN ↗</a></footer>
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
-  <script src="/cwguild.js?v=2"></script>
+  <script src="/cwguild.js?v=3"></script>
 </body>
 </html>

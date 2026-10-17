@@ -23,9 +23,19 @@ test("CWGUILD game uses wallet signatures and never requests an ERC-20 approval"
 });
 
 test("CWGUILD game uses a timed post-pattern recall rule and publishes the payout ceiling", () => {
-  assert.match(html, /8-second recall/i);
+  assert.match(html, /4–8 second recall/i);
   assert.match(html, /PAYOUT CEILING/i);
   assert.match(html, /2,000,000 CWGUILD/i);
   assert.match(script, /\/game\/recall/);
   assert.match(script, /START AT SIGNAL/);
+});
+
+test("CWGUILD ladder requires an explicit risk decision and discloses forfeiture", () => {
+  assert.match(html, /I ACCEPT THE RISK/i);
+  assert.match(html, /provisional and unpaid until Cash Out/i);
+  assert.match(html, /loss or timeout forfeits it/i);
+  assert.match(html, /One attempt \/ UTC day/i);
+  assert.match(script, /\/game\/next/);
+  assert.match(script, /\/game\/cashout/);
+  assert.match(script, /state\.game\.sequenceLength/);
 });

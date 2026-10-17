@@ -3,9 +3,19 @@
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
-  const state = { provider: null, signer: null, wallet: null, config: null, game: null, recall: null, moves: [], phase: "idle", timer: null };
-  const runeButtons = $$("[data-rune]");
-  const progress = $$("#sequence i");
+  const state = {
+    provider: null,
+    signer: null,
+    wallet: null,
+    config: null,
+    runId: null,
+    game: null,
+    recall: null,
+    moves: [],
+    phase: "idle",
+    timer: null
+  };
+  const runeButtons = $$('[data-rune]');
 
   function formatToken(raw, maximumFractionDigits = 2) {
     if (raw == null) return "—";
@@ -17,6 +27,21 @@
     return address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Not connected";
   }
 
+  function runStorageKey() {
+    return state.wallet ? `cwguild-run:${new Date().toISOString().slice(0, 10)}:${state.wallet.toLowerCase()}` : null;
+  }
+
+  function rememberRun(runId) {
+    state.runId = runId;
+    const key = runStorageKey();
+    if (key && runId) localStorage.setItem(key, runId);
+  }
+
+  function restoreRun() {
+    const key = runStorageKey();
+    state.runId = key ? localStorage.getItem(key) : null;
+  }
+
   function setMessage(message, tone = "") {
     $("#game-message").textContent = message;
     $("#game-message").className = `game-message ${tone}`.trim();
@@ -25,7 +50,7 @@
   function friendly(error) {
     const message = String(error?.shortMessage || error?.reason || error?.message || error || "Rune Run request failed.");
     if (/user rejected|user denied|4001/i.test(message)) return "Wallet signature cancelled. No funds moved.";
-    if (/already earned/i.test(message)) return "This wallet already earned today's prize. Come back after 00:00 UTC.";
+    if (/already used/i.test(message)) return "This wallet already used today's ladder attempt. Come back after 00:00 UTC.";
     if (/payout ceiling/i.test(message)) return "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached.";
     if (/hold at least/i.test(message)) return message;
     return message.replace(/^Error:\s*/i, "").slice(0, 220);
@@ -72,9 +97,12 @@
       await state.provider.send("eth_requestAccounts", []);
       state.signer = await state.provider.getSigner();
       state.wallet = await state.signer.getAddress();
+      restoreRun();
       button.textContent = short(state.wallet);
       await loadStatus();
-      setMessage(state.config.eligible ? "Wallet ready. Start a run and sign the plain-text entry message." : `This wallet needs ${formatToken(state.config.minimumBalance)} to enter.`);
+      if (!state.config.eligible) setMessage(`This wallet needs ${formatToken(state.config.minimumBalance)} to enter.`);
+      else if (state.config.run?.status === "decision" && state.runId) showDecision(state.config.run);
+      else if (!state.config.run) setMessage("Wallet ready. Sign in to start today's one-attempt ladder.");
     } catch (error) {
       state.wallet = null;
       state.signer = null;
@@ -89,18 +117,27 @@
   async function loadStatus() {
     const query = state.wallet ? `?wallet=${encodeURIComponent(state.wallet)}` : "";
     state.config = await api(`/status${query}`);
+    renderLadder();
     render();
+  }
+
+  function renderLadder() {
+    const ladder = state.config?.rules?.ladder || [];
+    $("#ladder").innerHTML = ladder.map(rule => `
+      <li class="${state.config?.run?.round === rule.round ? "current" : ""}">
+        <b>R${rule.round}</b><span>${rule.sequenceLength} signals · ${rule.playMs / 1000}s</span><strong>${formatToken(rule.rewardAmount, 0)}</strong>
+      </li>`).join("");
   }
 
   function render() {
     const config = state.config;
     if (!config) return;
     $("#minimum-balance").textContent = formatToken(config.minimumBalance);
-    $("#prize-amount").textContent = formatToken(config.prizeAmount);
+    $("#prize-amount").textContent = formatToken(config.rules.ladder.at(-1).rewardAmount, 0);
     $("#pool-balance").textContent = formatToken(config.poolBalance, 0);
     $("#max-payout").textContent = formatToken(config.maxPayout, 0);
     $("#payout-remaining").textContent = `${formatToken(config.remainingPayout, 0)} remaining`;
-    $("#prize-mode").textContent = config.live ? "Funded operator payout" : "Practice mode · payouts off";
+    $("#prize-mode").textContent = config.live ? "Maximum ladder cash out" : "Practice ladder · payouts off";
     $("#wallet-address").textContent = short(state.wallet);
     $("#wallet-balance").textContent = state.wallet ? formatToken(config.balance) : "Connect wallet";
     const operator = config.operatorAddress;
@@ -109,26 +146,38 @@
     $("#operator-link").toggleAttribute("aria-disabled", !operator);
 
     const start = $("#start-game");
-    const alreadyWon = Boolean(config.claim);
+    const run = config.run;
+    const used = run && ["lost", "cashed", "cashing"].includes(run.status);
     const capReached = BigInt(config.remainingPayout || 0) < BigInt(config.prizeAmount || 0);
-    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || alreadyWon || capReached;
+    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || used || capReached || (run?.status === "decision" && Boolean(state.runId));
     if (!state.wallet) start.textContent = "CONNECT RONIN TO PLAY";
     else if (!config.eligible) start.textContent = "MORE CWGUILD NEEDED";
-    else if (alreadyWon) start.textContent = "TODAY'S PRIZE COMPLETE";
+    else if (used) start.textContent = run.status === "lost" ? "TODAY'S ATTEMPT LOST" : "TODAY'S CASH OUT COMPLETE";
     else if (capReached) start.textContent = "PAYOUT CEILING REACHED";
-    else if (!config.live) start.textContent = "START PRACTICE RUN";
-    else start.textContent = "START PRIZE RUN";
-    $("#phase-title").textContent = alreadyWon ? "Prize secured" : state.phase === "idle" ? "Ready for a new signal" : $("#phase-title").textContent;
+    else if (run?.status === "decision" && !state.runId) start.textContent = "SIGN TO RESUME DECISION";
+    else if (run?.status === "active") start.textContent = "SIGN TO RESUME ROUND";
+    else if (!config.live) start.textContent = "START PRACTICE LADDER";
+    else start.textContent = "START REWARD LADDER";
+    if (used && state.phase === "idle") $("#phase-title").textContent = run.status === "lost" ? "Reward forfeited" : "Cash out complete";
     if (config.claim?.txHash) showTransaction(config.claim.txHash);
   }
 
-  function resetBoard() {
+  function makeProgress(length) {
+    $("#sequence").innerHTML = Array.from({ length }, () => "<i></i>").join("");
+  }
+
+  function progressItems() {
+    return $$("#sequence i");
+  }
+
+  function resetBoard(length = 0) {
     state.moves = [];
-    progress.forEach(item => { item.className = ""; });
+    makeProgress(length);
     runeButtons.forEach(button => { button.disabled = true; button.classList.remove("active"); });
     clearInterval(state.timer);
     $("#timer").textContent = "—";
     $("#recall-rule").hidden = true;
+    $("#decision-panel").hidden = true;
   }
 
   function pulseRune(name, duration = 260) {
@@ -138,9 +187,9 @@
     setTimeout(() => button.classList.remove("active"), duration);
   }
 
-  async function showSequence(sequence) {
-    $("#phase-title").textContent = "Memorize the signal";
-    setMessage("Watch closely. The rune controls unlock after the sequence ends.");
+  async function showSequence(sequence, round) {
+    $("#phase-title").textContent = `Round ${round} · memorize ${sequence.length}`;
+    setMessage("Watch closely. The random recall rule appears only after the signal disappears.");
     await new Promise(resolve => setTimeout(resolve, 350));
     for (const rune of sequence) {
       pulseRune(rune, 300);
@@ -151,14 +200,14 @@
   function beginInput(recall) {
     state.phase = "input";
     state.recall = recall;
-    $("#phase-title").textContent = "Timed recall round";
+    $("#phase-title").textContent = `Round ${state.game.round} · timed recall`;
     const direction = recall.direction === "forward" ? "FORWARD" : "BACKWARD";
-    const instruction = `START AT SIGNAL #${recall.startPosition} · MOVE ${direction}`;
-    $("#recall-rule").textContent = instruction;
+    $("#recall-rule").textContent = `START AT SIGNAL #${recall.startPosition} · MOVE ${direction}`;
     $("#recall-rule").hidden = false;
-    setMessage("The rule was revealed after the pattern. Complete all six moves before time expires.");
+    const atRisk = BigInt(state.game.pendingAmount || 0) > 0n ? `${formatToken(state.game.pendingAmount, 0)} is at risk. ` : "";
+    setMessage(`${atRisk}Complete all ${state.game.sequenceLength} moves before time expires.`);
     runeButtons.forEach(button => { button.disabled = false; });
-    const deadline = Date.now() + recall.inputMs;
+    const deadline = recall.expiresAt || Date.now() + recall.inputMs;
     const tick = () => {
       const remaining = Math.max(0, deadline - Date.now());
       $("#timer").textContent = `${(remaining / 1000).toFixed(1)}s`;
@@ -171,6 +220,25 @@
     state.timer = setInterval(tick, 100);
   }
 
+  async function playGame(game) {
+    rememberRun(game.runId || state.runId);
+    state.game = game;
+    resetBoard(game.sequenceLength);
+    if (game.recall) {
+      beginInput(game.recall);
+      render();
+      return;
+    }
+    state.phase = "preview";
+    render();
+    await showSequence(game.sequence, game.round);
+    const recall = await api("/game/recall", {
+      method: "POST",
+      body: JSON.stringify({ wallet: state.wallet, runId: state.runId, gameId: game.gameId })
+    });
+    beginInput(recall);
+  }
+
   async function startRun() {
     if (!state.wallet || !state.signer || state.phase !== "idle") return;
     state.phase = "signing";
@@ -178,15 +246,17 @@
     render();
     try {
       $("#phase-title").textContent = "Verify your wallet";
-      setMessage("Sign the Rune Run entry message. It is not a transaction or token approval.");
+      setMessage("Sign the ladder entry message. It is not a transaction or token approval.");
       const challenge = await api("/auth/challenge", { method: "POST", body: JSON.stringify({ wallet: state.wallet }) });
       const signature = await state.signer.signMessage(challenge.message);
-      const game = await api("/game/start", { method: "POST", body: JSON.stringify({ wallet: state.wallet, nonce: challenge.nonce, signature }) });
-      state.game = game;
-      state.phase = "preview";
-      await showSequence(game.sequence);
-      const recall = await api("/game/recall", { method: "POST", body: JSON.stringify({ wallet: state.wallet, gameId: game.gameId }) });
-      beginInput(recall);
+      const result = await api("/game/start", { method: "POST", body: JSON.stringify({ wallet: state.wallet, nonce: challenge.nonce, signature }) });
+      rememberRun(result.runId);
+      if (result.run) {
+        state.phase = "decision";
+        showDecision(result.run);
+        return;
+      }
+      await playGame(result);
     } catch (error) {
       handleFailure(error);
     }
@@ -197,24 +267,103 @@
     state.phase = "submitting";
     clearInterval(state.timer);
     runeButtons.forEach(button => { button.disabled = true; });
-    $("#phase-title").textContent = "Checking your run";
-    setMessage("The server is verifying the sequence and daily prize status.");
-    const result = await api("/game/finish", { method: "POST", body: JSON.stringify({ wallet: state.wallet, gameId: state.game.gameId, moves: state.moves }) });
+    $("#phase-title").textContent = "Checking your round";
+    setMessage("The server is verifying the signal and timer.");
+    const result = await api("/game/finish", {
+      method: "POST",
+      body: JSON.stringify({ wallet: state.wallet, runId: state.runId, gameId: state.game.gameId, moves: state.moves })
+    });
     state.game = null;
     state.recall = null;
-    state.phase = "idle";
     if (!result.won) {
-      progress.forEach(item => item.classList.add("error"));
-      $("#phase-title").textContent = "Signal missed";
-      setMessage(result.message || "The rune order did not match. Try a fresh signal.", "error");
-      render();
+      state.phase = "idle";
+      progressItems().forEach(item => item.classList.add("error"));
+      $("#phase-title").textContent = "Everything at risk was lost";
+      const forfeited = BigInt(result.forfeitedAmount || 0) > 0n ? ` ${formatToken(result.forfeitedAmount, 0)} was forfeited.` : "";
+      setMessage(`${result.message || "The signal did not match."}${forfeited}`, "error");
+      await loadStatus();
       return;
     }
-    progress.forEach(item => item.classList.add("filled"));
-    $("#phase-title").textContent = result.paid ? "CWGUILD sent" : "Practice complete";
-    setMessage(result.paid ? `${formatToken(result.claim.amount)} is on its way to ${short(state.wallet)}.` : result.message, "good");
-    if (result.claim?.txHash) showTransaction(result.claim.txHash);
+    progressItems().forEach(item => item.classList.add("filled"));
+    state.phase = "decision";
+    showDecision({
+      status: "decision",
+      round: result.round,
+      pendingAmount: result.pendingAmount,
+      canRisk: result.canRisk,
+      canCashOut: true,
+      maxRounds: state.config.rules.ladder.length
+    });
     await loadStatus();
+  }
+
+  function showDecision(run) {
+    state.phase = "decision";
+    const panel = $("#decision-panel");
+    panel.hidden = false;
+    $("#decision-round").textContent = `ROUND ${run.round} CLEARED`;
+    $("#pending-reward").textContent = formatToken(run.pendingAmount, 0);
+    $("#phase-title").textContent = run.canRisk ? "Cash out or risk everything" : "Final round cleared";
+    setMessage(run.canRisk
+      ? "This reward is unpaid. Cash out now, or explicitly accept the next round—one miss or timeout reduces it to zero."
+      : "You reached the top. Cash out the provisional reward to request payment.", "good");
+    const risk = $("#risk-next");
+    risk.hidden = !run.canRisk;
+    risk.textContent = run.canRisk ? `I ACCEPT THE RISK · PLAY ROUND ${run.round + 1}` : "";
+    $("#cash-out").textContent = `CASH OUT ${formatToken(run.pendingAmount, 0)}`;
+    runeButtons.forEach(button => { button.disabled = true; });
+    $("#timer").textContent = "—";
+    render();
+  }
+
+  async function riskNext() {
+    if (state.phase !== "decision" || !state.runId) return;
+    state.phase = "loading";
+    $("#cash-out").disabled = true;
+    $("#risk-next").disabled = true;
+    setMessage("Risk accepted. The entire provisional reward is now exposed to the next round.");
+    let accepted = false;
+    try {
+      const game = await api("/game/next", {
+        method: "POST",
+        body: JSON.stringify({ wallet: state.wallet, runId: state.runId })
+      });
+      accepted = true;
+      await playGame(game);
+    } catch (error) {
+      state.phase = accepted ? "idle" : "decision";
+      handleFailure(error, !accepted);
+    } finally {
+      $("#cash-out").disabled = false;
+      $("#risk-next").disabled = false;
+    }
+  }
+
+  async function cashOut() {
+    if (state.phase !== "decision" || !state.runId) return;
+    state.phase = "cashing";
+    $("#cash-out").disabled = true;
+    $("#risk-next").disabled = true;
+    $("#phase-title").textContent = "Cashing out";
+    setMessage("Checking the lifetime payout ceiling and reward wallet, then submitting payment.");
+    try {
+      const result = await api("/game/cashout", {
+        method: "POST",
+        body: JSON.stringify({ wallet: state.wallet, runId: state.runId })
+      });
+      state.phase = "idle";
+      $("#decision-panel").hidden = true;
+      $("#phase-title").textContent = result.paid ? "CWGUILD sent" : "Practice cash out complete";
+      setMessage(result.paid ? `${formatToken(result.claim.amount, 0)} is on its way to ${short(state.wallet)}.` : result.message, "good");
+      if (result.claim?.txHash) showTransaction(result.claim.txHash);
+      await loadStatus();
+    } catch (error) {
+      state.phase = "decision";
+      setMessage(friendly(error), "error");
+      $("#cash-out").disabled = false;
+      $("#risk-next").disabled = false;
+      render();
+    }
   }
 
   function showTransaction(hash) {
@@ -223,28 +372,33 @@
     link.hidden = false;
   }
 
-  function handleFailure(error) {
+  function handleFailure(error, preserveDecision = false) {
     clearInterval(state.timer);
-    state.phase = "idle";
-    state.game = null;
-    state.recall = null;
+    state.phase = preserveDecision ? "decision" : "idle";
+    if (!preserveDecision) {
+      state.game = null;
+      state.recall = null;
+      $("#decision-panel").hidden = true;
+    }
     runeButtons.forEach(button => { button.disabled = true; });
-    $("#phase-title").textContent = "Run interrupted";
+    $("#phase-title").textContent = preserveDecision ? "Decision still open" : "Run interrupted";
     setMessage(friendly(error), "error");
     render();
   }
 
   runeButtons.forEach(button => button.addEventListener("click", () => {
-    if (state.phase !== "input" || state.moves.length >= 6) return;
+    if (state.phase !== "input" || state.moves.length >= state.game.sequenceLength) return;
     const rune = button.dataset.rune;
     state.moves.push(rune);
     pulseRune(rune, 160);
-    progress[state.moves.length - 1]?.classList.add("filled");
-    if (state.moves.length === 6) finishRun().catch(handleFailure);
+    progressItems()[state.moves.length - 1]?.classList.add("filled");
+    if (state.moves.length === state.game.sequenceLength) finishRun().catch(handleFailure);
   }));
 
   $("#connect-wallet").addEventListener("click", connect);
   $("#start-game").addEventListener("click", startRun);
+  $("#risk-next").addEventListener("click", riskNext);
+  $("#cash-out").addEventListener("click", cashOut);
   loadStatus().catch(error => {
     setMessage(`Rune Run could not load: ${friendly(error)}`, "error");
     $("#phase-title").textContent = "Service unavailable";

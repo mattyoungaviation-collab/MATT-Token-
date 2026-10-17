@@ -11,14 +11,15 @@ const TOKEN_ABI = [
   "function transfer(address recipient,uint256 amount) returns (bool)"
 ];
 const SYMBOLS = ["ember", "tide", "leaf", "bolt"];
-const SEQUENCE_LENGTH = 6;
+const ROUND_RULES = [
+  { round: 1, length: 6, inputMs: 8_000, multiplier: 1n },
+  { round: 2, length: 7, inputMs: 7_000, multiplier: 3n },
+  { round: 3, length: 8, inputMs: 6_000, multiplier: 7n },
+  { round: 4, length: 9, inputMs: 5_000, multiplier: 15n },
+  { round: 5, length: 10, inputMs: 4_000, multiplier: 30n }
+];
 const AUTH_TTL_MS = 5 * 60 * 1000;
-const PREVIEW_MS = 2_700;
-const RECALL_READY_MS = 2_400;
-const RECALL_START_LIMIT_MS = 5_500;
-const INPUT_WINDOW_MS = 8_000;
 const SUBMISSION_GRACE_MS = 1_500;
-const GAME_TTL_MS = 15_000;
 const RATE_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT = 40;
 
@@ -42,10 +43,11 @@ function safeWallet(value) {
 }
 
 function readState(stateFile) {
-  if (!stateFile || !fs.existsSync(stateFile)) return { version: 1, claims: {} };
+  if (!stateFile || !fs.existsSync(stateFile)) return { version: 1, claims: {}, runs: {} };
   try {
     const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
     if (!parsed || parsed.version !== 1 || typeof parsed.claims !== "object") throw new Error("invalid state shape");
+    if (!parsed.runs || typeof parsed.runs !== "object") parsed.runs = {};
     return parsed;
   } catch (error) {
     throw new Error(`CWGUILD arcade state could not be loaded: ${error.message}`);
@@ -68,6 +70,20 @@ function publicClaim(claim) {
     txHash: claim.txHash || null,
     createdAt: claim.createdAt,
     confirmedAt: claim.confirmedAt || null
+  };
+}
+
+function publicRun(run) {
+  if (!run) return null;
+  return {
+    status: run.status,
+    round: run.round,
+    pendingAmount: run.pendingAmount || "0",
+    atRisk: run.status === "active" && BigInt(run.pendingAmount || 0) > 0n,
+    canRisk: run.status === "decision" && run.round < ROUND_RULES.length,
+    canCashOut: run.status === "decision",
+    maxRounds: ROUND_RULES.length,
+    updatedAt: run.updatedAt
   };
 }
 
@@ -104,9 +120,9 @@ function createCWGuildArcadeRouter(options = {}) {
   const getBalance = options.getBalance || (wallet => token.balanceOf(wallet));
   const getPoolBalance = options.getPoolBalance || (async () => signer ? token.balanceOf(await signer.getAddress()) : 0n);
   const getOperatorAddress = options.getOperatorAddress || (async () => signer ? signer.getAddress() : null);
-  const payPrize = options.payPrize || (async wallet => {
+  const payPrize = options.payPrize || (async (wallet, amount) => {
     if (!payoutToken) throw new Error("CWGUILD payout signer is unavailable.");
-    const transaction = await payoutToken.transfer(wallet, prizeAmount);
+    const transaction = await payoutToken.transfer(wallet, amount);
     return { hash: transaction.hash, wait: () => transaction.wait(1) };
   });
 
@@ -117,8 +133,6 @@ function createCWGuildArcadeRouter(options = {}) {
 
   const state = readState(stateFile);
   const authChallenges = new Map();
-  const games = new Map();
-  const activeGameByWallet = new Map();
   const payoutLocks = new Set();
   const clientWindows = new Map();
 
@@ -137,18 +151,56 @@ function createCWGuildArcadeRouter(options = {}) {
     return next();
   });
 
-  function claimKey(wallet, timestamp = now()) {
+  function recordKey(wallet, timestamp = now()) {
     return `${dateKey(timestamp)}:${wallet.toLowerCase()}`;
+  }
+
+  function roundRule(round) {
+    return ROUND_RULES[round - 1];
+  }
+
+  function roundAmount(round) {
+    return prizeAmount * roundRule(round).multiplier;
+  }
+
+  function ladderRules() {
+    return ROUND_RULES.map(rule => ({
+      round: rule.round,
+      sequenceLength: rule.length,
+      playMs: rule.inputMs,
+      rewardAmount: roundAmount(rule.round).toString()
+    }));
+  }
+
+  function previewMs(rule) {
+    return 300 + rule.length * 390;
+  }
+
+  function loseRun(run, reason) {
+    const forfeitedAmount = run.pendingAmount || "0";
+    run.status = "lost";
+    run.pendingAmount = "0";
+    run.currentGame = null;
+    run.lossReason = reason;
+    run.updatedAt = now();
+    saveState(stateFile, state);
+    return forfeitedAmount;
   }
 
   function cleanupExpired() {
     const timestamp = now();
     for (const [nonce, challenge] of authChallenges) if (challenge.expiresAt < timestamp) authChallenges.delete(nonce);
-    for (const [id, game] of games) {
-      if (game.expiresAt >= timestamp) continue;
-      games.delete(id);
-      if (activeGameByWallet.get(game.wallet.toLowerCase()) === id) activeGameByWallet.delete(game.wallet.toLowerCase());
+    let changed = false;
+    for (const run of Object.values(state.runs)) {
+      if (run?.status !== "active" || !run.currentGame || run.currentGame.expiresAt >= timestamp) continue;
+      run.status = "lost";
+      run.pendingAmount = "0";
+      run.currentGame = null;
+      run.lossReason = "expired";
+      run.updatedAt = timestamp;
+      changed = true;
     }
+    if (changed) saveState(stateFile, state);
     if (clientWindows.size > 2_000) {
       for (const [client, window] of clientWindows) if (timestamp - window.startedAt > RATE_WINDOW_MS * 2) clientWindows.delete(client);
     }
@@ -157,7 +209,7 @@ function createCWGuildArcadeRouter(options = {}) {
   function authMessage(wallet, nonce, expiresAt) {
     return [
       "CWGUILD Rune Run",
-      "Sign in to start one server-issued skill run.",
+      "Sign in to start or resume today's one-attempt reward ladder.",
       "This is not a token approval and cannot move funds.",
       `Wallet: ${wallet}`,
       `Chain: Ronin (${CHAIN_ID})`,
@@ -166,16 +218,82 @@ function createCWGuildArcadeRouter(options = {}) {
     ].join("\n");
   }
 
+  function requireRun(body) {
+    const wallet = safeWallet(body?.wallet);
+    const run = state.runs[recordKey(wallet)];
+    const runId = String(body?.runId || "");
+    if (!run || !runId || run.id !== runId || run.wallet !== wallet) {
+      throw Object.assign(new Error("That reward ladder was not found."), { status: 404 });
+    }
+    return { wallet, run };
+  }
+
+  function requireGame(body) {
+    const { wallet, run } = requireRun(body);
+    const gameId = String(body?.gameId || "");
+    if (run.status !== "active" || !run.currentGame || run.currentGame.id !== gameId) {
+      throw Object.assign(new Error("That Rune Run round was not found."), { status: 404 });
+    }
+    return { wallet, run, game: run.currentGame };
+  }
+
+  function issueGame(run) {
+    const rule = roundRule(run.round);
+    const createdAt = now();
+    const readyMs = previewMs(rule);
+    const game = {
+      id: crypto.randomBytes(18).toString("hex"),
+      sequence: Array.from({ length: rule.length }, () => SYMBOLS[randomInt(0, SYMBOLS.length)]),
+      createdAt,
+      expiresAt: createdAt + readyMs + rule.inputMs + 5_000,
+      recall: null,
+      finished: false
+    };
+    run.currentGame = game;
+    run.status = "active";
+    run.updatedAt = createdAt;
+    return game;
+  }
+
+  function gameResponse(run, resumed = false) {
+    const game = run.currentGame;
+    const rule = roundRule(run.round);
+    const recall = game.recall ? {
+      direction: game.recall.direction,
+      startPosition: game.recall.startIndex + 1,
+      inputMs: rule.inputMs,
+      expiresAt: game.recall.expiresAt,
+      round: run.round
+    } : null;
+    return {
+      resumed,
+      runId: run.id,
+      gameId: game.id,
+      sequence: game.sequence,
+      createdAt: game.createdAt,
+      expiresAt: game.expiresAt,
+      previewMs: previewMs(rule),
+      round: run.round,
+      sequenceLength: rule.length,
+      inputMs: rule.inputMs,
+      pendingAmount: run.pendingAmount || "0",
+      recall
+    };
+  }
+
   async function statusFor(walletValue) {
+    cleanupExpired();
     const operatorAddress = await getOperatorAddress().catch(() => null);
     const poolBalance = await getPoolBalance().catch(() => 0n);
     let wallet = null;
     let balance = null;
     let claim = null;
+    let run = null;
     if (walletValue) {
       wallet = safeWallet(walletValue);
       balance = await getBalance(wallet);
-      claim = state.claims[claimKey(wallet)] || null;
+      claim = state.claims[recordKey(wallet)] || null;
+      run = state.runs[recordKey(wallet)] || null;
     }
     const committed = committedPayout(state);
     const remainingPayout = committed >= maxPayout ? 0n : maxPayout - committed;
@@ -194,12 +312,13 @@ function createCWGuildArcadeRouter(options = {}) {
       balance: balance === null ? null : BigInt(balance).toString(),
       eligible: balance === null ? null : BigInt(balance) >= minimumBalance,
       claim: publicClaim(claim),
+      run: publicRun(run),
       rules: {
-        sequenceLength: SEQUENCE_LENGTH,
-        previewMs: PREVIEW_MS,
-        playMs: INPUT_WINDOW_MS,
+        ladder: ladderRules(),
         randomizedRecall: true,
-        onePrizePerWalletUtcDay: true,
+        oneAttemptPerWalletUtcDay: true,
+        rewardIsProvisionalUntilCashOut: true,
+        lossForfeitsPendingReward: true,
         wagerRequired: false,
         approvalRequired: false
       }
@@ -244,25 +363,34 @@ function createCWGuildArcadeRouter(options = {}) {
       if (!recovered || recovered.toLowerCase() !== wallet.toLowerCase()) {
         return res.status(401).json({ error: "The wallet signature did not match the connected account." });
       }
-      if (state.claims[claimKey(wallet)]) {
-        return res.status(409).json({ error: "This wallet already earned today's CWGUILD prize.", claim: publicClaim(state.claims[claimKey(wallet)]) });
+      const key = recordKey(wallet);
+      const existing = state.runs[key];
+      if (existing) {
+        if (existing.status === "decision") return res.json({ resumed: true, runId: existing.id, run: publicRun(existing) });
+        if (existing.status === "active" && existing.currentGame) return res.json(gameResponse(existing, true));
+        return res.status(409).json({ error: "This wallet already used today's one ladder attempt.", run: publicRun(existing), claim: publicClaim(state.claims[key]) });
       }
-      if (activeGameByWallet.has(wallet.toLowerCase())) {
-        return res.status(409).json({ error: "This wallet already has an active run." });
-      }
-      if (committedPayout(state) + prizeAmount > maxPayout) {
+      if (committedPayout(state) + roundAmount(1) > maxPayout) {
         return res.status(503).json({ error: "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached." });
       }
       const balance = BigInt(await getBalance(wallet));
       if (balance < minimumBalance) {
         return res.status(403).json({ error: `Hold at least ${ethers.formatUnits(minimumBalance, 18)} CWGUILD to play.`, balance: balance.toString() });
       }
-      const id = crypto.randomBytes(18).toString("hex");
-      const createdAt = now();
-      const sequence = Array.from({ length: SEQUENCE_LENGTH }, () => SYMBOLS[randomInt(0, SYMBOLS.length)]);
-      games.set(id, { id, wallet, sequence, createdAt, expiresAt: createdAt + GAME_TTL_MS, recall: null, finished: false });
-      activeGameByWallet.set(wallet.toLowerCase(), id);
-      return res.status(201).json({ gameId: id, sequence, createdAt, expiresAt: createdAt + GAME_TTL_MS, previewMs: PREVIEW_MS });
+      const run = {
+        id: crypto.randomBytes(18).toString("hex"),
+        wallet,
+        status: "active",
+        round: 1,
+        pendingAmount: "0",
+        createdAt: now(),
+        updatedAt: now(),
+        currentGame: null
+      };
+      state.runs[key] = run;
+      issueGame(run);
+      saveState(stateFile, state);
+      return res.status(201).json(gameResponse(run));
     } catch (error) {
       return res.status(error.status || 503).json({ error: error.message });
     }
@@ -271,95 +399,161 @@ function createCWGuildArcadeRouter(options = {}) {
   router.post("/game/recall", (req, res) => {
     try {
       cleanupExpired();
-      const wallet = safeWallet(req.body?.wallet);
-      const gameId = String(req.body?.gameId || "");
-      const game = games.get(gameId);
-      if (!game || game.wallet !== wallet) return res.status(404).json({ error: "That Rune Run was not found." });
-      if (game.finished) return res.status(409).json({ error: "That Rune Run has already been submitted." });
+      const { run, game } = requireGame(req.body);
+      if (game.finished) return res.status(409).json({ error: "That Rune Run round has already been submitted." });
       if (game.recall) return res.status(409).json({ error: "The recall round has already started." });
+      const rule = roundRule(run.round);
       const elapsed = now() - game.createdAt;
-      if (elapsed < RECALL_READY_MS) return res.status(422).json({ error: "The recall round cannot start before the pattern finishes." });
-      if (elapsed > RECALL_START_LIMIT_MS) return res.status(410).json({ error: "The recall round was not started in time." });
-      const recall = {
+      const readyMs = previewMs(rule);
+      if (elapsed < readyMs - 250) return res.status(422).json({ error: "The recall round cannot start before the pattern finishes." });
+      if (elapsed > readyMs + 3_000) {
+        const forfeitedAmount = loseRun(run, "recall-not-started");
+        return res.status(410).json({ error: "The recall round was not started in time.", lost: true, forfeitedAmount });
+      }
+      const startedAt = now();
+      game.recall = {
         direction: randomInt(0, 2) === 0 ? "forward" : "backward",
         startIndex: randomInt(0, game.sequence.length),
-        startedAt: now(),
-        expiresAt: now() + INPUT_WINDOW_MS
+        startedAt,
+        expiresAt: startedAt + rule.inputMs
       };
-      game.recall = recall;
-      return res.json({ direction: recall.direction, startPosition: recall.startIndex + 1, inputMs: INPUT_WINDOW_MS, expiresAt: recall.expiresAt });
+      saveState(stateFile, state);
+      return res.json({
+        direction: game.recall.direction,
+        startPosition: game.recall.startIndex + 1,
+        inputMs: rule.inputMs,
+        expiresAt: game.recall.expiresAt,
+        round: run.round
+      });
     } catch (error) {
       return res.status(error.status || 503).json({ error: error.message });
     }
   });
 
-  router.post("/game/finish", async (req, res) => {
-    let wallet;
-    let game;
+  router.post("/game/finish", (req, res) => {
     try {
-      wallet = safeWallet(req.body?.wallet);
-      const gameId = String(req.body?.gameId || "");
-      game = games.get(gameId);
-      if (!game || game.wallet !== wallet) return res.status(404).json({ error: "That Rune Run was not found." });
-      if (game.finished) return res.status(409).json({ error: "That Rune Run has already been submitted." });
-      game.finished = true;
-      activeGameByWallet.delete(wallet.toLowerCase());
+      cleanupExpired();
+      const { run, game } = requireGame(req.body);
+      if (game.finished) return res.status(409).json({ error: "That Rune Run round has already been submitted." });
       if (!game.recall) return res.status(422).json({ error: "Start the timed recall round before submitting runes." });
-      if (now() > game.recall.expiresAt + SUBMISSION_GRACE_MS || game.expiresAt < now()) return res.status(410).json({ error: "Time expired. Start a new Rune Run." });
+      game.finished = true;
+      const expired = now() > game.recall.expiresAt + SUBMISSION_GRACE_MS || game.expiresAt < now();
       const moves = Array.isArray(req.body?.moves) ? req.body.moves.map(value => String(value)) : [];
       const expected = recallSequence(game.sequence, game.recall);
-      const won = moves.length === expected.length && moves.every((value, index) => value === expected[index]);
-      if (!won) return res.json({ won: false, message: "The rune order did not match. Sign in and try a fresh run." });
-      if (!live) {
-        return res.json({ won: true, paid: false, preview: true, message: "Practice run complete. Prize mode is not funded and enabled yet." });
+      const won = !expired && moves.length === expected.length && moves.every((value, index) => value === expected[index]);
+      if (!won) {
+        const forfeitedAmount = loseRun(run, expired ? "timeout" : "incorrect");
+        return res.json({
+          won: false,
+          lost: true,
+          timedOut: expired,
+          forfeitedAmount,
+          message: expired ? "Time expired. The entire provisional reward was forfeited." : "Wrong signal. The entire provisional reward was forfeited."
+        });
       }
-      const key = claimKey(wallet);
-      if (state.claims[key]) return res.status(409).json({ error: "This wallet already earned today's CWGUILD prize.", claim: publicClaim(state.claims[key]) });
-      if (payoutLocks.has(wallet.toLowerCase())) return res.status(409).json({ error: "A payout for this wallet is already processing." });
-      if (committedPayout(state) + prizeAmount > maxPayout) {
-        return res.status(503).json({ error: "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached." });
-      }
-      payoutLocks.add(wallet.toLowerCase());
-      const claim = { status: "sending", wallet, amount: prizeAmount.toString(), createdAt: now(), txHash: null };
-      state.claims[key] = claim;
+      run.pendingAmount = roundAmount(run.round).toString();
+      run.status = "decision";
+      run.currentGame = null;
+      run.updatedAt = now();
       saveState(stateFile, state);
-      try {
-        const poolBalance = BigInt(await getPoolBalance());
-        if (poolBalance < prizeAmount) throw new Error("The CWGUILD reward wallet needs more tokens.");
-        const transaction = await payPrize(wallet);
-        claim.status = "submitted";
-        claim.txHash = transaction.hash;
-        saveState(stateFile, state);
-        const receipt = await transaction.wait();
-        if (receipt && Number(receipt.status ?? 1) !== 1) throw new Error("The CWGUILD payout transaction reverted.");
-        claim.status = "confirmed";
-        claim.confirmedAt = now();
-        saveState(stateFile, state);
-        return res.json({ won: true, paid: true, claim: publicClaim(claim) });
-      } catch (error) {
-        if (!claim.txHash) {
-          delete state.claims[key];
-          saveState(stateFile, state);
-        } else {
-          claim.status = "submitted";
-          claim.error = String(error.message || error).slice(0, 200);
-          saveState(stateFile, state);
-        }
-        throw error;
-      } finally {
-        payoutLocks.delete(wallet.toLowerCase());
-      }
+      return res.json({
+        won: true,
+        paid: false,
+        pending: true,
+        round: run.round,
+        pendingAmount: run.pendingAmount,
+        canRisk: run.round < ROUND_RULES.length,
+        nextRound: run.round < ROUND_RULES.length ? ladderRules()[run.round] : null,
+        message: "Round won. Cash out now, or explicitly accept the next round and risk the entire provisional reward."
+      });
     } catch (error) {
       return res.status(error.status || 503).json({ error: String(error.message || error).slice(0, 240) });
+    }
+  });
+
+  router.post("/game/next", (req, res) => {
+    try {
+      cleanupExpired();
+      const { run } = requireRun(req.body);
+      if (run.status !== "decision") return res.status(409).json({ error: "There is no completed round waiting for a risk decision." });
+      if (run.round >= ROUND_RULES.length) return res.status(409).json({ error: "The final round is complete. Cash out the top reward." });
+      run.round += 1;
+      issueGame(run);
+      saveState(stateFile, state);
+      return res.status(201).json(gameResponse(run));
+    } catch (error) {
+      return res.status(error.status || 503).json({ error: error.message });
+    }
+  });
+
+  router.post("/game/cashout", async (req, res) => {
+    let wallet;
+    let run;
+    let claim;
+    let key;
+    try {
+      cleanupExpired();
+      ({ wallet, run } = requireRun(req.body));
+      if (run.status !== "decision" || BigInt(run.pendingAmount || 0) <= 0n) {
+        return res.status(409).json({ error: "There is no provisional reward available to cash out." });
+      }
+      key = recordKey(wallet);
+      if (state.claims[key]) return res.status(409).json({ error: "This wallet already cashed out today's CWGUILD reward.", claim: publicClaim(state.claims[key]) });
+      if (payoutLocks.has(wallet.toLowerCase())) return res.status(409).json({ error: "A payout for this wallet is already processing." });
+      const amount = BigInt(run.pendingAmount);
+      if (committedPayout(state) + amount > maxPayout) {
+        return res.status(503).json({ error: "The 2,000,000 CWGUILD Rune Run payout ceiling cannot cover this cash out." });
+      }
+      if (!live) {
+        run.status = "cashed";
+        run.currentGame = null;
+        run.updatedAt = now();
+        saveState(stateFile, state);
+        return res.json({ paid: false, preview: true, amount: amount.toString(), message: "Practice cash out complete. Live CWGUILD payouts are still switched off." });
+      }
+      payoutLocks.add(wallet.toLowerCase());
+      claim = { status: "sending", wallet, amount: amount.toString(), createdAt: now(), txHash: null };
+      state.claims[key] = claim;
+      run.status = "cashing";
+      run.updatedAt = now();
+      saveState(stateFile, state);
+      const poolBalance = BigInt(await getPoolBalance());
+      if (poolBalance < amount) throw new Error("The CWGUILD reward wallet needs more tokens.");
+      const transaction = await payPrize(wallet, amount);
+      claim.status = "submitted";
+      claim.txHash = transaction.hash;
+      run.status = "cashed";
+      run.updatedAt = now();
+      saveState(stateFile, state);
+      const receipt = await transaction.wait();
+      if (receipt && Number(receipt.status ?? 1) !== 1) throw new Error("The CWGUILD payout transaction reverted.");
+      claim.status = "confirmed";
+      claim.confirmedAt = now();
+      saveState(stateFile, state);
+      return res.json({ paid: true, claim: publicClaim(claim) });
+    } catch (error) {
+      if (claim && !claim.txHash) {
+        delete state.claims[key];
+        if (run) {
+          run.status = "decision";
+          run.updatedAt = now();
+        }
+        saveState(stateFile, state);
+      } else if (claim) {
+        claim.status = "submitted";
+        claim.error = String(error.message || error).slice(0, 200);
+        saveState(stateFile, state);
+      }
+      return res.status(error.status || 503).json({ error: String(error.message || error).slice(0, 240) });
     } finally {
-      if (game) games.delete(game.id);
+      if (wallet) payoutLocks.delete(wallet.toLowerCase());
     }
   });
 
   router.get("/claim/:wallet", (req, res) => {
     try {
       const wallet = safeWallet(req.params.wallet);
-      return res.json({ claim: publicClaim(state.claims[claimKey(wallet)]) });
+      return res.json({ claim: publicClaim(state.claims[recordKey(wallet)]), run: publicRun(state.runs[recordKey(wallet)]) });
     } catch (error) {
       return res.status(error.status || 400).json({ error: error.message });
     }
