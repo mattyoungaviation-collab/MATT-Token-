@@ -34,7 +34,7 @@
         <p class="eyebrow">DIRECT-TRANSFER SKILL ARCADE</p>
         <h1>RUNE<br><span>RUN</span></h1>
         <p class="lead">Pay 500,000 CWGUILD for one ladder attempt. Climb five increasingly brutal memory rounds, cash out your provisional reward, or risk all of it on a longer, faster signal.</p>
-        <div class="trust-pills" aria-label="Game payment and safety details"><span>500,000 CWGUILD non-refundable fee</span><span>3,000 CWGUILD maximum reward</span><span>No token approval</span><span>One attempt / UTC day</span></div>
+        <div class="trust-pills" aria-label="Game payment and safety details"><span>500,000 CWGUILD non-refundable fee</span><span>2,000,000 CWGUILD top cash out</span><span>No token approval</span><span>One attempt / UTC day</span></div>
       </div>
       <div class="hero-mark" aria-hidden="true"><div>ᚱ</div><span>CW</span></div>
     </section>
@@ -44,25 +44,25 @@
       <article><span>ENTRY FEE</span><strong id="entry-amount">500,000 CWGUILD</strong><small>Plus keep <b id="minimum-balance">—</b> after payment</small></article>
       <article class="prize"><span>TOP CASH OUT</span><strong id="prize-amount">—</strong><small id="prize-mode">Checking reward pool</small></article>
       <article><span>REWARD POOL</span><strong id="pool-balance">—</strong><small id="pool-address">Server-paid wallet</small></article>
-      <article><span>PAYOUT CEILING</span><strong id="max-payout">—</strong><small id="payout-remaining">Lifetime safety cap</small></article>
+      <article><span>PAYOUT CEILING</span><strong id="max-payout">—</strong><small id="payout-remaining">Current reward-wallet balance</small></article>
     </section>
 
     <section class="ladder-card" aria-labelledby="ladder-title">
       <p class="eyebrow">PRESS YOUR LUCK</p><h2 id="ladder-title">The reward ladder</h2>
       <p>Each amount is provisional until Cash Out. Accepting the next round risks the entire amount already earned.</p>
       <ol class="ladder" id="ladder" aria-label="Round difficulty and rewards">
-        <li><b>R1</b><span>6 signals · 8s</span><strong>100 CWGUILD</strong></li>
-        <li><b>R2</b><span>7 signals · 7s</span><strong>300 CWGUILD</strong></li>
-        <li><b>R3</b><span>8 signals · 6s</span><strong>700 CWGUILD</strong></li>
-        <li><b>R4</b><span>9 signals · 5s</span><strong>1,500 CWGUILD</strong></li>
-        <li><b>R5</b><span>10 signals · 4s</span><strong>3,000 CWGUILD</strong></li>
+        <li><b>R1</b><span>6 signals · 8s</span><strong>100,000 CWGUILD</strong></li>
+        <li><b>R2</b><span>7 signals · 7s</span><strong>300,000 CWGUILD</strong></li>
+        <li><b>R3</b><span>8 signals · 6s</span><strong>700,000 CWGUILD</strong></li>
+        <li><b>R4</b><span>9 signals · 5s</span><strong>1,500,000 CWGUILD</strong></li>
+        <li><b>R5</b><span>10 signals · 4s</span><strong>2,000,000 CWGUILD</strong></li>
       </ol>
     </section>
 
     <section class="entry-panel" aria-labelledby="entry-title">
-      <div><p class="eyebrow">PAID ENTRY · DIRECT TOKEN TRANSFER</p><h2 id="entry-title">500,000 CWGUILD for one attempt</h2><p>The fee goes directly to the reward wallet and is not returned, even if you lose, time out, disconnect, or cash out. The maximum possible reward is 3,000 CWGUILD—0.6% of the entry fee.</p></div>
+      <div><p class="eyebrow">PAID ENTRY · DIRECT TOKEN TRANSFER</p><h2 id="entry-title">500,000 CWGUILD for one attempt</h2><p>The fee goes directly to the reward wallet and is not returned, even if you lose, time out, disconnect, or cash out. The top possible cash-out is 2,000,000 CWGUILD, subject to the reward wallet's current balance.</p></div>
       <div class="entry-controls">
-        <label class="entry-ack"><input id="entry-ack" type="checkbox"> <span>I understand the 500,000 CWGUILD fee is non-refundable, buys one attempt, and exceeds the maximum possible reward.</span></label>
+        <label class="entry-ack"><input id="entry-ack" type="checkbox"> <span>I understand the 500,000 CWGUILD fee is non-refundable, buys one attempt, and does not guarantee any reward.</span></label>
         <button class="pay-entry" id="pay-entry" type="button" disabled>CONNECT RONIN TO PAY</button>
         <a class="entry-status" id="entry-status" href="#" target="_blank" rel="noopener" aria-disabled="true">One verified payment unlocks one ladder attempt</a>
       </div>
@@ -108,13 +108,13 @@
 
     <section class="disclosure">
       <div><span>CENTRALIZED PAYOUT DISCLOSURE</span><strong>Verify the wallet, token, and transaction.</strong></div>
-      <p>Rune Run does not use a game contract. Entry requires a direct, non-refundable transfer of exactly 500,000 CWGUILD to the project-controlled reward wallet. The server verifies that payment on Ronin and consumes it for one attempt; it never requests a token allowance. The entry fee is not escrowed and is not returned. Eligibility and results are decided by this server, and cashed-out rewards are sent from the same project-controlled wallet. The maximum reward is 3,000 CWGUILD. On-screen rewards are provisional and unpaid until Cash Out; accepting another round puts the entire provisional reward at risk, and a loss or timeout forfeits it. Each wallet gets one ladder attempt per UTC day. Total Rune Run payouts stop at 2,000,000 CWGUILD. The operator can pause payouts, and a server outage can interrupt a run.</p>
+      <p>Rune Run does not use a game contract. Entry requires a direct, non-refundable transfer of exactly 500,000 CWGUILD to the project-controlled reward wallet. The server verifies that payment on Ronin and consumes it for one attempt; it never requests a token allowance. The entry fee is not escrowed and is not returned. Eligibility and results are decided by this server, and cashed-out rewards are sent from the same project-controlled wallet. The top cash-out is 2,000,000 CWGUILD. The payout ceiling is the reward wallet's current CWGUILD balance and refreshes after entries and payouts; a cash-out is sent only when that balance can cover it. On-screen rewards are provisional and unpaid until Cash Out; accepting another round puts the entire provisional reward at risk, and a loss or timeout forfeits it. Each wallet gets one ladder attempt per UTC day. The operator can pause payouts, and a server outage can interrupt a run.</p>
       <div class="addresses"><a id="token-link" href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener"><span>CWGUILD TOKEN</span><code>0x58DB…2F7b4</code></a><a id="operator-link" href="#" target="_blank" rel="noopener"><span>REWARD WALLET</span><code id="operator-address">Not configured</code></a></div>
     </section>
   </main>
 
   <footer><a href="/hub">← MATT HUB</a><span>CWGUILD Rune Run on Ronin</span><a href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener">VERIFY TOKEN ↗</a></footer>
   <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
-  <script src="/cwguild.js?v=5"></script>
+  <script src="/cwguild.js?v=6"></script>
 </body>
 </html>

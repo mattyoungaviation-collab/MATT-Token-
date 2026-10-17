@@ -18,8 +18,9 @@ const ROUND_RULES = [
   { round: 2, length: 7, inputMs: 7_000, multiplier: 3n },
   { round: 3, length: 8, inputMs: 6_000, multiplier: 7n },
   { round: 4, length: 9, inputMs: 5_000, multiplier: 15n },
-  { round: 5, length: 10, inputMs: 4_000, multiplier: 30n }
+  { round: 5, length: 10, inputMs: 4_000, multiplier: 20n }
 ];
+const TOP_REWARD_MULTIPLIER = 20n;
 const AUTH_TTL_MS = 5 * 60 * 1000;
 const ENTRY_CONFIRMATIONS = 2;
 const ENTRY_TX_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -104,11 +105,16 @@ function publicRun(run) {
   };
 }
 
-function committedPayout(state) {
+function inFlightPayout(state) {
   return Object.values(state.claims).reduce((total, claim) => {
-    if (!claim || !["sending", "submitted", "confirmed"].includes(claim.status)) return total;
+    if (!claim || !["sending", "submitted"].includes(claim.status)) return total;
     try { return total + BigInt(claim.amount); } catch { return total; }
   }, 0n);
+}
+
+function availablePoolBalance(poolBalance, state) {
+  const reserved = inFlightPayout(state);
+  return reserved >= poolBalance ? 0n : poolBalance - reserved;
 }
 
 function recallSequence(sequence, recall) {
@@ -127,9 +133,8 @@ function createCWGuildArcadeRouter(options = {}) {
   const rpcUrl = options.rpcUrl || process.env.RONIN_RPC_URL || "https://api.roninchain.com/rpc";
   const stateFile = options.stateFile ?? String(process.env.CWGUILD_STATE_FILE || "").trim();
   const minimumBalance = tokenAmount(options.minimumBalance ?? process.env.CWGUILD_MIN_BALANCE, "1");
-  const prizeAmount = tokenAmount(options.prizeAmount ?? process.env.CWGUILD_PRIZE_AMOUNT, "100");
   const entryAmount = tokenAmount(options.entryAmount ?? process.env.CWGUILD_ENTRY_AMOUNT, "500000");
-  const maxPayout = tokenAmount(options.maxPayout, "2000000");
+  const topCashOut = tokenAmount(options.topCashOut ?? process.env.CWGUILD_TOP_CASH_OUT, "2000000");
   const privateKey = options.privateKey ?? String(process.env.CWGUILD_OPERATOR_PRIVATE_KEY || "").trim();
   const provider = options.provider || new ethers.JsonRpcProvider(rpcUrl, { chainId: CHAIN_ID, name: "ronin" }, { staticNetwork: true });
   const signer = options.signer || (privateKey ? new ethers.NonceManager(new ethers.Wallet(privateKey, provider)) : null);
@@ -176,7 +181,6 @@ function createCWGuildArcadeRouter(options = {}) {
   if (live && !stateFile) throw new Error("CWGUILD live mode requires CWGUILD_STATE_FILE on persistent private storage.");
   if (live && !signer && !options.payPrize) throw new Error("CWGUILD live mode requires CWGUILD_OPERATOR_PRIVATE_KEY.");
   if (live && options.minimumBalance == null && !process.env.CWGUILD_MIN_BALANCE) throw new Error("CWGUILD live mode requires an explicit CWGUILD_MIN_BALANCE.");
-  if (live && options.prizeAmount == null && !process.env.CWGUILD_PRIZE_AMOUNT) throw new Error("CWGUILD live mode requires an explicit CWGUILD_PRIZE_AMOUNT.");
 
   const state = readState(stateFile);
   const authChallenges = new Map();
@@ -211,7 +215,7 @@ function createCWGuildArcadeRouter(options = {}) {
   }
 
   function roundAmount(round) {
-    return prizeAmount * roundRule(round).multiplier;
+    return topCashOut * roundRule(round).multiplier / TOP_REWARD_MULTIPLIER;
   }
 
   function ladderRules() {
@@ -348,21 +352,24 @@ function createCWGuildArcadeRouter(options = {}) {
       run = state.runs[recordKey(wallet)] || null;
       entry = state.entries[entryKey(wallet)] || null;
     }
-    const committed = committedPayout(state);
-    const remainingPayout = committed >= maxPayout ? 0n : maxPayout - committed;
+    const normalizedPoolBalance = BigInt(poolBalance);
+    const reservedPayout = inFlightPayout(state);
+    const remainingPayout = availablePoolBalance(normalizedPoolBalance, state);
     return {
       live,
       chainId: CHAIN_ID,
       token: { address: TOKEN_ADDRESS, name: "CW GUILD TOKEN", symbol: "CWGUILD", decimals: 18 },
       minimumBalance: minimumBalance.toString(),
-      prizeAmount: prizeAmount.toString(),
+      prizeAmount: roundAmount(1).toString(),
+      topCashOut: topCashOut.toString(),
       entryAmount: entryAmount.toString(),
       recommendedStartingBalance: (entryAmount + minimumBalance).toString(),
-      maxPayout: maxPayout.toString(),
-      committedPayout: committed.toString(),
+      maxPayout: normalizedPoolBalance.toString(),
+      committedPayout: reservedPayout.toString(),
+      reservedPayout: reservedPayout.toString(),
       remainingPayout: remainingPayout.toString(),
       operatorAddress,
-      poolBalance: BigInt(poolBalance).toString(),
+      poolBalance: normalizedPoolBalance.toString(),
       wallet,
       balance: balance === null ? null : BigInt(balance).toString(),
       eligible: balance === null ? null : BigInt(balance) >= minimumBalance,
@@ -469,8 +476,9 @@ function createCWGuildArcadeRouter(options = {}) {
       if (!entry || entry.consumedAt) {
         return res.status(402).json({ error: `A verified, non-refundable ${ethers.formatUnits(entryAmount, 18)} CWGUILD entry fee is required before starting.` });
       }
-      if (committedPayout(state) + roundAmount(1) > maxPayout) {
-        return res.status(503).json({ error: "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached." });
+      const availablePayout = availablePoolBalance(BigInt(await getPoolBalance()), state);
+      if (availablePayout < roundAmount(1)) {
+        return res.status(503).json({ error: "The reward wallet cannot currently cover the first-round cash out." });
       }
       const balance = BigInt(await getBalance(wallet));
       if (balance < minimumBalance) {
@@ -604,17 +612,17 @@ function createCWGuildArcadeRouter(options = {}) {
       if (state.claims[key]) return res.status(409).json({ error: "This wallet already cashed out today's CWGUILD reward.", claim: publicClaim(state.claims[key]) });
       if (payoutLocks.has(wallet.toLowerCase())) return res.status(409).json({ error: "A payout for this wallet is already processing." });
       const amount = BigInt(run.pendingAmount);
-      if (committedPayout(state) + amount > maxPayout) {
-        return res.status(503).json({ error: "The 2,000,000 CWGUILD Rune Run payout ceiling cannot cover this cash out." });
-      }
       payoutLocks.add(wallet.toLowerCase());
+      const poolBalance = BigInt(await getPoolBalance());
+      const availablePayout = availablePoolBalance(poolBalance, state);
+      if (availablePayout < amount) {
+        throw Object.assign(new Error("The reward wallet's current CWGUILD balance cannot cover this cash out."), { status: 503 });
+      }
       claim = { status: "sending", wallet, amount: amount.toString(), createdAt: now(), txHash: null };
       state.claims[key] = claim;
       run.status = "cashing";
       run.updatedAt = now();
       saveState(stateFile, state);
-      const poolBalance = BigInt(await getPoolBalance());
-      if (poolBalance < amount) throw new Error("The CWGUILD reward wallet needs more tokens.");
       const transaction = await payPrize(wallet, amount);
       claim.status = "submitted";
       claim.txHash = transaction.hash;

@@ -17,11 +17,10 @@ async function fixture(overrides = {}) {
     live: true,
     stateFile: path.join(directory, "state.json"),
     minimumBalance: "1",
-    prizeAmount: "100",
     signer: { getAddress: async () => "0x0000000000000000000000000000000000000001" },
     getOperatorAddress: async () => "0x0000000000000000000000000000000000000001",
     getBalance: async () => ethers.parseUnits("600000", 18),
-    getPoolBalance: async () => ethers.parseUnits("10000", 18),
+    getPoolBalance: async () => ethers.parseUnits("10000000", 18),
     payPrize: async () => ({ hash: `0x${"ab".repeat(32)}`, wait: async () => ({ status: 1 }) }),
     verifyEntryTransfer: async () => ({ blockNumber: 123, blockTimestampMs: timestamp, confirmations: 2 }),
     randomInt: () => 0,
@@ -78,11 +77,13 @@ test("publishes the five hard rounds and contractless safety rules", async t => 
   assert.equal(response.status, 200);
   assert.equal(body.token.address, TOKEN_ADDRESS);
   assert.equal(body.chainId, 2020);
-  assert.equal(body.maxPayout, ethers.parseUnits("2000000", 18).toString());
+  assert.equal(body.topCashOut, ethers.parseUnits("2000000", 18).toString());
+  assert.equal(body.maxPayout, ethers.parseUnits("10000000", 18).toString());
+  assert.equal(body.remainingPayout, ethers.parseUnits("10000000", 18).toString());
   assert.equal(body.entryAmount, ethers.parseUnits("500000", 18).toString());
   assert.equal(body.recommendedStartingBalance, ethers.parseUnits("500001", 18).toString());
   assert.deepEqual(body.rules.ladder.map(round => [round.sequenceLength, round.playMs]), [[6, 8000], [7, 7000], [8, 6000], [9, 5000], [10, 4000]]);
-  assert.deepEqual(body.rules.ladder.map(round => ethers.formatUnits(round.rewardAmount, 18)), ["100.0", "300.0", "700.0", "1500.0", "3000.0"]);
+  assert.deepEqual(body.rules.ladder.map(round => ethers.formatUnits(round.rewardAmount, 18)), ["100000.0", "300000.0", "700000.0", "1500000.0", "2000000.0"]);
   assert.equal(body.rules.rewardIsProvisionalUntilCashOut, true);
   assert.equal(body.rules.lossForfeitsPendingReward, true);
   assert.equal(body.rules.oneAttemptPerWalletUtcDay, true);
@@ -164,14 +165,14 @@ test("a round win is provisional until the player cashes out", async t => {
   assert.equal(won.body.won, true);
   assert.equal(won.body.paid, false);
   assert.equal(won.body.pending, true);
-  assert.equal(ethers.formatUnits(won.body.pendingAmount, 18), "100.0");
+  assert.equal(ethers.formatUnits(won.body.pendingAmount, 18), "100000.0");
   assert.equal(paidAmount, 0n);
 
   const cashed = await json(`${site.base}/game/cashout`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId }) });
   assert.equal(cashed.response.status, 200);
   assert.equal(cashed.body.paid, true);
-  assert.equal(ethers.formatUnits(cashed.body.claim.amount, 18), "100.0");
-  assert.equal(paidAmount, ethers.parseUnits("100", 18));
+  assert.equal(ethers.formatUnits(cashed.body.claim.amount, 18), "100000.0");
+  assert.equal(paidAmount, ethers.parseUnits("100000", 18));
 });
 
 test("explicitly accepting round two risks round one's entire reward", async t => {
@@ -186,7 +187,7 @@ test("explicitly accepting round two risks round one's entire reward", async t =
   assert.equal(next.body.round, 2);
   assert.equal(next.body.sequenceLength, 7);
   assert.equal(next.body.inputMs, 7000);
-  assert.equal(ethers.formatUnits(next.body.pendingAmount, 18), "100.0");
+  assert.equal(ethers.formatUnits(next.body.pendingAmount, 18), "100000.0");
 
   site.advance(350 + next.body.sequenceLength * 390);
   await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: next.body.runId, gameId: next.body.gameId }) });
@@ -197,14 +198,14 @@ test("explicitly accepting round two risks round one's entire reward", async t =
   });
   assert.equal(lost.body.won, false);
   assert.equal(lost.body.lost, true);
-  assert.equal(ethers.formatUnits(lost.body.forfeitedAmount, 18), "100.0");
+  assert.equal(ethers.formatUnits(lost.body.forfeitedAmount, 18), "100000.0");
   assert.equal(payouts, 0);
   const status = await json(`${site.base}/status?wallet=${player.address}`);
   assert.equal(status.body.run.status, "lost");
   assert.equal(status.body.run.pendingAmount, "0");
 });
 
-test("winning round two grows the cash-out amount to 300 CWGUILD", async t => {
+test("winning round two grows the cash-out amount to 300,000 CWGUILD", async t => {
   let paidAmount = 0n;
   const site = await fixture({ payPrize: async (_wallet, amount) => { paidAmount = amount; return { hash: `0x${"12".repeat(32)}`, wait: async () => ({ status: 1 }) }; } });
   t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
@@ -213,10 +214,10 @@ test("winning round two grows the cash-out amount to 300 CWGUILD", async t => {
   await winRound(site, player, started.body);
   const next = await json(`${site.base}/game/next`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId }) });
   const wonTwo = await winRound(site, player, next.body);
-  assert.equal(ethers.formatUnits(wonTwo.body.pendingAmount, 18), "300.0");
+  assert.equal(ethers.formatUnits(wonTwo.body.pendingAmount, 18), "300000.0");
   const cashed = await json(`${site.base}/game/cashout`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId }) });
   assert.equal(cashed.body.paid, true);
-  assert.equal(paidAmount, ethers.parseUnits("300", 18));
+  assert.equal(paidAmount, ethers.parseUnits("300000", 18));
 });
 
 test("timeout forfeits the pending reward and consumes the daily attempt", async t => {
@@ -235,7 +236,7 @@ test("timeout forfeits the pending reward and consumes the daily attempt", async
   });
   assert.equal(expired.response.status, 200);
   assert.equal(expired.body.timedOut, true);
-  assert.equal(ethers.formatUnits(expired.body.forfeitedAmount, 18), "100.0");
+  assert.equal(ethers.formatUnits(expired.body.forfeitedAmount, 18), "100000.0");
 
   const duplicate = await start(site, player);
   assert.equal(duplicate.response.status, 409);
@@ -260,10 +261,10 @@ test("random post-pattern recall rejects a screen recording replay", async t => 
   assert.equal(replayed.body.won, false);
 });
 
-test("the lifetime ceiling is enforced when a player cashes out", async t => {
+test("the reward wallet's current balance is enforced when a player cashes out", async t => {
   let payouts = 0;
   const site = await fixture({
-    maxPayout: "250",
+    getPoolBalance: async () => ethers.parseUnits("250000", 18),
     payPrize: async () => { payouts += 1; return { hash: `0x${"bc".repeat(32)}`, wait: async () => ({ status: 1 }) }; }
   });
   t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
@@ -275,8 +276,28 @@ test("the lifetime ceiling is enforced when a player cashes out", async t => {
   await winRound(site, player, next.body);
   const blocked = await json(`${site.base}/game/cashout`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId }) });
   assert.equal(blocked.response.status, 503);
-  assert.match(blocked.body.error, /payout ceiling/i);
+  assert.match(blocked.body.error, /current CWGUILD balance/i);
   assert.equal(payouts, 0);
+});
+
+test("the payout ceiling refreshes to the wallet balance after a cash out", async t => {
+  let poolBalance = ethers.parseUnits("2500000", 18);
+  const site = await fixture({
+    getPoolBalance: async () => poolBalance,
+    payPrize: async (_wallet, amount) => {
+      poolBalance -= amount;
+      return { hash: `0x${"de".repeat(32)}`, wait: async () => ({ status: 1 }) };
+    }
+  });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const player = ethers.Wallet.createRandom();
+  const started = await start(site, player);
+  await winRound(site, player, started.body);
+  const cashed = await json(`${site.base}/game/cashout`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId }) });
+  assert.equal(cashed.response.status, 200);
+  const status = await json(`${site.base}/status`);
+  assert.equal(status.body.maxPayout, ethers.parseUnits("2400000", 18).toString());
+  assert.equal(status.body.remainingPayout, ethers.parseUnits("2400000", 18).toString());
 });
 
 test("underfunded wallets cannot start the ladder", async t => {

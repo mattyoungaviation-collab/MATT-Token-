@@ -53,7 +53,7 @@
     if (/already used/i.test(message)) return "This wallet already used today's ladder attempt. Come back after 00:00 UTC.";
     if (/entry fee|required before starting/i.test(message)) return message;
     if (/payouts are disabled/i.test(message)) return "Paid entry is locked until real CWGUILD payouts are enabled.";
-    if (/payout ceiling/i.test(message)) return "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached.";
+    if (/reward wallet|payout ceiling/i.test(message)) return "The reward wallet's current CWGUILD balance cannot cover that cash out.";
     if (/hold at least/i.test(message)) return message;
     return message.replace(/^Error:\s*/i, "").slice(0, 220);
   }
@@ -141,7 +141,9 @@
     $("#prize-amount").textContent = formatToken(config.rules.ladder.at(-1).rewardAmount, 0);
     $("#pool-balance").textContent = formatToken(config.poolBalance, 0);
     $("#max-payout").textContent = formatToken(config.maxPayout, 0);
-    $("#payout-remaining").textContent = `${formatToken(config.remainingPayout, 0)} remaining`;
+    $("#payout-remaining").textContent = BigInt(config.reservedPayout || 0) > 0n
+      ? `${formatToken(config.remainingPayout, 0)} available after in-flight payouts`
+      : "Current reward-wallet balance";
     $("#prize-mode").textContent = config.live ? "Maximum ladder cash out" : "Paid play locked · payouts off";
     $("#wallet-address").textContent = short(state.wallet);
     $("#wallet-balance").textContent = state.wallet ? formatToken(config.balance) : "Connect wallet";
@@ -395,7 +397,7 @@
     $("#cash-out").disabled = true;
     $("#risk-next").disabled = true;
     $("#phase-title").textContent = "Cashing out";
-    setMessage("Checking the lifetime payout ceiling and reward wallet, then submitting payment.");
+    setMessage("Checking the reward wallet's current CWGUILD balance, then submitting payment.");
     try {
       const result = await api("/game/cashout", {
         method: "POST",
