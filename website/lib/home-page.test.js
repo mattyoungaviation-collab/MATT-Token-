@@ -16,12 +16,13 @@ const publicSource = fs.readdirSync(publicDir)
   .map(file => fs.readFileSync(path.join(publicDir, file), "utf8"))
   .join("\n");
 
-test("homepage leads with MATT purpose and Project DYNO launch preparation", () => {
+test("homepage leads with MATT purpose and current Project DYNO entry status", () => {
   assert.match(html, /utility and purpose across Ronin/i);
   assert.match(html, /PROJECT <span>DYNO<\/span>/);
-  assert.match(html, /LAUNCH PREPARATION/);
+  assert.match(html, /LIVE ROUND STATUS/);
   assert.match(html, /35 RON \+ 700,000 MATT/);
-  assert.match(html, /href="\/project-dyno"/);
+  assert.match(html, /href="\/dyno"/);
+  assert.doesNotMatch(html, /Ticket sales are not live|Final checks are underway/);
 });
 
 test("official community links are current across the launch pages", () => {

@@ -38,14 +38,12 @@ test("Project Dyno launch page lists every prize exactly", () => {
   }
 });
 
-test("countdown targets the requested upcoming Saturday at 7 AM UTC", () => {
-  const launchIso = "2026-10-17T07:00:00Z";
-  const launch = new Date(launchIso);
-  assert.match(countdown, new RegExp(launchIso));
-  assert.equal(launch.getUTCDay(), 6);
-  assert.equal(launch.getUTCHours(), 7);
-  assert.match(html, /SATURDAY · OCTOBER 17/);
-  assert.match(html, /12:00 AM PACIFIC · 7:00 AM UTC/);
+test("launch page reflects the open round without an obsolete opening countdown", () => {
+  assert.match(html, /LIVE ON RONIN/);
+  assert.match(html, /data-live-status/);
+  assert.doesNotMatch(html, /TARGET OPENING|SATURDAY · OCTOBER 17|data-countdown-unit/);
+  assert.doesNotMatch(countdown, /TARGET_AT|2026-10-17T07:00:00Z/);
+  assert.match(countdown, /health\.purchasesEnabled === true/);
 });
 
 test("launch aliases and official community links are wired", () => {
@@ -55,7 +53,7 @@ test("launch aliases and official community links are wired", () => {
   assert.match(html, /https:\/\/explorer\.roninchain\.com\/address\//);
 });
 
-test("X share control publishes the live countdown and canonical launch link", () => {
+test("X share control publishes the current entry link and fixed ticket terms", () => {
   assert.match(html, /data-x-share/);
   assert.match(html, /data-share-preview/);
   assert.match(html, /rel="canonical" href="https:\/\/matttoken\.com\/project-dyno"/);
