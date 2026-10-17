@@ -51,6 +51,8 @@
     const message = String(error?.shortMessage || error?.reason || error?.message || error || "Rune Run request failed.");
     if (/user rejected|user denied|4001/i.test(message)) return "Wallet signature cancelled. No funds moved.";
     if (/already used/i.test(message)) return "This wallet already used today's ladder attempt. Come back after 00:00 UTC.";
+    if (/entry fee|required before starting/i.test(message)) return message;
+    if (/payouts are disabled/i.test(message)) return "Paid entry is locked until real CWGUILD payouts are enabled.";
     if (/payout ceiling/i.test(message)) return "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached.";
     if (/hold at least/i.test(message)) return message;
     return message.replace(/^Error:\s*/i, "").slice(0, 220);
@@ -100,9 +102,11 @@
       restoreRun();
       button.textContent = short(state.wallet);
       await loadStatus();
-      if (!state.config.eligible) setMessage(`This wallet needs ${formatToken(state.config.minimumBalance)} to enter.`);
+      if (!state.config.live) setMessage("Paid entry is locked because real CWGUILD payouts are currently disabled.");
+      else if (!state.config.run && state.config.entry?.status !== "verified" && !state.config.canAffordEntry) setMessage(`Hold at least ${formatToken(state.config.recommendedStartingBalance)} before paying: the fee plus the required remaining balance.`);
+      else if (!state.config.run && state.config.entry?.status !== "verified") setMessage(`Ready to pay the non-refundable ${formatToken(state.config.entryAmount, 0)} entry fee.`);
       else if (state.config.run?.status === "decision" && state.runId) showDecision(state.config.run);
-      else if (!state.config.run) setMessage("Wallet ready. Sign in to start today's one-attempt ladder.");
+      else if (!state.config.run) setMessage("Entry verified. Sign in to start today's one-attempt ladder.");
     } catch (error) {
       state.wallet = null;
       state.signer = null;
@@ -132,7 +136,8 @@
   function render() {
     const config = state.config;
     if (!config) return;
-    $("#minimum-balance").textContent = formatToken(config.minimumBalance);
+    $("#entry-amount").textContent = formatToken(config.entryAmount, 0);
+    $("#minimum-balance").textContent = formatToken(config.minimumBalance, 0);
     $("#prize-amount").textContent = formatToken(config.rules.ladder.at(-1).rewardAmount, 0);
     $("#pool-balance").textContent = formatToken(config.poolBalance, 0);
     $("#max-payout").textContent = formatToken(config.maxPayout, 0);
@@ -145,13 +150,31 @@
     $("#operator-link").href = operator ? `https://explorer.roninchain.com/address/${operator}` : "#";
     $("#operator-link").toggleAttribute("aria-disabled", !operator);
 
-    const start = $("#start-game");
     const run = config.run;
+    const verifiedEntry = config.entry?.status === "verified";
+    const entryComplete = Boolean(run) || verifiedEntry;
+    const pay = $("#pay-entry");
+    pay.disabled = state.phase !== "idle" || !state.wallet || !config.live || !config.canAffordEntry || entryComplete || !$("#entry-ack").checked;
+    if (!state.wallet) pay.textContent = "CONNECT RONIN TO PAY";
+    else if (!config.live) pay.textContent = "ENTRY LOCKED · PAYOUTS OFF";
+    else if (run) pay.textContent = "ENTRY CONSUMED FOR TODAY'S ATTEMPT";
+    else if (verifiedEntry) pay.textContent = "ENTRY VERIFIED · READY TO START";
+    else if (!config.canAffordEntry) pay.textContent = `NEED ${formatToken(config.recommendedStartingBalance, 0)}`;
+    else pay.textContent = `PAY ${formatToken(config.entryAmount, 0)} ENTRY`;
+    const entryStatus = $("#entry-status");
+    entryStatus.textContent = verifiedEntry
+      ? `Verified on Ronin · ${config.entry.txHash.slice(0, 10)}…${config.entry.txHash.slice(-6)}`
+      : run ? "Entry consumed by today's attempt" : "One non-refundable payment unlocks one ladder attempt";
+    entryStatus.href = config.entry?.txHash ? `https://explorer.roninchain.com/tx/${config.entry.txHash}` : "#";
+    entryStatus.toggleAttribute("aria-disabled", !config.entry?.txHash);
+
+    const start = $("#start-game");
     const used = run && ["lost", "cashed", "cashing"].includes(run.status);
     const capReached = BigInt(config.remainingPayout || 0) < BigInt(config.prizeAmount || 0);
-    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || used || capReached || (run?.status === "decision" && Boolean(state.runId));
+    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || !entryComplete || used || capReached || (run?.status === "decision" && Boolean(state.runId));
     if (!state.wallet) start.textContent = "CONNECT RONIN TO PLAY";
     else if (!config.eligible) start.textContent = "MORE CWGUILD NEEDED";
+    else if (!entryComplete) start.textContent = "PAY ENTRY TO UNLOCK";
     else if (used) start.textContent = run.status === "lost" ? "TODAY'S ATTEMPT LOST" : "TODAY'S CASH OUT COMPLETE";
     else if (capReached) start.textContent = "PAYOUT CEILING REACHED";
     else if (run?.status === "decision" && !state.runId) start.textContent = "SIGN TO RESUME DECISION";
@@ -259,6 +282,33 @@
       await playGame(result);
     } catch (error) {
       handleFailure(error);
+    }
+  }
+
+  async function payEntry() {
+    if (!state.wallet || !state.signer || state.phase !== "idle" || !state.config?.live) return;
+    if (!$("#entry-ack").checked) return setMessage("Accept the non-refundable entry terms before opening the wallet transaction.", "error");
+    state.phase = "paying";
+    render();
+    try {
+      $("#phase-title").textContent = "Confirm the entry transfer";
+      setMessage(`Ronin Wallet will ask you to transfer exactly ${formatToken(state.config.entryAmount, 0)} to ${short(state.config.operatorAddress)}. This payment is non-refundable.`);
+      const token = new window.ethers.Contract(state.config.token.address, ["function transfer(address recipient,uint256 amount) returns (bool)"], state.signer);
+      const transaction = await token.transfer(state.config.operatorAddress, BigInt(state.config.entryAmount));
+      setMessage(`Entry submitted: ${transaction.hash.slice(0, 10)}… Waiting for two Ronin confirmations.`);
+      await transaction.wait(2);
+      await api("/entry/verify", {
+        method: "POST",
+        body: JSON.stringify({ wallet: state.wallet, txHash: transaction.hash })
+      });
+      state.phase = "idle";
+      await loadStatus();
+      $("#phase-title").textContent = "Entry verified";
+      setMessage(`${formatToken(state.config.entryAmount, 0)} was received by the reward wallet. Sign in to begin the one-attempt ladder.`, "good");
+    } catch (error) {
+      state.phase = "idle";
+      setMessage(friendly(error), "error");
+      render();
     }
   }
 
@@ -397,6 +447,8 @@
 
   $("#connect-wallet").addEventListener("click", connect);
   $("#start-game").addEventListener("click", startRun);
+  $("#pay-entry").addEventListener("click", payEntry);
+  $("#entry-ack").addEventListener("change", render);
   $("#risk-next").addEventListener("click", riskNext);
   $("#cash-out").addEventListener("click", cashOut);
   loadStatus().catch(error => {

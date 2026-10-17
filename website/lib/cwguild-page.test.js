@@ -7,12 +7,13 @@ const publicDirectory = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(publicDirectory, "cwguild.html"), "utf8");
 const script = fs.readFileSync(path.join(publicDirectory, "cwguild.js"), "utf8");
 
-test("CWGUILD game identifies the verified token and contractless trust model", () => {
+test("CWGUILD game identifies the verified token and paid-entry trust model", () => {
   assert.match(html, /0x58DB02f56D53De7ee816904aA205D222b242F7b4/);
-  assert.match(html, /0 CWGUILD wager/i);
+  assert.match(html, /500,000 CWGUILD non-refundable fee/i);
+  assert.match(html, /3,000 CWGUILD maximum reward/i);
   assert.match(html, /No token approval/i);
   assert.match(html, /CENTRALIZED PAYOUT DISCLOSURE/i);
-  assert.match(html, /project-controlled operator wallet/i);
+  assert.match(html, /project-controlled reward wallet/i);
 });
 
 test("CWGUILD game uses wallet signatures and never requests an ERC-20 approval", () => {
@@ -20,14 +21,25 @@ test("CWGUILD game uses wallet signatures and never requests an ERC-20 approval"
   assert.doesNotMatch(script, /\.approve\s*\(/);
   assert.doesNotMatch(script, /eth_sendTransaction/);
   assert.match(script, /wallet_switchEthereumChain/);
+  assert.match(script, /token\.transfer\(state\.config\.operatorAddress/);
+  assert.match(script, /transaction\.wait\(2\)/);
+  assert.match(script, /\/entry\/verify/);
 });
 
 test("CWGUILD game uses a timed post-pattern recall rule and publishes the payout ceiling", () => {
-  assert.match(html, /4–8 second recall/i);
+  assert.match(html, /shrinking timer/i);
   assert.match(html, /PAYOUT CEILING/i);
   assert.match(html, /2,000,000 CWGUILD/i);
   assert.match(script, /\/game\/recall/);
   assert.match(script, /START AT SIGNAL/);
+});
+
+test("paid entry requires explicit acknowledgment and discloses the unfavorable maximum", () => {
+  assert.match(html, /I understand the 500,000 CWGUILD fee is non-refundable/i);
+  assert.match(html, /0\.6% of the entry fee/i);
+  assert.match(html, /entry fee is not escrowed and is not returned/i);
+  assert.match(html, /id="entry-ack"/);
+  assert.match(html, /id="pay-entry"/);
 });
 
 test("CWGUILD ladder requires an explicit risk decision and discloses forfeiture", () => {

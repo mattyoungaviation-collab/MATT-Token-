@@ -20,9 +20,10 @@ async function fixture(overrides = {}) {
     prizeAmount: "100",
     signer: { getAddress: async () => "0x0000000000000000000000000000000000000001" },
     getOperatorAddress: async () => "0x0000000000000000000000000000000000000001",
-    getBalance: async () => ethers.parseUnits("5", 18),
+    getBalance: async () => ethers.parseUnits("600000", 18),
     getPoolBalance: async () => ethers.parseUnits("10000", 18),
     payPrize: async () => ({ hash: `0x${"ab".repeat(32)}`, wait: async () => ({ status: 1 }) }),
+    verifyEntryTransfer: async () => ({ blockNumber: 123, blockTimestampMs: timestamp, confirmations: 2 }),
     randomInt: () => 0,
     now: () => timestamp,
     ...overrides
@@ -43,9 +44,17 @@ async function json(url, options) {
 }
 
 async function start(site, player) {
+  await payEntry(site, player);
   const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
   const signature = await player.signMessage(challenge.body.message);
   return json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
+}
+
+async function payEntry(site, player, txHash = ethers.keccak256(ethers.toUtf8Bytes(player.address))) {
+  return json(`${site.base}/entry/verify`, {
+    method: "POST",
+    body: JSON.stringify({ wallet: player.address, txHash })
+  });
 }
 
 async function winRound(site, player, game) {
@@ -70,12 +79,15 @@ test("publishes the five hard rounds and contractless safety rules", async t => 
   assert.equal(body.token.address, TOKEN_ADDRESS);
   assert.equal(body.chainId, 2020);
   assert.equal(body.maxPayout, ethers.parseUnits("2000000", 18).toString());
+  assert.equal(body.entryAmount, ethers.parseUnits("500000", 18).toString());
+  assert.equal(body.recommendedStartingBalance, ethers.parseUnits("500001", 18).toString());
   assert.deepEqual(body.rules.ladder.map(round => [round.sequenceLength, round.playMs]), [[6, 8000], [7, 7000], [8, 6000], [9, 5000], [10, 4000]]);
   assert.deepEqual(body.rules.ladder.map(round => ethers.formatUnits(round.rewardAmount, 18)), ["100.0", "300.0", "700.0", "1500.0", "3000.0"]);
   assert.equal(body.rules.rewardIsProvisionalUntilCashOut, true);
   assert.equal(body.rules.lossForfeitsPendingReward, true);
   assert.equal(body.rules.oneAttemptPerWalletUtcDay, true);
-  assert.equal(body.rules.wagerRequired, false);
+  assert.equal(body.rules.wagerRequired, true);
+  assert.equal(body.rules.entryFeeNonRefundable, true);
   assert.equal(body.rules.approvalRequired, false);
 });
 
@@ -89,6 +101,57 @@ test("rejects a signature from a different wallet", async t => {
   const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
   assert.equal(started.response.status, 401);
   assert.match(started.body.error, /did not match/i);
+});
+
+test("requires and consumes an exact verified 500,000 CWGUILD entry", async t => {
+  const site = await fixture();
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const player = ethers.Wallet.createRandom();
+  const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
+  const signature = await player.signMessage(challenge.body.message);
+  const unpaid = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
+  assert.equal(unpaid.response.status, 402);
+  assert.match(unpaid.body.error, /500000\.0 CWGUILD entry fee/i);
+
+  const entry = await payEntry(site, player);
+  assert.equal(entry.response.status, 201);
+  assert.equal(ethers.formatUnits(entry.body.entry.amount, 18), "500000.0");
+  assert.equal(entry.body.entry.status, "verified");
+  const started = await start(site, player);
+  assert.equal(started.response.status, 201);
+  const status = await json(`${site.base}/status?wallet=${player.address}`);
+  assert.equal(status.body.entry.status, "consumed");
+});
+
+test("verifies the real CWGUILD transfer log and prevents transaction reuse", async t => {
+  const player = ethers.Wallet.createRandom();
+  const other = ethers.Wallet.createRandom();
+  const operator = "0x0000000000000000000000000000000000000001";
+  const txHash = `0x${"34".repeat(32)}`;
+  const tokenInterface = new ethers.Interface(["event Transfer(address indexed from,address indexed to,uint256 value)"]);
+  const encoded = tokenInterface.encodeEventLog(tokenInterface.getEvent("Transfer"), [player.address, operator, ethers.parseUnits("500000", 18)]);
+  const blockTimestamp = Date.parse("2026-10-17T12:00:00Z") / 1000;
+  const provider = {
+    getTransactionReceipt: async () => ({ status: 1, to: TOKEN_ADDRESS, blockNumber: 100, logs: [{ address: TOKEN_ADDRESS, topics: encoded.topics, data: encoded.data }] }),
+    getBlockNumber: async () => 101,
+    getBlock: async () => ({ timestamp: blockTimestamp })
+  };
+  const site = await fixture({ provider, verifyEntryTransfer: undefined });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const verified = await payEntry(site, player, txHash);
+  assert.equal(verified.response.status, 201);
+  assert.equal(verified.body.entry.txHash, txHash);
+  const reused = await payEntry(site, other, txHash);
+  assert.equal(reused.response.status, 409);
+  assert.match(reused.body.error, /already been used/i);
+});
+
+test("locks entry transfers while real payouts are disabled", async t => {
+  const site = await fixture({ live: false });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const blocked = await payEntry(site, ethers.Wallet.createRandom());
+  assert.equal(blocked.response.status, 503);
+  assert.match(blocked.body.error, /payouts are disabled/i);
 });
 
 test("a round win is provisional until the player cashes out", async t => {
