@@ -142,7 +142,7 @@
     $("#pool-balance").textContent = formatToken(config.poolBalance, 0);
     $("#max-payout").textContent = formatToken(config.maxPayout, 0);
     $("#payout-remaining").textContent = `${formatToken(config.remainingPayout, 0)} remaining`;
-    $("#prize-mode").textContent = config.live ? "Maximum ladder cash out" : "Practice ladder · payouts off";
+    $("#prize-mode").textContent = config.live ? "Maximum ladder cash out" : "Paid play locked · payouts off";
     $("#wallet-address").textContent = short(state.wallet);
     $("#wallet-balance").textContent = state.wallet ? formatToken(config.balance) : "Connect wallet";
     const operator = config.operatorAddress;
