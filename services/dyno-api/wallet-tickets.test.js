@@ -1,0 +1,23 @@
+"use strict";
+const test = require("node:test"), assert = require("node:assert/strict"), express = require("express");
+const { createDynoRouter } = require("./router"), { createMemoryStore } = require("./store");
+test("wallet tickets paginate only matching purchases and fail honestly when index unavailable", async t => {
+  const store = createMemoryStore(), wallet = "0x" + "1".repeat(40), other = "0x" + "2".repeat(40);
+  let ready = true;
+  store.checkpoint = async () => ready ? { block_number: "123", hash: "ab".repeat(32) } : null;
+  store._events.push({ event_name: "TicketPurchased", payload: {wallet: other} });
+  for (let i = 1; i <= 26; i++) store._events.push({ event_name: "TicketPurchased", payload: {wallet, ticketId: String(i), roundId: "1"} });
+  store._events.push({ event_name: "RefundCredited", payload: {wallet} });
+  const app = express(); app.use(createDynoRouter({ manifest: require("../../config/project-dyno.local.json"), store, env: {} }));
+  const server = app.listen(0, "127.0.0.1"); await new Promise(resolve => server.once("listening", resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const base = `http://127.0.0.1:${server.address().port}/wallet-tickets`;
+  const first = await (await fetch(base + "?wallet=" + wallet)).json();
+  assert.equal(first.rows.length, 25); assert.equal(first.nextOffset, 25);
+  assert.ok(first.rows.every(row => row.payload.wallet === wallet));
+  const second = await (await fetch(base + "?wallet=" + wallet + "&offset=25")).json();
+  assert.equal(second.rows.length, 1); assert.equal(second.nextOffset, null);
+  assert.equal((await fetch(base + "?wallet=bad")).status, 400);
+  assert.equal((await fetch(base + "?wallet=" + wallet + "&offset=-1")).status, 400);
+  ready = false; assert.equal((await fetch(base + "?wallet=" + wallet)).status, 503);
+});

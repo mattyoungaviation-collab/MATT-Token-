@@ -16,13 +16,15 @@ function createStore({ connectionString = process.env.DATABASE_URL, production =
   return {
     kind: "postgres",
     async health() { const result = await pool.query("SELECT 1 AS ok"); return result.rows[0].ok === 1; },
-    async ledger({ roundId, limit = 50, offset = 0 }) {
+    async ledger({ roundId, wallet, eventName, limit = 50, offset = 0 }) {
       const result = await pool.query(
         `SELECT block_number::text, encode(transaction_hash,'hex') tx_hash, log_index, event_name, payload
            FROM project_dyno.chain_events
           WHERE ($1::numeric IS NULL OR (payload->>'roundId')::numeric = $1)
+          AND ($4::text IS NULL OR lower(payload->>'wallet') = $4)
+          AND ($5::text IS NULL OR event_name = $5)
           ORDER BY block_number DESC, log_index DESC LIMIT $2 OFFSET $3`,
-        [roundId || null, Math.min(Number(limit), 250), Number(offset)]
+        [roundId || null, Math.min(Number(limit), 250), Number(offset), wallet?.toLowerCase() || null, eventName || null]
       );
       return result.rows;
     },
@@ -69,7 +71,7 @@ function createMemoryStore() {
     kind: "memory-demo",
     auth: createMemoryAuthStore(),
     async health() { return true; },
-    async ledger({ roundId, limit = 50, offset = 0 }) { return events.filter(row => !roundId || String(row.payload.roundId) === String(roundId)).slice(offset, offset + limit); },
+    async ledger({ roundId, wallet, eventName, limit = 50, offset = 0 }) { return events.filter(row => (!roundId || String(row.payload.roundId) === String(roundId)) && (!wallet || row.payload.wallet?.toLowerCase() === wallet.toLowerCase()) && (!eventName || row.event_name === eventName)).slice(Number(offset), Number(offset) + Number(limit)); },
     _events: events,
     async close() {},
   };

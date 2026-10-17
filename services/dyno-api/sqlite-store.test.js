@@ -22,6 +22,22 @@ const hash = byte => "0x" + byte.repeat(64);
 const event = (overrides = {}) => ({ blockNumber: 10, blockHash: hash("1"), transactionHash: hash("2"), transactionIndex: 0, index: 0,
   address: "0x" + "3".repeat(40), name: "TicketPurchased", payload: { roundId: "1", ticketId: "90071992547409930000", saleRon: "12148876400000000000000" }, ...overrides });
 
+test("wallet history filters before pagination and follows index rollback", async t => {
+  const store = fixture(t).open(), wallet = "0x" + "a".repeat(40), other = "0x" + "b".repeat(40);
+  const rows = [
+    event({ index: 0, payload: { roundId: "1", ticketId: "1", wallet } }),
+    event({ index: 1, payload: { roundId: "1", ticketId: "2", wallet: other } }),
+    event({ index: 2, name: "RefundCredited", payload: { roundId: "1", ticketId: "1", wallet } }),
+    event({ index: 3, payload: { roundId: "2", ticketId: "3", wallet } }),
+  ];
+  await store.applyBatch(31337, rows, { number: 10, hash: hash("1") });
+  const query = { wallet: wallet.toUpperCase(), eventName: "TicketPurchased", limit: 1 };
+  assert.equal((await store.ledger(query))[0].payload.ticketId, "3");
+  assert.equal((await store.ledger({...query, offset: 1}))[0].payload.ticketId, "1");
+  await store.rollback(31337, 9);
+  assert.equal((await store.ledger(query)).length, 0);
+});
+
 test("encrypted wallet/Discord records survive close/reopen; expired and consumed nonces stay consumed", async t => {
   const f = fixture(t), first = f.open(), expiresAt = Date.now() + 300000;
   first.auth.put("discord-flow", "private-oauth-state", { wallet: "0xwallet", expiresAt }, expiresAt);

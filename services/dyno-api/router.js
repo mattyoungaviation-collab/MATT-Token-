@@ -345,6 +345,21 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
       res.json({ private: true, commitment, authorityBlock: authority.chainBlock, authorityBlockHash: authority.chainBlockHash, rows });
     } catch { res.status(503).json({ error: "PRIVATE_HISTORY_UNAVAILABLE" }); }
   });
+  router.get("/wallet-tickets", async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    let wallet;
+    try { wallet = getAddress(req.query.wallet); } catch { return res.status(400).json({ error: "INVALID_WALLET" }); }
+    const offset = Number(req.query.offset || 0), limit = 25;
+    if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ error: "INVALID_PAGINATION" });
+    try {
+      const checkpoint = db.checkpoint ? await db.checkpoint(manifest.chainId) : null;
+      if (!checkpoint?.hash) return res.status(503).json({ error: "INDEX_UNAVAILABLE" });
+      const rows = await db.ledger({ wallet, eventName: "TicketPurchased", limit: limit + 1, offset });
+      res.json({ wallet, rows: rows.slice(0, limit), nextOffset: rows.length > limit ? offset + limit : null,
+        indexedBlock: checkpoint.block_number, indexedBlockHash: `0x${checkpoint.hash}`,
+        note: "Indexed purchase history; check each ticket for current eligibility and claims." });
+    } catch { res.status(503).json({ error: "INDEX_UNAVAILABLE" }); }
+  });
   router.get("/ledger", async (req, res) => {
     const rows = await db.ledger({ roundId: req.query.roundId, limit: req.query.limit, offset: req.query.offset });
     const checkpoint = db.checkpoint ? await db.checkpoint(manifest.chainId) : null;

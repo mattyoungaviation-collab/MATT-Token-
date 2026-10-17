@@ -7,11 +7,11 @@
   <meta property="og:title" content="Project DYNO · A MATT + RON Raffle">
   <meta property="og:description" content="Six draws, 1,000 eligible tickets, public rules, and on-chain accounting on Ronin.">
   <meta property="og:image" content="https://www.matttoken.com/assets/water-dyno-1358.png">
-  <link rel="stylesheet" href="/dyno.css"><link rel="stylesheet" href="/dyno-nft.css?v=20261016-ux2"><script defer src="/vendor/ethers.umd.min.js"></script><script defer src="/dyno.js?v=20261016-ux"></script><script defer src="/dyno-admin.js"></script><script defer src="/dyno-claims.js"></script>
+  <link rel="stylesheet" href="/dyno.css"><link rel="stylesheet" href="/dyno-nft.css?v=20261016-ux2"><script defer src="/vendor/ethers.umd.min.js"></script><link rel="stylesheet" href="/dyno-tickets.css?v=20261016-1"><script defer src="/dyno-tickets.js?v=20261016-1"></script><script defer src="/dyno.js?v=20261016-ux-tickets1"></script><script defer src="/dyno-admin.js"></script><script defer src="/dyno-claims.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header class="topbar"><a class="brand" href="/"><span>M</span>MATT TOKEN</a><nav aria-label="Primary"><a href="#prizes">Prizes</a><a href="#ledger">Ledger</a><a href="#matt-custody">MATT custody</a><a href="#terms">Terms</a></nav><button id="connect-wallet" class="wallet">CONNECT RONIN</button></header>
+  <header class="topbar"><a class="brand" href="/"><span>M</span>MATT TOKEN</a><nav aria-label="Primary"><a href="#prizes">Prizes</a><a href="#my-tickets">My Tickets</a><a href="#ledger">Ledger</a><a href="#matt-custody">MATT custody</a><a href="#terms">Terms</a></nav><button id="connect-wallet" class="wallet">CONNECT RONIN</button></header>
   <main id="main">
     <section class="hero wrap">
       <div class="hero-copy"><p class="eyebrow">MATT TOKEN PRESENTS</p><h1>PROJECT <em>DYNO</em></h1><p class="lede">One thousand eligible tickets. Six on-chain draws. Fixed RON and MATT amounts; ticket MATT is held, not sold by DYNO.</p><div class="state-line"><span id="environment-badge" class="badge warning">LOADING</span><span id="phase-badge" class="badge">—</span><span id="freshness">Checking chain index…</span></div><div class="progress" role="progressbar" aria-label="Eligible ticket progress" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="0"><span id="progress-bar"></span></div><div class="progress-meta"><strong><span id="eligible-count">0</span> / 1,000 eligible</strong><small>Progress can move backward after a disqualification.</small></div><a class="hero-entry" href="#checkout">See entry steps &amp; live price ↓</a></div>
@@ -28,8 +28,20 @@
 
     <section class="checkout wrap" id="checkout" aria-labelledby="checkout-title">
       <div><p class="eyebrow">ENTER THE ROUND</p><h2 id="checkout-title">35 RON <span>+</span> 700,000 MATT</h2><p>per ticket, plus network gas. Connect your wallet, verify Discord, and choose your tickets.</p></div>
-      <div class="buy-card"><label for="quantity">Ticket quantity</label><div class="quantity" role="group" aria-label="Ticket quantity"><button data-quantity="1" class="active">1</button><button data-quantity="2">2</button><button data-quantity="3">3</button></div><dl><div><dt>RON payment</dt><dd id="ron-total">35 RON</dd></div><div><dt>MATT payment</dt><dd id="matt-total">700,000 MATT</dd></div><div><dt>Gas</dt><dd>Shown by wallet</dd></div><div><dt>Daily remaining</dt><dd id="quota">Verify to check</dd></div></dl><button id="verify-discord" class="secondary">VERIFY DISCORD MEMBERSHIP</button><button id="purchase" class="primary" disabled>PURCHASE UNAVAILABLE</button><p id="transaction-status" class="status" role="status">Connect a wallet and verify Discord. A submitted transaction is not a confirmed ticket.</p></div>
+      <div class="buy-card"><a class="tickets-shortcut" href="#my-tickets">My Tickets ↓</a><label for="quantity">Ticket quantity</label><div class="quantity" role="group" aria-label="Ticket quantity"><button data-quantity="1" class="active">1</button><button data-quantity="2">2</button><button data-quantity="3">3</button></div><dl><div><dt>RON payment</dt><dd id="ron-total">35 RON</dd></div><div><dt>MATT payment</dt><dd id="matt-total">700,000 MATT</dd></div><div><dt>Gas</dt><dd>Shown by wallet</dd></div><div><dt>Daily remaining</dt><dd id="quota">Verify to check</dd></div></dl><button id="verify-discord" class="secondary">VERIFY DISCORD MEMBERSHIP</button><button id="purchase" class="primary" disabled>PURCHASE UNAVAILABLE</button><p id="transaction-status" class="status" role="status">Connect a wallet and verify Discord. A submitted transaction is not a confirmed ticket.</p></div>
     </section>
+
+    <section id="my-tickets" class="section wrap" aria-labelledby="my-tickets-title">
+      <div class="my-tickets-heading"><div><p class="eyebrow">YOUR ENTRIES</p><h2 id="my-tickets-title" tabindex="-1">My Tickets</h2></div><button id="my-tickets-refresh" class="secondary" disabled>REFRESH</button></div>
+      <p id="my-tickets-wallet">Connect your wallet to see your tickets.</p><strong id="my-ticket-count"></strong>
+      <p id="my-tickets-status" class="status" role="status"></p><div id="my-ticket-list" class="my-ticket-list"></div>
+      <button id="my-tickets-more" class="secondary" hidden>LOAD MORE TICKETS</button>
+    </section>
+    <dialog id="purchase-confirmation" class="ticket-confirmation" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">
+      <p class="eyebrow">CONFIRMED ON RONIN</p><h2 id="confirmation-title">You're in!</h2>
+      <p id="confirmation-message"></p><p id="confirmation-tickets"></p><p id="confirmation-transaction"></p>
+      <div class="confirmation-actions"><button id="confirmation-view" class="primary" autofocus>VIEW MY TICKETS</button><button id="confirmation-close" class="secondary">CLOSE</button></div>
+    </dialog>
 
     <section id="prizes" class="section wrap"><header><p class="eyebrow">FIXED BEFORE OPEN</p><h2>Six draws. Repeat wins allowed.</h2><p>Each eligible ticket remains in the pool for every draw. RON amounts—not approximate dollar labels—are authoritative.</p></header><div id="prize-grid" class="prize-grid"></div><p class="planning-note">Approximate dollar labels use the owner's $0.0712/RON planning rate—not a live price or guaranteed value. The fixed RON amounts govern this round.</p><p id="nft-delivery-status" class="status" role="status">NFT delivery: waiting for an assigned winner and verified transfer.</p></section>
 

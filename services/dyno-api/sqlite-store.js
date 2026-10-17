@@ -155,11 +155,11 @@ function createSqliteStore({ env = process.env, production = false, chainId = nu
   const store = {
     kind: "sqlite", auth, filename,
     async health() { return db.prepare("PRAGMA quick_check").get().quick_check === "ok"; },
-    async ledger({ roundId, limit = 50, offset = 0 } = {}) {
+    async ledger({ roundId, wallet, eventName, limit = 50, offset = 0 } = {}) {
       const count = Number(limit), start = Number(offset);
       if (!Number.isInteger(count) || count < 1 || !Number.isInteger(start) || start < 0) throw new Error("Invalid ledger pagination");
-      return db.prepare("SELECT CAST(block_number AS TEXT) block_number, substr(transaction_hash,3) tx_hash, log_index,event_name,payload FROM chain_events WHERE (? IS NULL OR round_id=?) AND (? IS NULL OR chain_id=?) ORDER BY block_number DESC, transaction_index DESC,log_index DESC LIMIT ? OFFSET ?")
-        .all(roundId || null, roundId || null, chainId === null ? null : String(chainId), chainId === null ? null : String(chainId), Math.min(count, 1000), start)
+      return db.prepare("SELECT CAST(block_number AS TEXT) block_number, substr(transaction_hash,3) tx_hash, log_index,event_name,payload FROM chain_events WHERE (? IS NULL OR round_id=?) AND (? IS NULL OR chain_id=?) AND (? IS NULL OR lower(json_extract(payload,'$.wallet'))=?) AND (? IS NULL OR event_name=?) ORDER BY block_number DESC, transaction_index DESC,log_index DESC LIMIT ? OFFSET ?")
+        .all(roundId || null, roundId || null, chainId === null ? null : String(chainId), chainId === null ? null : String(chainId), wallet || null, wallet?.toLowerCase() || null, eventName || null, eventName || null, Math.min(count, 1000), start)
         .map(row => ({ ...row, payload: JSON.parse(row.payload) }));
     },
     async checkpoint(id) { const row = db.prepare("SELECT CAST(block_number AS TEXT) block_number,substr(block_hash,3) hash FROM chain_checkpoints WHERE chain_id=?").get(String(id)); return row ? { ...row } : null; },

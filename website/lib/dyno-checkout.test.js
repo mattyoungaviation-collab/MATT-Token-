@@ -5,7 +5,7 @@ const source = fs.readFileSync(path.join(__dirname, "../public/dyno.js"), "utf8"
 const wallet = "0x1111111111111111111111111111111111111111";
 const tick = async () => { for (let i = 0; i < 20; i++) await new Promise(resolve => setImmediate(resolve)); };
 function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPrizes, purchasesEnabled, linkStatus } = {}) {
-  const events = [], calls = [], routes = [], elements = new Map();
+  const events = [], calls = [], routes = [], confirmations = [], elements = new Map();
   const element = () => ({ textContent: "", innerHTML: "", disabled: false, style: {}, handlers: {}, dataset: {},
     classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {}, replaceChildren() {}, append() {},
     addEventListener(name, handler) { this.handlers[name] = handler; } });
@@ -39,9 +39,9 @@ function fixture({ mock = false, remaining = 3, rejectPurchase = false, chainPri
     else if (route.endsWith("/voucher")) { events.push("voucher"); body = { voucher: { roundId: "2", quantity: 1, identityVersion: 4 }, signature: "test-signature" }; }
     return { ok: true, json: async () => body };
   };
-  vm.runInNewContext(source, { document, fetch, location: {}, window: { ethereum: {}, ethers: { ...ethers,
+  vm.runInNewContext(source, { document, fetch, location: {}, window: { ethereum: {}, DynoTickets: {setWallet() {}, confirmed(receipt, expected) { confirmations.push({receipt, expected}); }}, ethers: { ...ethers,
     BrowserProvider: function () { return browser; }, Contract: function (_address, abi) { return abi[0].includes("allowance") ? token : manager; } } } });
-  return { byId, quantities, events, calls, routes, releaseApproval };
+  return { byId, quantities, events, calls, routes, confirmations, releaseApproval };
 }
 test("checkout restores login/quota, blocks double submission and requests voucher only after separate approval confirms", async () => {
   const f = fixture(); await tick();
@@ -50,6 +50,7 @@ test("checkout restores login/quota, blocks double submission and requests vouch
   assert.match(f.byId("quota").textContent, /3 of 3/); assert.equal(f.byId("purchase").disabled, false);
   f.byId("purchase").handlers.click(); await tick();
   assert.deepEqual(f.events, ["approve"]); assert.equal(f.byId("purchase").disabled, true);
+  assert.equal(f.confirmations.length, 0);
   assert.ok(f.quantities.every(el => el.disabled));
   f.byId("purchase").handlers.click(); await tick(); assert.deepEqual(f.events, ["approve"]);
   f.releaseApproval(); await tick();
@@ -58,6 +59,8 @@ test("checkout restores login/quota, blocks double submission and requests vouch
   assert.ok(f.routes.some(route => route.url.includes("/quote?roundId=2&quantity=1")));
   assert.ok(f.routes.some(route => route.url.endsWith("/voucher") && route.body.roundId === "2"));
   assert.match(f.byId("transaction-status").textContent, /Confirmed in block 123/);
+  assert.equal(f.confirmations.length, 1); assert.equal(f.confirmations[0].expected.wallet, wallet);
+  assert.equal(f.confirmations[0].expected.roundId, "2"); assert.equal(f.confirmations[0].receipt.status, 1);
   assert.equal(f.byId("purchase").disabled, false);
 });
 test("return from Discord displays missing or mismatched wallet instead of looping", async () => {
@@ -76,6 +79,7 @@ test("purchase rejection restores controls and never displays confirmation", asy
   f.releaseApproval(); await tick();
   assert.match(f.byId("transaction-status").textContent, /User rejected/);
   assert.doesNotMatch(f.byId("transaction-status").textContent, /Confirmed/);
+  assert.equal(f.confirmations.length, 0);
   assert.equal(f.byId("purchase").disabled, false); assert.ok(f.quantities.every(el => !el.disabled));
 });
 test("zero allowance and local mock leave checkout disabled", async () => {

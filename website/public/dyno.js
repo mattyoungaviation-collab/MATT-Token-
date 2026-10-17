@@ -114,6 +114,7 @@
     const link = await json("/api/dyno/link-status");
     state.wallet = link.wallet ? window.ethers.getAddress(link.wallet) : null;
     state.discordLinked = link.linked === true;
+    window.DynoTickets?.setWallet(state.wallet);
     $("connect-wallet").textContent = state.wallet ? short(state.wallet) : "CONNECT RONIN";
     $("verify-discord").textContent = state.discordLinked ? "DISCORD VERIFIED" : "VERIFY DISCORD MEMBERSHIP";
     if (state.discordLinked) $("transaction-status").textContent = "Wallet and Discord membership verified. Check your daily allowance below.";
@@ -140,7 +141,7 @@
     if(state.config?.purchasesEnabled===false)throw new Error("Project DYNO checkout is not enabled.");
     if(!state.wallet)throw new Error("Connect and authenticate your wallet first.");
     if(state.busy)return;
-    state.busy=true; const quantity=state.quantity; updateQuantity();
+    state.busy=true; const quantity=state.quantity, purchaseWallet=state.wallet, purchaseRound=state.roundId; updateQuantity();
     try {
     const provider=window.ronin?.provider||window.ethereum; const browser=new window.ethers.BrowserProvider(provider); const network=await browser.getNetwork();
     if(Number(network.chainId)!==state.config.chainId)throw new Error(`Switch your wallet to chain ${state.config.chainId}.`);
@@ -157,12 +158,28 @@
     if(quote.paymentModel!=="RON_AND_HELD_MATT"||BigInt(quote.totalRon)!==BigInt(state.round.config.ticketRon)*BigInt(quantity)||BigInt(quote.totalMatt)!==required)throw new Error("Fixed-price quote changed. Refresh before purchasing.");
     const abi=["function buyTickets((uint256 roundId,bytes32 accountCommitment,address wallet,uint8 quantity,uint32 identityVersion,bytes32 nonce,uint64 dayIndex,uint64 expiry) voucher,bytes signature) payable"];
     const manager=new window.ethers.Contract(state.config.raffleProxy,abi,signer);$("transaction-status").textContent="Submit the purchase in your wallet. Waiting for confirmation…";
-    const tx=await manager.buyTickets(signed.voucher,signed.signature,{value:BigInt(quote.totalRon)});$("transaction-status").textContent=`Submitted ${short(tx.hash)}. Not confirmed yet…`;const receipt=await tx.wait();
-    if(receipt.status!==1)throw new Error("Purchase reverted. No ticket was created.");$("transaction-status").textContent=`Confirmed in block ${receipt.blockNumber}. Refreshing ledger…`;await renderLedger();
+    const tx=await manager.buyTickets(signed.voucher,signed.signature,{value:BigInt(quote.totalRon)});$("transaction-status").textContent=`Submitted ${short(tx.hash)}. Not confirmed yet…`;let receipt;
+    try { receipt=await tx.wait(); } catch(error) {
+      if(error.code==="TRANSACTION_REPLACED" && !error.cancelled && error.reason==="repriced" && error.receipt) receipt=error.receipt;
+      else throw error;
+    }
+    if(receipt.status!==1)throw new Error("Purchase reverted. No ticket was created.");
+    window.DynoTickets?.confirmed(receipt,{manager:state.config.raffleProxy,wallet:purchaseWallet,roundId:purchaseRound,quantity});
+    $("transaction-status").textContent=`Confirmed in block ${receipt.blockNumber}. Your tickets are in My Tickets.`;
+    renderLedger().catch(()=>{});
+    json(`/api/dyno/round?roundId=${encodeURIComponent(state.roundId)}`).then(renderRound).catch(()=>{});
     } finally { state.busy=false; await refreshQuota(); }
   }
   document.querySelectorAll("[data-quantity]").forEach(button=>button.addEventListener("click",()=>{state.quantity=Number(button.dataset.quantity);updateQuantity();}));
   document.querySelectorAll("[data-tab]").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll("[data-tab]").forEach(item=>item.setAttribute("aria-selected",String(item===button)));document.querySelectorAll(".tab-panel").forEach(panel=>panel.classList.add("hidden"));$(`tab-${button.dataset.tab}`).classList.remove("hidden");}));
   $("connect-wallet").addEventListener("click",()=>connect().catch(error=>{$("transaction-status").textContent=error.message;})); $("verify-discord").addEventListener("click",()=>{try{discord();}catch(error){$("transaction-status").textContent=error.message;}}); $("purchase").addEventListener("click",()=>purchase().catch(error=>{$("transaction-status").textContent=error.message;}));
+  const walletProvider=window.ronin?.provider||window.ethereum;
+  walletProvider?.on?.("accountsChanged",()=>{
+    state.wallet=null;state.discordLinked=false;state.quota=null;
+    window.DynoTickets?.setWallet(null);
+    $("connect-wallet").textContent="CONNECT RONIN";$("verify-discord").textContent="VERIFY DISCORD MEMBERSHIP";
+    $("transaction-status").textContent="Wallet changed. Connect again to view that wallet's tickets and continue.";
+    updateQuantity();
+  });
   Promise.all([json("/api/dyno/config"),json("/api/dyno/active-round")]).then(async ([config,active])=>{renderConfig(config);state.roundId=active.roundId;if(!state.roundId)throw new Error("No active raffle round; purchases remain disabled.");const round=await json(`/api/dyno/round?roundId=${encodeURIComponent(state.roundId)}`);renderRound(round);renderHistoricalFinance().catch(()=>{$("financial-history").textContent="Indexed historical totals unavailable; live contract balances above remain authoritative.";});await refreshLinkStatus();await refreshQuota();await renderNftDelivery().catch(()=>{$("nft-delivery-status").textContent="NFT delivery: verification unavailable; no confirmed delivery shown.";});}).catch(error=>{$("transaction-status").textContent=error.message;updateQuantity();}); renderLedger().catch(()=>{$("ledger-body").innerHTML='<tr><td colspan="4">Ledger temporarily unavailable.</td></tr>';});
 })();

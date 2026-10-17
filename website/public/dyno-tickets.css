@@ -1,0 +1,15 @@
+#my-tickets{scroll-margin-top:88px;padding-block:56px}
+.my-tickets-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+#my-tickets-wallet{overflow-wrap:anywhere;color:var(--muted)}
+.my-ticket-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-block:20px}
+.my-ticket{padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.my-ticket h3{margin:0;color:var(--cyan)}.my-ticket p{color:var(--muted);font-size:.85rem}
+.my-ticket>div{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.my-ticket a,.ticket-confirmation a{color:var(--cyan);font-size:.85rem}
+.ticket-confirmation{width:min(480px,calc(100% - 28px));max-height:90dvh;overflow:auto;border:1px solid var(--cyan);border-radius:24px;padding:30px;background:var(--panel);color:var(--text);box-shadow:0 24px 100px #0009}
+.ticket-confirmation::backdrop{background:#030710cc;backdrop-filter:blur(5px)}
+.ticket-confirmation h2{margin:8px 0;font-size:2rem}.ticket-confirmation p{line-height:1.6}
+#confirmation-tickets{font-size:1.5rem;color:var(--cyan);overflow-wrap:anywhere}
+.confirmation-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.tickets-shortcut{display:inline-block;margin-top:14px;color:var(--cyan)}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
