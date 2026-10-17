@@ -13,3 +13,11 @@
 .confirmation-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .tickets-shortcut{display:inline-block;margin-top:14px;color:var(--cyan)}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+.my-odds{margin-block:24px;color:var(--muted);font-size:.85rem;line-height:1.6}
+.odds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.odds-grid>div{padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.odds-grid span{display:block}.odds-grid strong{display:block;color:var(--cyan);font-size:1.9rem;margin-top:8px}
+.odds-share{height:10px;border-radius:99px;background:var(--line);overflow:hidden}
+.odds-share span{display:block;height:100%;background:var(--cyan)}
+.my-odds summary{cursor:pointer;color:var(--text)}
+@media(max-width:600px){.odds-grid{grid-template-columns:1fr}}

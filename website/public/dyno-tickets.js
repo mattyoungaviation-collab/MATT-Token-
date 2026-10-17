@@ -23,7 +23,63 @@
   const $ = id => document.getElementById(id);
   let wallet = null, generation = 0, nextOffset = null, loading = false;
   let indexed = [], recent = [];
+  let roundId = null, oddsRun = 0;
   const dialog = $("purchase-confirmation");
+  async function refreshOdds() {
+    const run = ++oddsRun, selected = wallet, selectedRound = roundId;
+    const host = $("my-odds");
+    host.replaceChildren();
+    if (!selected || !selectedRound) return;
+    host.textContent = "Checking your eligible entries…";
+    try {
+      const response = await fetch(`/api/dyno/wallet-odds?wallet=${encodeURIComponent(selected)}&roundId=${encodeURIComponent(selectedRound)}`, {cache: "no-store"});
+      if (!response.ok) throw new Error();
+      const result = await response.json();
+      if (run !== oddsRun) return;
+      if (result.wallet?.toLowerCase() !== selected.toLowerCase() || result.roundId !== selectedRound ||
+          !result.indexedBlockHash || result.capacity !== 1000 || !Number.isInteger(result.held) ||
+          result.held < 0 || result.held > result.eligibleCount || result.eligibleCount > 1000) throw new Error();
+      host.replaceChildren();
+      if (result.cancelled || result.assigned) {
+        host.textContent = result.cancelled ? "Round cancelled — check your tickets for refunds." : "Draw complete — check your tickets for results.";
+        return;
+      }
+      const grid = document.createElement("div"); grid.className = "odds-grid";
+      const fmt = raw => {
+        if (!/^\d+\.\d{4}$/.test(raw) || Number(raw) > 100) throw new Error();
+        return raw.replace(/0+$/, "").replace(/\.$/, "") + "%";
+      };
+      for (const [label, value] of [
+        ["Your eligible tickets", String(result.held)],
+        ["Chance per draw at 1,000 tickets", fmt(result.perDrawPercent)],
+        ["Chance of at least one of six prizes", "≈ " + fmt(result.anyPrizePercent)]
+      ]) {
+        const card = document.createElement("div"), name = document.createElement("span"), amount = document.createElement("strong");
+        name.textContent = label; amount.textContent = value; card.append(name, amount); grid.append(card);
+      }
+      host.append(grid);
+      const comparison = document.createElement("p");
+      comparison.textContent = result.eligibleCount
+        ? `Share of current entries: You ${fmt(result.currentSharePercent)} (${result.held}) · Everyone else ${fmt(result.othersSharePercent)} (${result.others}). Not final draw odds.`
+        : "No eligible entries indexed yet.";
+      const bar = document.createElement("div"), fill = document.createElement("span");
+      bar.className = "odds-share"; bar.setAttribute("aria-hidden", "true");
+      fill.style.width = result.currentSharePercent === null ? "0%" : fmt(result.currentSharePercent);
+      bar.append(fill); host.append(comparison, bar);
+      const note = document.createElement("p"); note.className = "status";
+      note.textContent = `Round ${selectedRound} · Indexed block ${result.indexedBlock}. New purchases and eligibility changes appear after indexing. Draw odds assume your tickets remain eligible when the pool freezes at 1,000. Each extra eligible ticket adds 0.1 percentage points per draw.`;
+      const details = document.createElement("details"), summary = document.createElement("summary"), formula = document.createElement("p");
+      summary.textContent = "How the percentages work";
+      formula.textContent = "With k eligible tickets: per-draw chance = k ÷ 1,000. Chance of at least one prize = 1 − (1 − k ÷ 1,000)⁶, assuming independent draw streams. Repeat wins are allowed. Current share uses the eligible entries indexed so far, not the final 1,000-ticket pool. These are probabilities, not guaranteed winnings.";
+      details.append(summary, formula); host.append(note, details);
+    } catch {
+      if (run === oddsRun) { host.replaceChildren(); host.textContent = "Odds temporarily unavailable. Refresh to try again."; }
+    }
+  }
+  function setRound(value) {
+    if (roundId === value) return;
+    roundId = value; refreshOdds();
+  }
   function link(hash) {
     const a = document.createElement("a");
     a.textContent = "View transaction ↗"; a.target = "_blank"; a.rel = "noopener noreferrer";
@@ -61,6 +117,7 @@
     if (!wallet || loading) return;
     const selected = wallet, run = generation;
     loading = true; render();
+    if (!more) refreshOdds();
     $("my-tickets-status").textContent = "Loading your ticket history…";
     try {
       const response = await fetch(`/api/dyno/wallet-tickets?wallet=${encodeURIComponent(selected)}&offset=${more ? nextOffset : 0}`, { cache: "no-store" });
@@ -87,6 +144,7 @@
   function setWallet(value) {
     if (value?.toLowerCase() === wallet?.toLowerCase()) return;
     wallet = value; generation++; loading = false; indexed = []; recent = []; nextOffset = null;
+    oddsRun++; $("my-odds").replaceChildren();
     if (dialog.open) dialog.close();
     $("my-tickets-wallet").textContent = wallet || "Connect your wallet to see your tickets.";
     $("my-tickets-status").textContent = "";
@@ -108,5 +166,5 @@
   });
   $("my-tickets-refresh").addEventListener("click", () => refresh());
   $("my-tickets-more").addEventListener("click", () => refresh(true));
-  window.DynoTickets = { setWallet, confirmed };
+  window.DynoTickets = { setWallet, setRound, confirmed };
 })();

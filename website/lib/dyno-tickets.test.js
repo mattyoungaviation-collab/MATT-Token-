@@ -26,7 +26,7 @@ test("pending, reverted, wrong-contract, wrong-wallet, wrong-round and incomplet
 
 test("wallet UI shows receipt tickets immediately, opens only confirmed modal, and ignores stale wallet responses", async () => {
   const elements = new Map(), requests = [];
-  function element() { return {textContent: "", children: [], handlers: {}, open: false,
+  function element() { return {textContent: "", children: [], handlers: {}, open: false, style: {}, setAttribute() {},
     append(...nodes) { this.children.push(...nodes); }, replaceChildren(...nodes) { this.children = nodes; },
     addEventListener(name, fn) { this.handlers[name] = fn; }, showModal() { this.open = true; }, close() { this.open = false; }}; }
   const byId = id => { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); };
@@ -49,4 +49,16 @@ test("wallet UI shows receipt tickets immediately, opens only confirmed modal, a
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(byId("my-tickets-wallet").textContent, manager);
   assert.equal(byId("my-ticket-list").children.length, 0);
+  window.DynoTickets.setRound("1");
+  const oddsRequest = requests.find(request => request.url.includes("/wallet-odds"));
+  oddsRequest.resolve({ok: true, json: async () => ({wallet: manager, roundId: "1", indexedBlockHash: "hash",
+    indexedBlock: "123", capacity: 1000, held: 3, eligibleCount: 6, others: 3,
+    perDrawPercent: "0.3000", anyPrizePercent: "1.7866", currentSharePercent: "50.0000", othersSharePercent: "50.0000"})});
+  await new Promise(resolve => setImmediate(resolve));
+  const text = node => node.textContent + node.children.map(text).join(" ");
+  assert.match(text(byId("my-odds")), /0.3%/);
+  assert.match(text(byId("my-odds")), /1.7866%/);
+  assert.match(text(byId("my-odds")), /You 50%.*Everyone else 50%/);
+  window.DynoTickets.setWallet(null);
+  assert.equal(byId("my-odds").children.length, 0);
 });

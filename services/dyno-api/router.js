@@ -13,6 +13,7 @@ const { readPurchaseState, requirePurchasable, PurchaseStateError } = require(".
 const { createMemoryAuthStore } = require("./auth-store");
 const { readActiveRound, readRound, readTicket, readWinners, readBuyback, atBlock, id } = require("./public-state");
 const { projectFinancials } = require("./financials");
+const { odds, projectPool } = require("./wallet-odds");
 const { readProtection, prepareProtection } = require("./protection");
 
 function cookieMap(header = "") {
@@ -37,6 +38,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
   const db = store || createStore({ production: manifest.environment === "production", env, chainId: manifest.chainId });
   const authStore = providedAuthStore || db.auth || createMemoryAuthStore();
   const financialCache = new Map();
+  const oddsCache = new Map();
   if (manifest.environment === "production" && authStore.kind !== "sqlite-encrypted") throw new Error("Project DYNO production requires configured durable encrypted authentication storage");
   if (typeof authStore.consumeRateLimit !== "function") throw new Error("Project DYNO requires authentication rate limiting");
   const provider = chainProvider || (!manifest.mock && env[manifest.rpcUrlEnv] ? new JsonRpcProvider(env[manifest.rpcUrlEnv], manifest.chainId, { staticNetwork: true }) : null);
@@ -344,6 +346,28 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
       }));
       res.json({ private: true, commitment, authorityBlock: authority.chainBlock, authorityBlockHash: authority.chainBlockHash, rows });
     } catch { res.status(503).json({ error: "PRIVATE_HISTORY_UNAVAILABLE" }); }
+  });
+  router.get("/wallet-odds", async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    let wallet, roundId;
+    try { wallet = getAddress(req.query.wallet); roundId = id(req.query.roundId); }
+    catch { return res.status(400).json({ error: "INVALID_WALLET_OR_ROUND" }); }
+    try {
+      const checkpoint = await db.checkpoint(manifest.chainId);
+      if (!checkpoint?.hash) throw new Error("INDEX_UNAVAILABLE");
+      const key = `${roundId}:${checkpoint.block_number}:${checkpoint.hash}`;
+      let pool = oddsCache.get(key);
+      if (!pool) {
+        pool = await projectPool({ store: db, chainId: manifest.chainId, roundId });
+        if (oddsCache.size >= 8) oddsCache.clear();
+        oddsCache.set(key, pool);
+      }
+      const held = pool.wallets.get(wallet.toLowerCase()) || 0;
+      const { wallets, ...publicPool } = pool;
+      res.json({ ...publicPool, wallet, held, others: pool.eligibleCount - held,
+        ...odds(held, pool.eligibleCount, pool.capacity),
+        finalityPolicy: manifest.indexerFinalityMode || "rpc-finalized" });
+    } catch { res.status(503).json({ error: "ODDS_UNAVAILABLE" }); }
   });
   router.get("/wallet-tickets", async (req, res) => {
     res.set("Cache-Control", "no-store");

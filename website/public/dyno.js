@@ -27,6 +27,7 @@
     if (!config.mock) $("purchase").textContent = "VERIFY & PREPARE PURCHASE";
   }
   function renderRound(round) {
+    window.DynoTickets?.setRound?.(state.roundId);
     if (!state.config.mock) {
       if (!round.config || round.config.matt.toLowerCase() !== state.config.matt.toLowerCase() || round.config.ronPrizes?.length !== 5) throw new Error("Live round configuration unavailable or mismatched; purchases disabled.");
       const firstNft = round.config.nftTokenId === "1358" && round.config.nftCollection?.toLowerCase() === state.config.nftCollection?.toLowerCase();
