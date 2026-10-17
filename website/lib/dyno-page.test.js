@@ -13,5 +13,5 @@ test("mobile entry path is direct while NFT traits and raw ledger data remain av
   assert.match(js,/https:\/\/explorer\.roninchain\.com\/tx\//);
   assert.doesNotMatch(js,/td\.textContent=JSON\.stringify\(row\.payload\)/);
   assert.match(html,/\/dyno\.js\?v=20261016-ux/);
-  assert.match(html,/\/dyno-nft\.css\?v=20261016-ux/);
+  assert.match(html,/\/dyno-nft\.css\?v=20261016-ux2/);
 });

@@ -166,4 +166,5 @@
 .ledger-link { color: var(--cyan); white-space: nowrap; }
 @media (max-width: 600px) {
   .nft-traits summary { padding-inline: 16px; }
+  .checkout { gap: 22px; }
 }
