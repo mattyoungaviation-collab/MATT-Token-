@@ -3,7 +3,7 @@
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
-  const state = { provider: null, signer: null, wallet: null, config: null, game: null, moves: [], phase: "idle", timer: null };
+  const state = { provider: null, signer: null, wallet: null, config: null, game: null, recall: null, moves: [], phase: "idle", timer: null };
   const runeButtons = $$("[data-rune]");
   const progress = $$("#sequence i");
 
@@ -26,6 +26,7 @@
     const message = String(error?.shortMessage || error?.reason || error?.message || error || "Rune Run request failed.");
     if (/user rejected|user denied|4001/i.test(message)) return "Wallet signature cancelled. No funds moved.";
     if (/already earned/i.test(message)) return "This wallet already earned today's prize. Come back after 00:00 UTC.";
+    if (/payout ceiling/i.test(message)) return "The 2,000,000 CWGUILD Rune Run payout ceiling has been reached.";
     if (/hold at least/i.test(message)) return message;
     return message.replace(/^Error:\s*/i, "").slice(0, 220);
   }
@@ -97,6 +98,8 @@
     $("#minimum-balance").textContent = formatToken(config.minimumBalance);
     $("#prize-amount").textContent = formatToken(config.prizeAmount);
     $("#pool-balance").textContent = formatToken(config.poolBalance, 0);
+    $("#max-payout").textContent = formatToken(config.maxPayout, 0);
+    $("#payout-remaining").textContent = `${formatToken(config.remainingPayout, 0)} remaining`;
     $("#prize-mode").textContent = config.live ? "Funded operator payout" : "Practice mode · payouts off";
     $("#wallet-address").textContent = short(state.wallet);
     $("#wallet-balance").textContent = state.wallet ? formatToken(config.balance) : "Connect wallet";
@@ -107,10 +110,12 @@
 
     const start = $("#start-game");
     const alreadyWon = Boolean(config.claim);
-    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || alreadyWon;
+    const capReached = BigInt(config.remainingPayout || 0) < BigInt(config.prizeAmount || 0);
+    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || alreadyWon || capReached;
     if (!state.wallet) start.textContent = "CONNECT RONIN TO PLAY";
     else if (!config.eligible) start.textContent = "MORE CWGUILD NEEDED";
     else if (alreadyWon) start.textContent = "TODAY'S PRIZE COMPLETE";
+    else if (capReached) start.textContent = "PAYOUT CEILING REACHED";
     else if (!config.live) start.textContent = "START PRACTICE RUN";
     else start.textContent = "START PRIZE RUN";
     $("#phase-title").textContent = alreadyWon ? "Prize secured" : state.phase === "idle" ? "Ready for a new signal" : $("#phase-title").textContent;
@@ -123,6 +128,7 @@
     runeButtons.forEach(button => { button.disabled = true; button.classList.remove("active"); });
     clearInterval(state.timer);
     $("#timer").textContent = "—";
+    $("#recall-rule").hidden = true;
   }
 
   function pulseRune(name, duration = 260) {
@@ -142,12 +148,17 @@
     }
   }
 
-  function beginInput() {
+  function beginInput(recall) {
     state.phase = "input";
-    $("#phase-title").textContent = "Repeat the signal";
-    setMessage("Tap all six runes in the order you saw them.");
+    state.recall = recall;
+    $("#phase-title").textContent = "Timed recall round";
+    const direction = recall.direction === "forward" ? "FORWARD" : "BACKWARD";
+    const instruction = `START AT SIGNAL #${recall.startPosition} · MOVE ${direction}`;
+    $("#recall-rule").textContent = instruction;
+    $("#recall-rule").hidden = false;
+    setMessage("The rule was revealed after the pattern. Complete all six moves before time expires.");
     runeButtons.forEach(button => { button.disabled = false; });
-    const deadline = Date.now() + 20_000;
+    const deadline = Date.now() + recall.inputMs;
     const tick = () => {
       const remaining = Math.max(0, deadline - Date.now());
       $("#timer").textContent = `${(remaining / 1000).toFixed(1)}s`;
@@ -174,7 +185,8 @@
       state.game = game;
       state.phase = "preview";
       await showSequence(game.sequence);
-      beginInput();
+      const recall = await api("/game/recall", { method: "POST", body: JSON.stringify({ wallet: state.wallet, gameId: game.gameId }) });
+      beginInput(recall);
     } catch (error) {
       handleFailure(error);
     }
@@ -189,6 +201,7 @@
     setMessage("The server is verifying the sequence and daily prize status.");
     const result = await api("/game/finish", { method: "POST", body: JSON.stringify({ wallet: state.wallet, gameId: state.game.gameId, moves: state.moves }) });
     state.game = null;
+    state.recall = null;
     state.phase = "idle";
     if (!result.won) {
       progress.forEach(item => item.classList.add("error"));
@@ -214,6 +227,7 @@
     clearInterval(state.timer);
     state.phase = "idle";
     state.game = null;
+    state.recall = null;
     runeButtons.forEach(button => { button.disabled = true; });
     $("#phase-title").textContent = "Run interrupted";
     setMessage(friendly(error), "error");

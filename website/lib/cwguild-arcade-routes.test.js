@@ -52,6 +52,9 @@ test("publishes verified Ronin token configuration without requiring approvals",
   assert.equal(response.status, 200);
   assert.equal(body.token.address, TOKEN_ADDRESS);
   assert.equal(body.chainId, 2020);
+  assert.equal(body.maxPayout, ethers.parseUnits("2000000", 18).toString());
+  assert.equal(body.rules.playMs, 8_000);
+  assert.equal(body.rules.randomizedRecall, true);
   assert.equal(body.rules.wagerRequired, false);
   assert.equal(body.rules.approvalRequired, false);
 });
@@ -77,7 +80,12 @@ test("pays one correct skill run and blocks a second daily prize", async t => {
   const signature = await player.signMessage(challenge.body.message);
   const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
   assert.equal(started.response.status, 201);
-  site.advance(4_000);
+  site.advance(2_700);
+  const recall = await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId }) });
+  assert.equal(recall.response.status, 200);
+  assert.equal(recall.body.direction, "forward");
+  assert.equal(recall.body.startPosition, 1);
+  site.advance(500);
   const finished = await json(`${site.base}/game/finish`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId, moves: started.body.sequence }) });
   assert.equal(finished.response.status, 200);
   assert.equal(finished.body.won, true);
@@ -102,4 +110,72 @@ test("keeps underfunded wallets out of the prize run", async t => {
   const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
   assert.equal(started.response.status, 403);
   assert.match(started.body.error, /hold at least/i);
+});
+
+test("reveals a randomized recall rule only after the pattern and rejects the plain recording", async t => {
+  let payouts = 0;
+  const values = [0, 1, 2, 3, 0, 1, 1, 3];
+  const site = await fixture({
+    randomInt: () => values.shift(),
+    payPrize: async () => { payouts += 1; return { hash: `0x${"ef".repeat(32)}`, wait: async () => ({ status: 1 }) }; }
+  });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const player = ethers.Wallet.createRandom();
+  const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
+  const signature = await player.signMessage(challenge.body.message);
+  const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
+
+  const tooSoon = await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId }) });
+  assert.equal(tooSoon.response.status, 422);
+  site.advance(2_700);
+  const recall = await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId }) });
+  assert.equal(recall.body.direction, "backward");
+  assert.equal(recall.body.startPosition, 4);
+  site.advance(500);
+  const replayed = await json(`${site.base}/game/finish`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId, moves: started.body.sequence }) });
+  assert.equal(replayed.response.status, 200);
+  assert.equal(replayed.body.won, false);
+  assert.equal(payouts, 0);
+});
+
+test("expires the recall round and never pays after the timer", async t => {
+  let payouts = 0;
+  const site = await fixture({ payPrize: async () => { payouts += 1; return { hash: `0x${"aa".repeat(32)}`, wait: async () => ({ status: 1 }) }; } });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const player = ethers.Wallet.createRandom();
+  const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
+  const signature = await player.signMessage(challenge.body.message);
+  const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
+  site.advance(2_700);
+  await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId }) });
+  site.advance(9_600);
+  const expired = await json(`${site.base}/game/finish`, { method: "POST", body: JSON.stringify({ wallet: player.address, gameId: started.body.gameId, moves: started.body.sequence }) });
+  assert.equal(expired.response.status, 410);
+  assert.equal(payouts, 0);
+});
+
+test("stops all future prizes at the configured 2,000,000 CWGUILD lifetime ceiling", async t => {
+  let payouts = 0;
+  const site = await fixture({
+    maxPayout: "100",
+    payPrize: async () => { payouts += 1; return { hash: `0x${"bc".repeat(32)}`, wait: async () => ({ status: 1 }) }; }
+  });
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const winner = ethers.Wallet.createRandom();
+  const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: winner.address }) });
+  const signature = await winner.signMessage(challenge.body.message);
+  const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: winner.address, nonce: challenge.body.nonce, signature }) });
+  site.advance(2_700);
+  await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: winner.address, gameId: started.body.gameId }) });
+  site.advance(500);
+  const paid = await json(`${site.base}/game/finish`, { method: "POST", body: JSON.stringify({ wallet: winner.address, gameId: started.body.gameId, moves: started.body.sequence }) });
+  assert.equal(paid.body.paid, true);
+
+  const next = ethers.Wallet.createRandom();
+  const nextChallenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: next.address }) });
+  const nextSignature = await next.signMessage(nextChallenge.body.message);
+  const blocked = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: next.address, nonce: nextChallenge.body.nonce, signature: nextSignature }) });
+  assert.equal(blocked.response.status, 503);
+  assert.match(blocked.body.error, /2,000,000 CWGUILD/i);
+  assert.equal(payouts, 1);
 });

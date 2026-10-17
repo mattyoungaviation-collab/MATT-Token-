@@ -21,3 +21,11 @@ test("CWGUILD game uses wallet signatures and never requests an ERC-20 approval"
   assert.doesNotMatch(script, /eth_sendTransaction/);
   assert.match(script, /wallet_switchEthereumChain/);
 });
+
+test("CWGUILD game uses a timed post-pattern recall rule and publishes the payout ceiling", () => {
+  assert.match(html, /8-second recall/i);
+  assert.match(html, /PAYOUT CEILING/i);
+  assert.match(html, /2,000,000 CWGUILD/i);
+  assert.match(script, /\/game\/recall/);
+  assert.match(script, /START AT SIGNAL/);
+});

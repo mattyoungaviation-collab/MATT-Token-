@@ -1,6 +1,6 @@
 # CWGUILD Rune Run
 
-Rune Run is a contractless, hold-to-play memory game on Ronin mainnet. Players do not wager, transfer, or approve CWGUILD. The server checks a public token balance, verifies wallet ownership with a plain-text signature, issues a six-rune sequence, and pays one successful run per wallet per UTC day from a dedicated operator wallet.
+Rune Run is a contractless, hold-to-play memory game on Ronin mainnet. Players do not wager, transfer, or approve CWGUILD. The server checks a public token balance, verifies wallet ownership with a plain-text signature, issues a six-rune sequence, then reveals a randomized recall rule after the preview. A successful player has eight seconds to answer and can earn one prize per wallet per UTC day from a dedicated operator wallet.
 
 ## Verified token
 
@@ -30,11 +30,13 @@ Keep `CWGUILD_LIVE_ENABLED=false` until all of these are complete:
 
 The service refuses to start live mode without a persistent state file, payout signer, and explicit balance/prize amounts.
 
-## Abuse limits
+## Payout and abuse limits
 
-The server provides wallet signatures, short-lived challenges, short-lived game sessions, request throttling, one prize per wallet per UTC day, persistent claim records, serialized transaction nonces, and at-most-once payout tracking.
+Rune Run has a hard lifetime payout ceiling of **2,000,000 CWGUILD**. Confirmed, submitted, and in-flight claims all count against the ceiling, so concurrent winners cannot push the game over the limit.
 
-These controls do not make a browser memory game bot-proof and do not prevent someone from moving a qualifying token balance between wallets. Use a small, capped pilot reward wallet. For material rewards, add identity/allowlist controls or wait for a reviewed on-chain design before enabling live payouts.
+The server provides wallet signatures, short-lived challenges, short-lived game sessions, request throttling, one prize per wallet per UTC day, persistent claim records, serialized transaction nonces, and at-most-once payout tracking. The post-pattern recall round randomizes both the starting position and direction, and its eight-second server-enforced timer makes a simple screen recording insufficient on its own.
+
+These controls do not make a browser memory game bot-proof, cannot prevent all recording or automation, and do not prevent someone from moving a qualifying token balance between wallets. Use a small, capped pilot reward wallet. For material rewards, add identity/allowlist controls or wait for a reviewed on-chain design before enabling live payouts.
 
 ## Environment
 
