@@ -19,6 +19,7 @@ const { selectDynoRuntime, createDisabledDynoRouter, disabledDynoPage } = requir
 const { createGiftBoxQuoteRouter } = require("./gift-box-quote-routes");
 const { createLiquidityMarketRouter } = require("./liquidity-market-routes");
 const { createPokerRouter } = require("./lib/poker-routes");
+const { createCWGuildArcadeRouter } = require("./lib/cwguild-arcade-routes");
 
 const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
@@ -35,6 +36,7 @@ const burnLeaderboardFile = process.env.BURN_LEADERBOARD_FILE || (persistentDisk
 const blackjackHistoryFile = process.env.BLACKJACK_HISTORY_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-blackjack-history.json") : "");
 const slotsPnlStateFile = process.env.SLOTS_PNL_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-slots-pnl.json") : "");
 const walletProfilesFile = process.env.WALLET_PROFILES_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "matt-wallet-profiles.json") : "");
+const cwguildStateFile = process.env.CWGUILD_STATE_FILE || (persistentDiskPath ? path.join(persistentDiskPath, "cwguild-arcade-state.json") : "");
 
 let statsRpcId = 0;
 let statsRpcQueue = Promise.resolve();
@@ -108,9 +110,11 @@ installBlackjackHistoryIndex(app, { rpcRequest: statsRpcRequest, stateFile: blac
 installSlotsPnlIndex(app, { rpcRequest: statsRpcRequest, stateFile: slotsPnlStateFile });
 app.use("/api/poker", createPokerRouter({ live: process.env.POKER_LIVE_ENABLED === "true", contractAddress: process.env.POKER_ESCROW_ADDRESS || "", rpcUrl: process.env.RONIN_RPC_URL || "", operatorPrivateKey: process.env.POKER_OPERATOR_PRIVATE_KEY || "", stateSecret: process.env.POKER_STATE_SECRET || "", stateFile: persistentDiskPath ? path.join(persistentDiskPath, "poker-state.enc") : "" }));
 app.use("/api/blackjack", createBlackjackRouter());
+app.use("/api/cwguild", createCWGuildArcadeRouter({ stateFile: cwguildStateFile }));
 app.get(["/burnflip", "/burnflip/"], (_req, res) => res.redirect(302, "/hub#coin-flip"));
 app.get(["/poker", "/poker/"], (_req, res) => res.sendFile(path.join(publicDir, "poker.html")));
 app.get(["/blackjack", "/blackjack/"], (_req, res) => res.sendFile(path.join(publicDir, "blackjack.html")));
+app.get(["/cwguild", "/cwguild/"], (_req, res) => res.sendFile(path.join(publicDir, "cwguild.html")));
 app.get(["/project-dyno", "/project-dyno/", "/raffle", "/raffle/"], (_req, res) => res.sendFile(path.join(publicDir, "project-dyno.html")));
 app.get(["/dyno", "/dyno/"], (_req, res) => dynoRuntime.enabled
   ? res.sendFile(path.join(publicDir, "dyno.html"))
@@ -147,6 +151,7 @@ const server = app.listen(publicPort, () => {
   console.log(blackjackHistoryFile ? `Persistent blackjack history: ${blackjackHistoryFile}` : "Persistent blackjack history: no Render disk detected; using memory only.");
   console.log(slotsPnlStateFile ? `Persistent Slots PNL: ${slotsPnlStateFile}` : "Persistent Slots PNL: no disk detected; using memory only.");
   console.log(walletProfilesFile ? `Persistent wallet profiles: ${walletProfilesFile}` : "Persistent wallet profiles: no Render disk detected; using memory only.");
+  console.log(process.env.CWGUILD_LIVE_ENABLED === "true" ? `CWGUILD Rune Run live; state: ${cwguildStateFile}` : "CWGUILD Rune Run is in practice mode; payouts are disabled.");
 });
 function shutdown(signal) { child.kill(signal); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); }
 child.on("exit", (code, signal) => { console.error(`MATT proxy exited (${signal || code || "unknown"}).`); server.close(() => process.exit(code || 1)); });

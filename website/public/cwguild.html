@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#081411">
+  <title>CWGUILD Rune Run | Contractless Ronin Skill Game</title>
+  <meta name="description" content="Hold CWGUILD, complete a daily memory run, and earn a server-paid CWGUILD prize on Ronin—without wagering or token approvals.">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/cwguild.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/hub" aria-label="Back to MATT Hub"><span>MATT</span> / CWGUILD</a>
+    <div class="network"><i></i><span>RONIN MAINNET</span></div>
+    <button id="connect-wallet" type="button">CONNECT RONIN</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">CONTRACTLESS SKILL ARCADE</p>
+        <h1>RUNE<br><span>RUN</span></h1>
+        <p class="lead">Remember the six-rune signal. Repeat it before the clock runs out. Hold CWGUILD to enter—your tokens never leave your wallet.</p>
+        <div class="trust-pills" aria-label="Game safety details"><span>0 CWGUILD wager</span><span>No token approval</span><span>One prize / UTC day</span></div>
+      </div>
+      <div class="hero-mark" aria-hidden="true"><div>ᚱ</div><span>CW</span></div>
+    </section>
+
+    <section class="status-grid" aria-label="Rune Run status">
+      <article><span>YOUR CWGUILD</span><strong id="wallet-balance">Connect wallet</strong><small id="wallet-address">Not connected</small></article>
+      <article><span>HOLD TO ENTER</span><strong id="minimum-balance">—</strong><small>Balance check only</small></article>
+      <article class="prize"><span>DAILY PRIZE</span><strong id="prize-amount">—</strong><small id="prize-mode">Checking reward pool</small></article>
+      <article><span>REWARD POOL</span><strong id="pool-balance">—</strong><small id="pool-address">Server-paid wallet</small></article>
+    </section>
+
+    <section class="game-shell">
+      <div class="game-heading">
+        <div><p class="eyebrow">MEMORY PROTOCOL</p><h2 id="phase-title">Connect to begin</h2></div>
+        <div class="timer" aria-label="Time remaining"><span>TIME</span><strong id="timer">—</strong></div>
+      </div>
+
+      <div class="sequence" id="sequence" aria-label="Six-rune progress">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+
+      <div class="rune-grid" id="rune-grid" aria-label="Rune controls">
+        <button class="rune ember" data-rune="ember" type="button" disabled><b>ᚠ</b><span>EMBER</span></button>
+        <button class="rune tide" data-rune="tide" type="button" disabled><b>ᛚ</b><span>TIDE</span></button>
+        <button class="rune leaf" data-rune="leaf" type="button" disabled><b>ᛉ</b><span>LEAF</span></button>
+        <button class="rune bolt" data-rune="bolt" type="button" disabled><b>ᛏ</b><span>BOLT</span></button>
+      </div>
+
+      <p class="game-message" id="game-message" role="status" aria-live="polite">Connect a Ronin wallet holding CWGUILD. Rune Run only requests a sign-in signature.</p>
+      <button class="start-button" id="start-game" type="button" disabled>CONNECT RONIN TO PLAY</button>
+      <a class="transaction" id="transaction-link" href="#" target="_blank" rel="noopener" hidden>VIEW PRIZE TRANSACTION ↗</a>
+    </section>
+
+    <section class="how-it-works">
+      <div><p class="eyebrow">HOW IT WORKS</p><h2>No new contract. No custody of player tokens.</h2></div>
+      <ol>
+        <li><b>01</b><span><strong>Hold</strong> The server reads your public CWGUILD balance on Ronin.</span></li>
+        <li><b>02</b><span><strong>Sign</strong> A plain-text wallet signature proves the connected address is yours.</span></li>
+        <li><b>03</b><span><strong>Run</strong> Memorize and repeat the server-issued rune sequence in time.</span></li>
+        <li><b>04</b><span><strong>Win</strong> The operator wallet sends the configured prize directly to the winner.</span></li>
+      </ol>
+    </section>
+
+    <section class="disclosure">
+      <div><span>CENTRALIZED PAYOUT DISCLOSURE</span><strong>Verify the wallet, token, and transaction.</strong></div>
+      <p>Rune Run does not use a game contract. Eligibility and results are checked by this server, and prizes are sent from a project-controlled operator wallet. The operator can pause payouts, and a server outage can interrupt a run. Never approve CWGUILD for this game—Rune Run does not need an allowance.</p>
+      <div class="addresses"><a id="token-link" href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener"><span>CWGUILD TOKEN</span><code>0x58DB…2F7b4</code></a><a id="operator-link" href="#" target="_blank" rel="noopener"><span>REWARD WALLET</span><code id="operator-address">Not configured</code></a></div>
+    </section>
+  </main>
+
+  <footer><a href="/hub">← MATT HUB</a><span>CWGUILD Rune Run on Ronin</span><a href="https://explorer.roninchain.com/address/0x58DB02f56D53De7ee816904aA205D222b242F7b4" target="_blank" rel="noopener">VERIFY TOKEN ↗</a></footer>
+  <script src="/vendor/ethers.umd.min.js?v=6.17.0"></script>
+  <script src="/cwguild.js?v=1"></script>
+</body>
+</html>
