@@ -9,7 +9,8 @@
   <link rel="icon" href="/assets/matt-logo-512.png">
   <link rel="stylesheet" href="/cwguild.css?v=3">
   <style>
-    @media (min-width: 851px) {.status-grid{grid-template-columns:repeat(5,1fr)}}
+    .status-grid article{min-width:0}
+    @media (min-width: 851px) {.status-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
     .recall-rule{width:min(640px,100%);margin:0 auto 22px;padding:14px 18px;border:1px solid #f5bc5b88;border-radius:12px;background:#251b0d;color:#ffe1a2;text-align:center;font-weight:950;letter-spacing:.06em}
     .ladder-card{margin:0 auto 24px;width:min(1000px,calc(100% - 32px));padding:22px;border:1px solid #ffffff1a;border-radius:18px;background:#0b1714}
     .ladder-card h2{margin:0 0 6px;font-size:clamp(22px,4vw,34px)}.ladder-card>p{margin:0 0 18px;color:#aabbb5}
