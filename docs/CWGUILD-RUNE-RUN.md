@@ -1,6 +1,6 @@
 # CWGUILD Rune Run
 
-Rune Run is a contractless, paid-entry memory game on Ronin mainnet. One attempt requires a direct, non-refundable transfer of exactly **500,000 CWGUILD** to the configured reward wallet. The server verifies the transfer on Ronin, consumes it once, verifies wallet ownership with a plain-text signature, then runs a five-round press-your-luck ladder. After each win, the player must either Cash Out or explicitly accept the next round. Rewards remain provisional and unpaid until Cash Out; a wrong answer or timeout forfeits the entire provisional reward. Each wallet gets one ladder attempt per UTC day.
+Rune Run is a contractless, paid-entry memory game on Ronin mainnet. Each attempt requires a direct, non-refundable transfer of exactly **500,000 CWGUILD** to the configured reward wallet. The server verifies the transfer on Ronin, consumes it once, verifies wallet ownership with a plain-text signature, then runs a five-round press-your-luck ladder. After each win, the player must either Cash Out or explicitly accept the next round. Rewards remain provisional and unpaid until Cash Out; a wrong answer or timeout forfeits the entire provisional reward. Each wallet may buy up to five attempts per UTC day.
 
 ## Verified token
 
@@ -46,7 +46,7 @@ With the default 2,000,000 CWGUILD top cash-out, the reward ladder is:
 
 Choosing the next round is an explicit risk action and does not make another token transfer. The full provisional reward is lost on a wrong answer or timeout.
 
-The server requires two Ronin confirmations, verifies the exact token/from/to/amount transfer log, accepts only recent entry transactions, and permanently prevents transaction-hash reuse. It also provides wallet signatures, short-lived challenges, server-timed rounds, request throttling, one ladder attempt per wallet per UTC day, persistent entry/run/claim records, serialized transaction nonces, and at-most-once payout tracking. Every post-pattern recall round randomizes both the starting position and direction. The sequence grows while the server-enforced timer shrinks, making a simple screen recording insufficient on its own.
+The server requires two Ronin confirmations, verifies the exact token/from/to/amount transfer log, accepts only recent entry transactions, and permanently prevents transaction-hash reuse. It also provides wallet signatures, short-lived challenges, server-timed rounds, request throttling, five separately paid ladder attempts per wallet per UTC day, persistent entry/run/claim records, serialized transaction nonces, and at-most-once payout tracking. Every post-pattern recall round randomizes both the starting position and direction. The sequence grows while the server-enforced timer shrinks, making a simple screen recording insufficient on its own.
 
 These controls do not make a browser memory game bot-proof, cannot prevent all recording or automation, and do not prevent someone from moving a qualifying token balance between wallets. Use a small, capped pilot reward wallet. For material rewards, add identity/allowlist controls or wait for a reviewed on-chain design before enabling live payouts.
 

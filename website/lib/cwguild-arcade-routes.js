@@ -21,6 +21,7 @@ const ROUND_RULES = [
   { round: 5, length: 10, inputMs: 4_000, multiplier: 20n }
 ];
 const TOP_REWARD_MULTIPLIER = 20n;
+const MAX_DAILY_ATTEMPTS = 5;
 const AUTH_TTL_MS = 5 * 60 * 1000;
 const ENTRY_CONFIRMATIONS = 2;
 const ENTRY_TX_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +96,7 @@ function publicRun(run) {
   if (!run) return null;
   return {
     status: run.status,
+    attempt: run.attempt || 1,
     round: run.round,
     pendingAmount: run.pendingAmount || "0",
     atRisk: run.status === "active" && BigInt(run.pendingAmount || 0) > 0n,
@@ -210,6 +212,26 @@ function createCWGuildArcadeRouter(options = {}) {
     return wallet.toLowerCase();
   }
 
+  function dailyRunEntries(wallet, timestamp = now()) {
+    const base = recordKey(wallet, timestamp);
+    return Object.entries(state.runs)
+      .filter(([key, run]) => (key === base || key.startsWith(`${base}:`)) && run?.wallet === wallet)
+      .sort((left, right) => Number(left[1].createdAt || 0) - Number(right[1].createdAt || 0));
+  }
+
+  function latestRun(wallet, timestamp = now()) {
+    return dailyRunEntries(wallet, timestamp).at(-1)?.[1] || null;
+  }
+
+  function runStorageKey(wallet, attempt, timestamp = now()) {
+    return `${recordKey(wallet, timestamp)}:${attempt}`;
+  }
+
+  function claimForRun(wallet, run) {
+    if (!run) return null;
+    return state.claims[run.id] || (!run.attempt ? state.claims[recordKey(wallet)] : null) || null;
+  }
+
   function roundRule(round) {
     return ROUND_RULES[round - 1];
   }
@@ -264,7 +286,7 @@ function createCWGuildArcadeRouter(options = {}) {
   function authMessage(wallet, nonce, expiresAt) {
     return [
       "CWGUILD Rune Run",
-      "Sign in to start or resume today's one-attempt reward ladder.",
+      `Sign in to start or resume one of today's ${MAX_DAILY_ATTEMPTS} paid reward ladders.`,
       "This is not a token approval and cannot move funds.",
       `Wallet: ${wallet}`,
       `Chain: Ronin (${CHAIN_ID})`,
@@ -275,8 +297,8 @@ function createCWGuildArcadeRouter(options = {}) {
 
   function requireRun(body) {
     const wallet = safeWallet(body?.wallet);
-    const run = state.runs[recordKey(wallet)];
     const runId = String(body?.runId || "");
+    const run = dailyRunEntries(wallet).map(([, candidate]) => candidate).find(candidate => candidate.id === runId);
     if (!run || !runId || run.id !== runId || run.wallet !== wallet) {
       throw Object.assign(new Error("That reward ladder was not found."), { status: 404 });
     }
@@ -329,6 +351,7 @@ function createCWGuildArcadeRouter(options = {}) {
       expiresAt: game.expiresAt,
       previewMs: previewMs(rule),
       round: run.round,
+      attempt: run.attempt || 1,
       sequenceLength: rule.length,
       inputMs: rule.inputMs,
       pendingAmount: run.pendingAmount || "0",
@@ -348,10 +371,11 @@ function createCWGuildArcadeRouter(options = {}) {
     if (walletValue) {
       wallet = safeWallet(walletValue);
       balance = await getBalance(wallet);
-      claim = state.claims[recordKey(wallet)] || null;
-      run = state.runs[recordKey(wallet)] || null;
+      run = latestRun(wallet);
+      claim = claimForRun(wallet, run);
       entry = state.entries[entryKey(wallet)] || null;
     }
+    const attemptsUsed = wallet ? dailyRunEntries(wallet).length : 0;
     const normalizedPoolBalance = BigInt(poolBalance);
     const reservedPayout = inFlightPayout(state);
     const remainingPayout = availablePoolBalance(normalizedPoolBalance, state);
@@ -374,13 +398,15 @@ function createCWGuildArcadeRouter(options = {}) {
       balance: balance === null ? null : BigInt(balance).toString(),
       eligible: balance === null ? null : BigInt(balance) >= minimumBalance,
       canAffordEntry: balance === null ? null : BigInt(balance) >= entryAmount + minimumBalance,
+      attemptsUsed,
+      attemptsRemaining: Math.max(0, MAX_DAILY_ATTEMPTS - attemptsUsed),
       claim: publicClaim(claim),
       run: publicRun(run),
       entry: publicEntry(entry),
       rules: {
         ladder: ladderRules(),
         randomizedRecall: true,
-        oneAttemptPerWalletUtcDay: true,
+        attemptsPerWalletUtcDay: MAX_DAILY_ATTEMPTS,
         rewardIsProvisionalUntilCashOut: true,
         lossForfeitsPendingReward: true,
         wagerRequired: true,
@@ -419,8 +445,14 @@ function createCWGuildArcadeRouter(options = {}) {
       const wallet = safeWallet(req.body?.wallet);
       const txHash = String(req.body?.txHash || "").toLowerCase();
       if (!/^0x[0-9a-f]{64}$/.test(txHash)) return res.status(400).json({ error: "A valid Ronin entry transaction hash is required." });
-      const run = state.runs[recordKey(wallet)];
-      if (run) return res.status(409).json({ error: "This wallet already used today's ladder attempt. Do not send another entry fee." });
+      const runs = dailyRunEntries(wallet);
+      const run = runs.at(-1)?.[1] || null;
+      if (run && ["active", "decision", "cashing"].includes(run.status)) {
+        return res.status(409).json({ error: "Finish the current ladder attempt before paying for another one." });
+      }
+      if (runs.length >= MAX_DAILY_ATTEMPTS) {
+        return res.status(409).json({ error: `This wallet already used all ${MAX_DAILY_ATTEMPTS} paid attempts for today. Do not send another entry fee.` });
+      }
       const current = state.entries[entryKey(wallet)];
       if (current && !current.consumedAt) {
         if (current.txHash !== txHash) return res.status(409).json({ error: "This wallet already has a verified, unused entry fee." });
@@ -465,12 +497,15 @@ function createCWGuildArcadeRouter(options = {}) {
       if (!recovered || recovered.toLowerCase() !== wallet.toLowerCase()) {
         return res.status(401).json({ error: "The wallet signature did not match the connected account." });
       }
-      const key = recordKey(wallet);
-      const existing = state.runs[key];
+      const runs = dailyRunEntries(wallet);
+      const existing = runs.at(-1)?.[1] || null;
       if (existing) {
         if (existing.status === "decision") return res.json({ resumed: true, runId: existing.id, run: publicRun(existing) });
         if (existing.status === "active" && existing.currentGame) return res.json(gameResponse(existing, true));
-        return res.status(409).json({ error: "This wallet already used today's one ladder attempt.", run: publicRun(existing), claim: publicClaim(state.claims[key]) });
+        if (existing.status === "cashing") return res.status(409).json({ error: "The current attempt's cash out is still processing.", run: publicRun(existing), claim: publicClaim(claimForRun(wallet, existing)) });
+      }
+      if (runs.length >= MAX_DAILY_ATTEMPTS) {
+        return res.status(409).json({ error: `This wallet already used all ${MAX_DAILY_ATTEMPTS} paid attempts for today.`, run: publicRun(existing), claim: publicClaim(claimForRun(wallet, existing)) });
       }
       const entry = state.entries[entryKey(wallet)];
       if (!entry || entry.consumedAt) {
@@ -488,12 +523,14 @@ function createCWGuildArcadeRouter(options = {}) {
         id: crypto.randomBytes(18).toString("hex"),
         wallet,
         status: "active",
+        attempt: runs.length + 1,
         round: 1,
         pendingAmount: "0",
         createdAt: now(),
         updatedAt: now(),
         currentGame: null
       };
+      const key = runStorageKey(wallet, run.attempt);
       state.runs[key] = run;
       entry.consumedAt = now();
       entry.runKey = key;
@@ -608,8 +645,8 @@ function createCWGuildArcadeRouter(options = {}) {
       if (run.status !== "decision" || BigInt(run.pendingAmount || 0) <= 0n) {
         return res.status(409).json({ error: "There is no provisional reward available to cash out." });
       }
-      key = recordKey(wallet);
-      if (state.claims[key]) return res.status(409).json({ error: "This wallet already cashed out today's CWGUILD reward.", claim: publicClaim(state.claims[key]) });
+      key = run.id;
+      if (state.claims[key]) return res.status(409).json({ error: "This ladder attempt already cashed out its CWGUILD reward.", claim: publicClaim(state.claims[key]) });
       if (payoutLocks.has(wallet.toLowerCase())) return res.status(409).json({ error: "A payout for this wallet is already processing." });
       const amount = BigInt(run.pendingAmount);
       payoutLocks.add(wallet.toLowerCase());
@@ -657,9 +694,10 @@ function createCWGuildArcadeRouter(options = {}) {
   router.get("/claim/:wallet", (req, res) => {
     try {
       const wallet = safeWallet(req.params.wallet);
+      const run = latestRun(wallet);
       return res.json({
-        claim: publicClaim(state.claims[recordKey(wallet)]),
-        run: publicRun(state.runs[recordKey(wallet)]),
+        claim: publicClaim(claimForRun(wallet, run)),
+        run: publicRun(run),
         entry: publicEntry(state.entries[entryKey(wallet)])
       });
     } catch (error) {

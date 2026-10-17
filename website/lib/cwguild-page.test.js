@@ -9,7 +9,7 @@ const script = fs.readFileSync(path.join(publicDirectory, "cwguild.js"), "utf8")
 
 test("CWGUILD game identifies the verified token and paid-entry trust model", () => {
   assert.match(html, /0x58DB02f56D53De7ee816904aA205D222b242F7b4/);
-  assert.match(html, /500,000 CWGUILD non-refundable fee/i);
+  assert.match(html, /500,000 CWGUILD per attempt/i);
   assert.match(html, /2,000,000 CWGUILD top cash out/i);
   assert.match(html, /No token approval/i);
   assert.match(html, /CENTRALIZED PAYOUT DISCLOSURE/i);
@@ -47,7 +47,7 @@ test("CWGUILD ladder requires an explicit risk decision and discloses forfeiture
   assert.match(html, /I ACCEPT THE RISK/i);
   assert.match(html, /provisional and unpaid until Cash Out/i);
   assert.match(html, /loss or timeout forfeits it/i);
-  assert.match(html, /One attempt \/ UTC day/i);
+  assert.match(html, /5 attempts \/ UTC day/i);
   assert.match(script, /\/game\/next/);
   assert.match(script, /\/game\/cashout/);
   assert.match(script, /state\.game\.sequenceLength/);

@@ -50,7 +50,7 @@
   function friendly(error) {
     const message = String(error?.shortMessage || error?.reason || error?.message || error || "Rune Run request failed.");
     if (/user rejected|user denied|4001/i.test(message)) return "Wallet signature cancelled. No funds moved.";
-    if (/already used/i.test(message)) return "This wallet already used today's ladder attempt. Come back after 00:00 UTC.";
+    if (/all 5 paid attempts|already used all/i.test(message)) return "This wallet used all five paid attempts for today. Come back after 00:00 UTC.";
     if (/entry fee|required before starting/i.test(message)) return message;
     if (/payouts are disabled/i.test(message)) return "Paid entry is locked until real CWGUILD payouts are enabled.";
     if (/reward wallet|payout ceiling/i.test(message)) return "The reward wallet's current CWGUILD balance cannot cover that cash out.";
@@ -103,10 +103,11 @@
       button.textContent = short(state.wallet);
       await loadStatus();
       if (!state.config.live) setMessage("Paid entry is locked because real CWGUILD payouts are currently disabled.");
-      else if (!state.config.run && state.config.entry?.status !== "verified" && !state.config.canAffordEntry) setMessage(`Hold at least ${formatToken(state.config.recommendedStartingBalance)} before paying: the fee plus the required remaining balance.`);
-      else if (!state.config.run && state.config.entry?.status !== "verified") setMessage(`Ready to pay the non-refundable ${formatToken(state.config.entryAmount, 0)} entry fee.`);
+      else if (state.config.attemptsRemaining <= 0) setMessage("This wallet used all five paid attempts for today. The limit resets at 00:00 UTC.");
+      else if (!["active", "decision", "cashing"].includes(state.config.run?.status) && state.config.entry?.status !== "verified" && state.config.attemptsRemaining > 0 && !state.config.canAffordEntry) setMessage(`Hold at least ${formatToken(state.config.recommendedStartingBalance)} before paying: the fee plus the required remaining balance.`);
+      else if (!["active", "decision", "cashing"].includes(state.config.run?.status) && state.config.entry?.status !== "verified" && state.config.attemptsRemaining > 0) setMessage(`Ready to pay for attempt ${state.config.attemptsUsed + 1} of ${state.config.rules.attemptsPerWalletUtcDay}.`);
       else if (state.config.run?.status === "decision" && state.runId) showDecision(state.config.run);
-      else if (!state.config.run) setMessage("Entry verified. Sign in to start today's one-attempt ladder.");
+      else if (state.config.entry?.status === "verified") setMessage(`Entry verified. Sign in to start attempt ${state.config.attemptsUsed + 1} of ${state.config.rules.attemptsPerWalletUtcDay}.`);
     } catch (error) {
       state.wallet = null;
       state.signer = null;
@@ -154,36 +155,41 @@
 
     const run = config.run;
     const verifiedEntry = config.entry?.status === "verified";
-    const entryComplete = Boolean(run) || verifiedEntry;
+    const openRun = Boolean(run && ["active", "decision", "cashing"].includes(run.status));
+    const entryComplete = openRun || verifiedEntry;
+    const attemptLimitReached = config.attemptsRemaining <= 0 && !openRun;
     const pay = $("#pay-entry");
-    pay.disabled = state.phase !== "idle" || !state.wallet || !config.live || !config.canAffordEntry || entryComplete || !$("#entry-ack").checked;
+    pay.disabled = state.phase !== "idle" || !state.wallet || !config.live || !config.canAffordEntry || entryComplete || attemptLimitReached || !$("#entry-ack").checked;
     if (!state.wallet) pay.textContent = "CONNECT RONIN TO PAY";
     else if (!config.live) pay.textContent = "ENTRY LOCKED · PAYOUTS OFF";
-    else if (run) pay.textContent = "ENTRY CONSUMED FOR TODAY'S ATTEMPT";
+    else if (openRun) pay.textContent = "CURRENT ATTEMPT IN PROGRESS";
+    else if (attemptLimitReached) pay.textContent = "5 OF 5 ATTEMPTS USED TODAY";
     else if (verifiedEntry) pay.textContent = "ENTRY VERIFIED · READY TO START";
     else if (!config.canAffordEntry) pay.textContent = `NEED ${formatToken(config.recommendedStartingBalance, 0)}`;
-    else pay.textContent = `PAY ${formatToken(config.entryAmount, 0)} ENTRY`;
+    else pay.textContent = `PAY ${formatToken(config.entryAmount, 0)} · ATTEMPT ${config.attemptsUsed + 1}/${config.rules.attemptsPerWalletUtcDay}`;
     const entryStatus = $("#entry-status");
     entryStatus.textContent = verifiedEntry
       ? `Verified on Ronin · ${config.entry.txHash.slice(0, 10)}…${config.entry.txHash.slice(-6)}`
-      : run ? "Entry consumed by today's attempt" : "One non-refundable payment unlocks one ladder attempt";
+      : openRun ? `Entry consumed by attempt ${run.attempt}`
+        : attemptLimitReached ? "Five paid attempts used today"
+          : `${config.attemptsUsed} of ${config.rules.attemptsPerWalletUtcDay} paid attempts used today`;
     entryStatus.href = config.entry?.txHash ? `https://explorer.roninchain.com/tx/${config.entry.txHash}` : "#";
     entryStatus.toggleAttribute("aria-disabled", !config.entry?.txHash);
 
     const start = $("#start-game");
-    const used = run && ["lost", "cashed", "cashing"].includes(run.status);
+    const used = run && ["lost", "cashed"].includes(run.status);
     const capReached = BigInt(config.remainingPayout || 0) < BigInt(config.prizeAmount || 0);
-    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || !entryComplete || used || capReached || (run?.status === "decision" && Boolean(state.runId));
+    start.disabled = state.phase !== "idle" || !state.wallet || !config.eligible || !entryComplete || attemptLimitReached || capReached || (run?.status === "decision" && Boolean(state.runId));
     if (!state.wallet) start.textContent = "CONNECT RONIN TO PLAY";
     else if (!config.eligible) start.textContent = "MORE CWGUILD NEEDED";
+    else if (attemptLimitReached) start.textContent = "5 OF 5 ATTEMPTS USED TODAY";
     else if (!entryComplete) start.textContent = "PAY ENTRY TO UNLOCK";
-    else if (used) start.textContent = run.status === "lost" ? "TODAY'S ATTEMPT LOST" : "TODAY'S CASH OUT COMPLETE";
     else if (capReached) start.textContent = "PAYOUT CEILING REACHED";
     else if (run?.status === "decision" && !state.runId) start.textContent = "SIGN TO RESUME DECISION";
     else if (run?.status === "active") start.textContent = "SIGN TO RESUME ROUND";
-    else if (!config.live) start.textContent = "START PRACTICE LADDER";
-    else start.textContent = "START REWARD LADDER";
-    if (used && state.phase === "idle") $("#phase-title").textContent = run.status === "lost" ? "Reward forfeited" : "Cash out complete";
+    else if (!config.live) start.textContent = "PAID PLAY LOCKED";
+    else start.textContent = `START ATTEMPT ${config.attemptsUsed + (openRun ? 0 : 1)}/${config.rules.attemptsPerWalletUtcDay}`;
+    if (used && !verifiedEntry && state.phase === "idle") $("#phase-title").textContent = run.status === "lost" ? "Reward forfeited · next attempt available" : "Cash out complete · next attempt available";
     if (config.claim?.txHash) showTransaction(config.claim.txHash);
   }
 
@@ -306,7 +312,7 @@
       state.phase = "idle";
       await loadStatus();
       $("#phase-title").textContent = "Entry verified";
-      setMessage(`${formatToken(state.config.entryAmount, 0)} was received by the reward wallet. Sign in to begin the one-attempt ladder.`, "good");
+      setMessage(`${formatToken(state.config.entryAmount, 0)} was received. Sign in to begin attempt ${state.config.attemptsUsed + 1} of ${state.config.rules.attemptsPerWalletUtcDay}.`, "good");
     } catch (error) {
       state.phase = "idle";
       setMessage(friendly(error), "error");

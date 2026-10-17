@@ -42,8 +42,8 @@ async function json(url, options) {
   return { response, body: await response.json() };
 }
 
-async function start(site, player) {
-  await payEntry(site, player);
+async function start(site, player, txHash) {
+  await payEntry(site, player, txHash);
   const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
   const signature = await player.signMessage(challenge.body.message);
   return json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
@@ -86,7 +86,7 @@ test("publishes the five hard rounds and contractless safety rules", async t => 
   assert.deepEqual(body.rules.ladder.map(round => ethers.formatUnits(round.rewardAmount, 18)), ["100000.0", "300000.0", "700000.0", "1500000.0", "2000000.0"]);
   assert.equal(body.rules.rewardIsProvisionalUntilCashOut, true);
   assert.equal(body.rules.lossForfeitsPendingReward, true);
-  assert.equal(body.rules.oneAttemptPerWalletUtcDay, true);
+  assert.equal(body.rules.attemptsPerWalletUtcDay, 5);
   assert.equal(body.rules.wagerRequired, true);
   assert.equal(body.rules.entryFeeNonRefundable, true);
   assert.equal(body.rules.approvalRequired, false);
@@ -220,7 +220,7 @@ test("winning round two grows the cash-out amount to 300,000 CWGUILD", async t =
   assert.equal(paidAmount, ethers.parseUnits("300000", 18));
 });
 
-test("timeout forfeits the pending reward and consumes the daily attempt", async t => {
+test("timeout forfeits the pending reward and allows another paid attempt", async t => {
   const site = await fixture();
   t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
   const player = ethers.Wallet.createRandom();
@@ -238,9 +238,38 @@ test("timeout forfeits the pending reward and consumes the daily attempt", async
   assert.equal(expired.body.timedOut, true);
   assert.equal(ethers.formatUnits(expired.body.forfeitedAmount, 18), "100000.0");
 
-  const duplicate = await start(site, player);
-  assert.equal(duplicate.response.status, 409);
-  assert.match(duplicate.body.error, /already used/i);
+  const duplicate = await start(site, player, ethers.keccak256(ethers.toUtf8Bytes(`${player.address}:second-attempt`)));
+  assert.equal(duplicate.response.status, 201);
+  const status = await json(`${site.base}/status?wallet=${player.address}`);
+  assert.equal(status.body.attemptsUsed, 2);
+  assert.equal(status.body.attemptsRemaining, 3);
+});
+
+test("a wallet can use five separately paid attempts but not a sixth", async t => {
+  const site = await fixture();
+  t.after(async () => { await site.close(); fs.rmSync(site.directory, { recursive: true, force: true }); });
+  const player = ethers.Wallet.createRandom();
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    const txHash = ethers.keccak256(ethers.toUtf8Bytes(`${player.address}:${attempt}`));
+    const entry = await payEntry(site, player, txHash);
+    assert.equal(entry.response.status, 201);
+    const challenge = await json(`${site.base}/auth/challenge`, { method: "POST", body: JSON.stringify({ wallet: player.address }) });
+    const signature = await player.signMessage(challenge.body.message);
+    const started = await json(`${site.base}/game/start`, { method: "POST", body: JSON.stringify({ wallet: player.address, nonce: challenge.body.nonce, signature }) });
+    assert.equal(started.response.status, 201);
+    assert.equal(started.body.attempt, attempt);
+    site.advance(350 + started.body.sequenceLength * 390);
+    await json(`${site.base}/game/recall`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId, gameId: started.body.gameId }) });
+    site.advance(250);
+    const lost = await json(`${site.base}/game/finish`, { method: "POST", body: JSON.stringify({ wallet: player.address, runId: started.body.runId, gameId: started.body.gameId, moves: [] }) });
+    assert.equal(lost.body.lost, true);
+  }
+  const blocked = await payEntry(site, player, ethers.keccak256(ethers.toUtf8Bytes(`${player.address}:6`)));
+  assert.equal(blocked.response.status, 409);
+  assert.match(blocked.body.error, /all 5 paid attempts/i);
+  const status = await json(`${site.base}/status?wallet=${player.address}`);
+  assert.equal(status.body.attemptsUsed, 5);
+  assert.equal(status.body.attemptsRemaining, 0);
 });
 
 test("random post-pattern recall rejects a screen recording replay", async t => {
