@@ -15,6 +15,7 @@ const { readActiveRound, readRound, readTicket, readWinners, readBuyback, atBloc
 const { projectFinancials } = require("./financials");
 const { odds, projectPool } = require("./wallet-odds");
 const { readProtection, prepareProtection } = require("./protection");
+const { readTreasuryAt, prepareTreasuryAt } = require("./treasury");
 
 function cookieMap(header = "") {
   const result = {};
@@ -242,6 +243,42 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
     if (["PROTECTION_CHANGED", "PROTECTION_PHASE"].includes(code)) return res.status(409).json({ error: code });
     return res.status(503).json({ error: "PROTECTION_UNAVAILABLE" });
   }
+  async function treasuryResponse(req, session, prepare) {
+    let result;
+    const authority = await readAdminAuthority(session, "manager", async ({ at, block }) => {
+      const state = await readTreasuryAt({ provider, manager, manifest, roundId: req.body?.roundId || req.query.roundId, at });
+      result = prepare ? await prepareTreasuryAt({ provider, state, request: req.body, block, nowSeconds: Math.floor(now() / 1000) }) : state;
+    });
+    if (!authority.direct && !authority.safeOwner) throw new Error("MULTISIG_OWNER_REQUIRED");
+    return { ...result, chainBlock: authority.chainBlock, chainBlockHash: authority.chainBlockHash,
+      chainTimestamp: authority.chainTimestamp, freshness: authority.freshness, authority: "chain", advisory: true };
+  }
+  function treasuryError(res, error) {
+    const code = String(error.message || "");
+    if (code === "MULTISIG_OWNER_REQUIRED") return res.status(403).json({ error: code });
+    if (["INVALID_ROUND", "INVALID_TREASURY_REQUEST"].includes(code)) return res.status(400).json({ error: code });
+    if (["TREASURY_CHANGED", "TREASURY_NOT_CLAIMABLE", "TREASURY_SIMULATION_FAILED"].includes(code)) return res.status(409).json({ error: code });
+    return res.status(503).json({ error: "TREASURY_UNAVAILABLE" });
+  }
+  router.get("/admin/treasury", async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const session = sessionFor(req);
+    if (!session || session.expiresAt < now()) return res.status(401).json({ error: "WALLET_LOGIN_REQUIRED" });
+    if (manifest.mock) return res.status(503).json({ error: "MOCK_ADMIN_DISABLED" });
+    if (limitRequest(req, res, "treasury-read", session.wallet, 30)) return;
+    try { res.json(await treasuryResponse(req, session, false)); }
+    catch (error) { treasuryError(res, error); }
+  });
+  router.post("/admin/treasury/prepare", express.json({ limit: "2kb" }), async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    const session = sessionFor(req);
+    if (!session || session.expiresAt < now()) return res.status(401).json({ error: "WALLET_LOGIN_REQUIRED" });
+    if (manifest.mock) return res.status(503).json({ error: "MOCK_ADMIN_DISABLED" });
+    if (req.headers.origin && !allowedBrowserOrigins.has(req.headers.origin)) return res.status(403).json({ error: "ORIGIN_REJECTED" });
+    if (limitRequest(req, res, "treasury-prepare", session.wallet, 20)) return;
+    try { res.json(await treasuryResponse(req, session, true)); }
+    catch (error) { treasuryError(res, error); }
+  });
   router.get("/protection", async (req, res) => {
     res.set("Cache-Control", "no-store");
     if (manifest.paymentModel === "RON_AND_HELD_MATT") return res.status(410).json({ error: "NO_SWAPS_IN_THIS_MODEL" });
@@ -278,7 +315,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
       if (req.body?.value !== undefined && String(req.body.value) !== "0") return res.status(400).json({ error: "NONZERO_VALUE_NOT_ALLOWED" });
       if (!provider || !manager) return res.status(503).json({ error: "ADMIN_AUTHORITY_UNAVAILABLE" });
       const methods = {
-        manager: new Set(["createRound", "openRound", "resolveFlag", "disqualifyTicket", "finalizeEligibility", "settleRound", "attemptPrizePayout", "reportManualNftDelivery", "cancelRound", "relinkIdentity", "rotateIdentitySigner", "setSubsystemPaused", "setReviewer", "setEmergencyAdmin", "setVrfRefundReceiver", "claimTreasuryMatt", "upgradeToAndCall"]),
+        manager: new Set(["createRound", "openRound", "resolveFlag", "disqualifyTicket", "finalizeEligibility", "settleRound", "attemptPrizePayout", "reportManualNftDelivery", "cancelRound", "relinkIdentity", "rotateIdentitySigner", "setSubsystemPaused", "setReviewer", "setEmergencyAdmin", "setVrfRefundReceiver", "upgradeToAndCall"]),
         vault: new Set(), // inactive legacy vault has no operational draft actions in the no-sale model
       };
       const contractKey = req.body?.contract;

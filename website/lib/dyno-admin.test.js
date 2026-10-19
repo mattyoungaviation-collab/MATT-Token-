@@ -63,24 +63,3 @@ test("relink UI copies new-wallet signing request then prepares only an unsigned
   assert.equal(copyDraft.hidden, false);
   assert.match(relink.children.find(item => item.className === "status").textContent, /not been submitted or approved/);
 });
-test("settled eligible MATT claim prepares a simulated multisig draft without transferring tokens", async () => {
-  const parent = element(), calls = [];
-  const proxy = "0x0000000000000000000000000000000000000002";
-  const context = { document: { getElementById: () => parent, createElement: () => element() }, navigator: { clipboard: { writeText: async () => {} } },
-    fetch: async (url, options) => {
-      calls.push({ url, options });
-      if (String(url).startsWith("/api/dyno/round?")) return { ok: true, json: async () => ({ paymentModel: "RON_AND_HELD_MATT", phase: "SETTLED", chainBlockHash: "0x" + "ab".repeat(32), chainBlock: "100", treasuryMattLiability: "700000000000000000000000000" }) };
-      if (url === "/api/dyno/admin/prepare") return { ok: true, json: async () => ({ target: proxy, value: "0", data: "0x1234", authorityBlock: "101", submitted: false, simulated: true }) };
-      throw new Error("unexpected request");
-    }, String, BigInt, Number, JSON };
-  vm.runInNewContext(source, context);
-  assert.equal(calls.length, 0);
-  const section = parent.children[2], round = section.children[2], prepare = section.children[3], status = section.children[4], draft = section.children[5];
-  round.value = "1";
-  await prepare.events.click();
-  assert.equal(calls.length, 2);
-  assert.equal(JSON.parse(calls[1].options.body).method, "claimTreasuryMatt");
-  assert.equal(JSON.parse(calls[1].options.body).value, "0");
-  assert.match(draft.textContent, /700000000000000000000000000/);
-  assert.match(status.textContent, /Unsigned claim draft only/);
-});

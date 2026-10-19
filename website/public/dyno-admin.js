@@ -56,32 +56,6 @@
   relinkStatus.className = "status"; relinkStatus.setAttribute("role", "status"); relinkStatus.textContent = "No relink prepared.";
   relink.append(relinkTitle, relinkNote, commitment, newWallet, version, proof, copyRequest, prepare, relinkStatus, draftText, copyDraft);
   parent.append(relink);
-  const mattSection = document.createElement("section"), mattTitle = document.createElement("h3"), mattNote = document.createElement("p");
-  mattTitle.textContent = "Claim eligible-ticket MATT to the multisig";
-  mattNote.textContent = "After settlement, only the configured multisig can claim its eligible-ticket MATT. Refund MATT stays in the raffle contract. This prepares an unsigned transaction and does not transfer tokens.";
-  const mattRound = document.createElement("input"), mattPrepare = document.createElement("button"), mattStatus = document.createElement("p"), mattDraft = document.createElement("pre");
-  mattRound.placeholder = "Settled round ID"; mattRound.setAttribute("inputmode", "numeric");
-  mattPrepare.type = "button"; mattPrepare.className = "secondary"; mattPrepare.textContent = "PREPARE MATT CLAIM";
-  mattStatus.className = "status"; mattStatus.textContent = "Enter a settled round ID. No claim has been prepared.";
-  mattSection.append(mattTitle, mattNote, mattRound, mattPrepare, mattStatus, mattDraft); parent.append(mattSection);
-  mattPrepare.addEventListener("click", async () => {
-    mattDraft.textContent = ""; mattPrepare.disabled = true;
-    try {
-      const roundId = mattRound.value.trim();
-      if (!/^[1-9][0-9]{0,77}$/.test(roundId) || BigInt(roundId) >= 2n ** 256n) throw new Error("Enter a valid settled round ID.");
-      const read = await fetch(`/api/dyno/round?roundId=${encodeURIComponent(roundId)}`, { cache: "no-store", credentials: "same-origin" });
-      if (!read.ok) throw new Error("Fresh round accounting unavailable.");
-      const round = await read.json();
-      if (round.paymentModel !== "RON_AND_HELD_MATT" || round.phase !== "SETTLED" || !round.chainBlockHash || !/^[1-9][0-9]*$/.test(round.treasuryMattLiability || "")) throw new Error("No settled MATT allocation is claimable.");
-      const response = await fetch("/api/dyno/admin/prepare", { method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" }, body: JSON.stringify({ contract: "manager", method: "claimTreasuryMatt", args: [roundId], value: "0" }) });
-      if (!response.ok) throw new Error("Claim draft rejected by current admin authority or chain state.");
-      const draft = await response.json();
-      if (draft.submitted !== false || draft.simulated !== true || draft.value !== "0" || !/^0x[0-9a-fA-F]{40}$/.test(draft.target) || !/^0x[0-9a-fA-F]+$/.test(draft.data)) throw new Error("Invalid unsigned claim draft.");
-      mattDraft.textContent = JSON.stringify({ target: draft.target, value: draft.value, data: draft.data, roundId, mattBaseUnitsObserved: round.treasuryMattLiability, observationBlock: round.chainBlock, simulationBlock: draft.authorityBlock, submitted: false }, null, 2);
-      mattStatus.textContent = "Unsigned claim draft only. Recheck the exact MATT allocation and beneficiary in the multisig before execution.";
-    } catch (error) { mattStatus.textContent = error?.message || "MATT claim preparation unavailable."; }
-    finally { mattPrepare.disabled = false; }
-  });
   let proofRequest = null, preparedDraft = null;
   function validateRelinkFields() {
     const account = commitment.value.trim(), wallet = newWallet.value.trim(), currentVersion = version.value.trim();

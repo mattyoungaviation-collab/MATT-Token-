@@ -110,4 +110,4 @@ async function readBuyback(options) {
       nextOffset: offset + slots.length < 168 ? offset + slots.length : null };
   });
 }
-module.exports = { readActiveRound, readRound, readTicket, readWinners, readBuyback, atBlock, id };
+module.exports = { readActiveRound, readRound, readTicket, readWinners, readBuyback, atBlock, id, PHASES };
