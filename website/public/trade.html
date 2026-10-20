@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07120f">
+  <meta name="description" content="Preview and execute the MATT round trip on Ronin mainnet.">
+  <title>MATT Trade Lab | Round Trip Tester on Ronin</title>
+  <link rel="canonical" href="https://matttoken.com/trade">
+  <meta property="og:title" content="MATT Trade Lab">
+  <meta property="og:description" content="Preview and execute the verified MATT round-trip tester on Ronin mainnet.">
+  <meta property="og:image" content="https://matttoken.com/assets/matt-logo-512.png">
+  <link rel="icon" href="/assets/matt-logo-512.png">
+  <link rel="stylesheet" href="/matt-brand.css?v=2">
+  <link rel="stylesheet" href="/trade.css?v=1">
+</head>
+<body class="matt-surface-trade">
+  <div class="matt-suite-rail">
+    <a class="matt-suite-identity" href="/" aria-label="MATT home"><span class="matt-suite-mark">M</span><span><span class="matt-suite-wordmark">MATT</span><span class="matt-suite-surface"> / TRADE LAB</span></span></a>
+    <nav class="matt-suite-nav" aria-label="MATT suite"><a href="/">HOME</a><a href="/hub">HUB</a><a href="/trade" aria-current="page">TRADE LAB</a><a href="/liquidity">LIQUIDITY</a></nav>
+    <span class="matt-suite-chain"><i></i>RONIN MAINNET</span>
+  </div>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="MATT home">
+      <img class="brand-logo" src="/assets/matt-logo-512.png" alt="">
+      <span><strong>MATT</strong><small>ROUND TRIP CONSOLE</small></span>
+    </a>
+    <div class="network-pill"><i></i> Ronin Mainnet <span>2020</span></div>
+    <button id="connectButton" class="button button-quiet" type="button">Connect wallet</button>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="eyebrow">LIVE ROUTE LAB · MAINNET</div>
+      <h1>Send MATT around<br><em>the full circuit.</em></h1>
+      <p>Choose an input, preview every stage using current Katana liquidity plus the tested atomic reverse-fee model, and see how much MATT is expected back before signing.</p>
+      <div class="hero-meta">
+        <span>8 pool hops</span><b></b><span>6 visible stages</span><b></b><span>1 atomic transaction</span>
+      </div>
+    </section>
+
+    <section class="console-grid" aria-label="Round trip controls and quote">
+      <article class="panel trade-panel">
+        <div class="panel-heading">
+          <div><span class="step-number">01</span><h2>Set the test amount</h2></div>
+          <span id="quoteStatus" class="status-chip">Ready</span>
+        </div>
+
+        <label class="amount-label" for="amountInput">You put in</label>
+        <div class="amount-control">
+          <input id="amountInput" inputmode="decimal" autocomplete="off" value="1000" aria-describedby="amountHelp">
+          <span class="token-tag"><span class="mini-coin">M</span> MATT</span>
+        </div>
+        <div id="amountHelp" class="input-meta">
+          <span id="walletMattBalance">Wallet balance · Connect to view</span>
+          <button id="maxButton" type="button">Use max</button>
+        </div>
+
+        <div class="slippage-row">
+          <div><label for="slippageInput">Protection</label><small>Per-stage minimum output</small></div>
+          <div class="slippage-control"><input id="slippageInput" type="number" min="0.1" max="10" step="0.1" value="2.0"><span>%</span></div>
+        </div>
+
+        <button id="quoteButton" class="button button-primary button-wide" type="button">
+          <span>Preview round trip</span><span aria-hidden="true">↗</span>
+        </button>
+
+        <div class="divider"></div>
+
+        <div class="receive-label">Estimated back</div>
+        <div class="receive-value"><span id="expectedOutput">—</span><small>MATT</small></div>
+        <div class="quote-stats">
+          <div><span>Protected minimum</span><strong id="minimumOutput">—</strong></div>
+          <div><span>Estimated route loss</span><strong id="lossOutput">—</strong></div>
+          <div><span>Quote block</span><strong id="quoteBlock">—</strong></div>
+        </div>
+
+        <div id="walletActions" class="wallet-actions is-hidden">
+          <button id="approveButton" class="button button-outline" type="button">Approve exact amount</button>
+          <button id="executeButton" class="button button-danger" type="button" disabled>Review & execute</button>
+        </div>
+        <div id="executionResult" class="execution-result is-hidden" role="status" aria-live="polite">
+          <span>Confirmed return</span>
+          <strong><b id="confirmedOutput">—</b> MATT</strong>
+          <small id="confirmedLoss">—</small>
+          <a id="confirmedTransaction" href="#" target="_blank" rel="noopener noreferrer">View confirmed transaction ↗</a>
+        </div>
+        <p class="risk-note"><strong>Experimental mainnet tool.</strong> Outputs are estimates; pool fees, price impact, gas, and market movement make a loss expected. A failed transaction can still spend gas.</p>
+      </article>
+
+      <article class="panel route-panel">
+        <div class="panel-heading">
+          <div><span class="step-number">02</span><h2>Follow the route</h2></div>
+          <a href="https://explorer.roninchain.com/address/0x048e792E32fc9E04bB47E9C5D8baCd41F4b0E425" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
+        </div>
+        <div id="routeTimeline" class="route-timeline">
+          <div class="route-step" data-route="0"><i>1</i><div><span>MATT → COIN</span><strong>Awaiting quote</strong></div><small>0.3%</small></div>
+          <div class="route-step" data-route="1"><i>2</i><div><span>COIN → MATT</span><strong>Awaiting quote</strong></div><small>0.3%</small></div>
+          <div class="route-step" data-route="2"><i>3</i><div><span>MATT → RON</span><strong>Awaiting quote</strong></div><small>1%</small></div>
+          <div class="route-step" data-route="3"><i>4</i><div><span>RON → MATT</span><strong>Awaiting quote</strong></div><small>1%</small></div>
+          <div class="route-step" data-route="4"><i>5</i><div><span>MATT → RONKE</span><strong>Via WRON · awaiting quote</strong></div><small>2 hops</small></div>
+          <div class="route-step" data-route="5"><i>6</i><div><span>RONKE → MATT</span><strong>Via WRON · awaiting quote</strong></div><small>2 hops</small></div>
+        </div>
+        <div class="route-footnote"><i></i><span>The RON stage unwraps WRON to native RON and wraps it again before continuing.</span></div>
+      </article>
+    </section>
+
+    <section class="registry-section">
+      <div class="section-heading">
+        <div><span class="step-number">03</span><h2>Contract registry</h2></div>
+        <p>One purpose-built contract was deployed. All tokens, pools, the quoter, and Katana router were already live dependencies.</p>
+      </div>
+
+      <article class="deployed-card">
+        <div class="deployed-badge">DEPLOYED BY YOU</div>
+        <div class="contract-title"><span class="contract-icon">↻</span><div><h3>MATT Round Trip Tester</h3><p>Immutable atomic route executor · deployed at block 62,498,011</p></div></div>
+        <a class="address-row" href="https://explorer.roninchain.com/address/0x048e792E32fc9E04bB47E9C5D8baCd41F4b0E425" target="_blank" rel="noopener noreferrer"><code>0x048e792E32fc9E04bB47E9C5D8baCd41F4b0E425</code><span>↗</span></a>
+        <div class="deployment-meta">
+          <div><span>Deployer</span><strong>0xF799…f984</strong></div>
+          <div><span>Deployment transaction</span><a href="https://explorer.roninchain.com/tx/0x0bee65ecab3282d0e3bb00a69d89de9a4b9942c41d3f3095c6b7ac0d26c86744" target="_blank" rel="noopener noreferrer">0x0bee65…c86744 ↗</a></div>
+          <div><span>Administration</span><strong>None · immutable</strong></div>
+        </div>
+        <div class="verification-row"><span>Source verification</span><strong>Exact match</strong><a href="https://repo.sourcify.dev/2020/0x048e792E32fc9E04bB47E9C5D8baCd41F4b0E425" target="_blank" rel="noopener noreferrer">Open verified source ↗</a></div>
+      </article>
+
+      <div class="dependency-grid" id="dependencyGrid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>MATT Round Trip Console</span>
+    <span>Ronin mainnet · Chain 2020</span>
+    <span>Quotes are estimates, not guarantees.</span>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="reviewDialog" class="review-dialog">
+    <form method="dialog">
+      <button class="dialog-close" value="cancel" aria-label="Close">×</button>
+      <div class="eyebrow">FINAL WALLET REVIEW</div>
+      <h2>Execute the full circuit?</h2>
+      <p>This will trade real assets on Ronin mainnet. The route is atomic, but fees and price impact create an expected loss.</p>
+      <div class="review-summary">
+        <div><span>You send</span><strong id="reviewInput">—</strong></div>
+        <div><span>Expected back</span><strong id="reviewExpected">—</strong></div>
+        <div><span>Minimum back</span><strong id="reviewMinimum">—</strong></div>
+        <div><span>Recipient</span><strong id="reviewRecipient">—</strong></div>
+      </div>
+      <label class="confirm-check"><input id="riskCheckbox" type="checkbox"> <span>I understand this mainnet transaction is expected to return less MATT than it spends.</span></label>
+      <button id="confirmExecuteButton" class="button button-danger button-wide" value="default" type="button" disabled>Execute on Ronin mainnet</button>
+    </form>
+  </dialog>
+
+  <script src="/trade.js?v=1" defer></script>
+</body>
+</html>
+
+
+
+
