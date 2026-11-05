@@ -2,14 +2,18 @@
 
 const { AbstractProvider, JsonRpcProvider, Network } = require("ethers");
 
-const PUBLIC_RONIN_RPC = "https://api.roninchain.com/rpc";
+const PUBLIC_RONIN_RPCS = [
+  "https://ronin.gateway.tenderly.co",
+  "https://rpc-ronin-mainnet-bfz9fadqzl.t.conduit.xyz/",
+  "https://api.roninchain.com/rpc",
+];
 
 function rpcUrls(env, manifest) {
   const candidates = [
     env.DYNO_API_RPC_URL,
     env.DYNO_RPC_URL,
     env[manifest.rpcUrlEnv],
-    manifest.chainId === 2020 && env.DYNO_PUBLIC_RPC_FALLBACK_DISABLED !== "true" ? PUBLIC_RONIN_RPC : null,
+    ...(manifest.chainId === 2020 && env.DYNO_PUBLIC_RPC_FALLBACK_DISABLED !== "true" ? PUBLIC_RONIN_RPCS : []),
   ];
   return [...new Set(candidates.map(value => String(value || "").trim()).filter(Boolean))];
 }
@@ -71,4 +75,4 @@ function createDynoReadProvider({ env = process.env, manifest, providerFactory =
   return new ReadFailoverProvider(providers, manifest.chainId, { requestTimeoutMs: timeoutMs(env) });
 }
 
-module.exports = { PUBLIC_RONIN_RPC, ReadFailoverProvider, createDynoReadProvider, rpcUrls, timeoutMs };
+module.exports = { PUBLIC_RONIN_RPCS, ReadFailoverProvider, createDynoReadProvider, rpcUrls, timeoutMs };

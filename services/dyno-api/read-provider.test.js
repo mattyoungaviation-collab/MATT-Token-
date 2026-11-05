@@ -2,14 +2,14 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { PUBLIC_RONIN_RPC, ReadFailoverProvider, rpcUrls, timeoutMs } = require("./read-provider");
+const { PUBLIC_RONIN_RPCS, ReadFailoverProvider, rpcUrls, timeoutMs } = require("./read-provider");
 
 test("Ronin read URLs preserve private priority and add a public emergency fallback", () => {
   const manifest = { chainId: 2020, rpcUrlEnv: "RONIN_RPC_URL" };
   assert.deepEqual(rpcUrls({ DYNO_API_RPC_URL: "https://api.example/primary", DYNO_RPC_URL: "https://api.example/dyno", RONIN_RPC_URL: "https://api.example/primary" }, manifest), [
     "https://api.example/primary",
     "https://api.example/dyno",
-    PUBLIC_RONIN_RPC,
+    ...PUBLIC_RONIN_RPCS,
   ]);
   assert.deepEqual(rpcUrls({ RONIN_RPC_URL: "https://api.example/primary", DYNO_PUBLIC_RPC_FALLBACK_DISABLED: "true" }, manifest), ["https://api.example/primary"]);
 });
