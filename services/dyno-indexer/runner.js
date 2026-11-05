@@ -1,5 +1,6 @@
 "use strict";
-function startIndexer(indexer, { intervalMs = 15000, batchSize = 1000, log = console.error } = {}) {
+function startIndexer(indexer, { intervalMs = 15000, catchUpIntervalMs = intervalMs, batchSize = 1000, log = console.error } = {}) {
+  if (![intervalMs, catchUpIntervalMs].every(value => Number.isSafeInteger(value) && value >= 1000)) throw new Error("Indexer intervals must be integers of at least 1000ms");
   let pending = null, stopped = false, timer = null;
   const status = { ok: false, checkedAt: null, indexedBlock: null };
   async function tick() {
@@ -9,10 +10,13 @@ function startIndexer(indexer, { intervalMs = 15000, batchSize = 1000, log = con
     pending = (async () => {
       try {
         const result = await indexer.syncOnce(batchSize);
-        Object.assign(status, { ok: true, checkedAt: Date.now(), indexedBlock: String(result.to) });
-        // Replay historical blocks promptly; return to ordinary pacing at the
-        // finalized head. A failure always waits for the normal interval.
-        if (Number.isSafeInteger(result.head) && result.to < result.head) nextDelay = 1000;
+        const behind = Number.isSafeInteger(result.head) && result.to < result.head;
+        Object.assign(status, { ok: true, checkedAt: Date.now(), indexedBlock: String(result.to),
+          headBlock: Number.isSafeInteger(result.head) ? String(result.head) : null,
+          lagBlocks: behind ? result.head - result.to : 0 });
+        // Catch-up is deliberately paced. An aggressive one-second replay loop
+        // can consume the shared RPC quota and make checkout reads fail closed.
+        if (behind) nextDelay = catchUpIntervalMs;
       }
       catch { Object.assign(status, { ok: false, checkedAt: Date.now() }); log("Project DYNO indexer unavailable; private RPC/error details redacted."); }
     })();

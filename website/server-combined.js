@@ -25,6 +25,14 @@ const app = express();
 const publicPort = Number.parseInt(process.env.PORT || "3000", 10);
 const proxyPort = Number.parseInt(process.env.INTERNAL_PROXY_PORT || String(publicPort + 1), 10);
 const roninRpcUrl = process.env.RONIN_RPC_URL || "https://api.roninchain.com/rpc";
+function boundedInterval(name, fallback, minimum = 100) {
+  const raw = String(process.env[name] || fallback);
+  if (!/^[0-9]+$/.test(raw)) throw new Error(`${name} must be an integer`);
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < minimum || value > 60000) throw new Error(`${name} must be between ${minimum} and 60000`);
+  return value;
+}
+const statsRpcMinIntervalMs = boundedInterval("STATS_RPC_MIN_INTERVAL_MS", 500);
 const publicDir = path.join(__dirname, "public");
 const ethersBrowserBundle = path.resolve(path.dirname(require.resolve("ethers")), "../dist/ethers.umd.min.js");
 const configuredDiskPath = String(process.env.RENDER_DISK_PATH || process.env.PERSISTENT_DISK_PATH || "").trim();
@@ -46,7 +54,7 @@ async function reserveStatsRpcSlot() {
   const queued = statsRpcQueue.then(async () => {
     const waitMs = Math.max(0, nextStatsRpcAt - Date.now());
     if (waitMs) await delay(waitMs);
-    nextStatsRpcAt = Date.now() + 150;
+    nextStatsRpcAt = Date.now() + statsRpcMinIntervalMs;
   });
   statsRpcQueue = queued.catch(() => {});
   return queued;
@@ -87,17 +95,20 @@ app.use("/api/dyno", dynoRuntime.enabled
   : dynoRuntime.readOnly ? createReadOnlyDynoRouter({ manifest: dynoRuntime.manifest }) : createDisabledDynoRouter(dynoStore));
 if (process.env.DYNO_INDEXER_ENABLED === "true") {
   const manifest = dynoRuntime.manifest;
-  if (manifest.mock || !process.env[manifest.rpcUrlEnv]) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
+  const indexerRpcUrl = process.env.DYNO_INDEXER_RPC_URL || process.env.DYNO_RPC_URL || process.env[manifest.rpcUrlEnv];
+  if (manifest.mock || !indexerRpcUrl) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
   const { DynoIndexer } = require("../services/dyno-indexer/indexer");
   const { startIndexer } = require("../services/dyno-indexer/runner");
-  const indexer = new DynoIndexer({ rpcUrl: process.env[manifest.rpcUrlEnv], store: dynoStore, chainId: manifest.chainId,
+  const indexer = new DynoIndexer({ rpcUrl: indexerRpcUrl, store: dynoStore, chainId: manifest.chainId,
     managerAddress: manifest.raffleProxy, vaultAddress: manifest.buybackProxy, startBlock: Number(process.env.DYNO_START_BLOCK || 0), finalityBlocks: Number(process.env.DYNO_FINALITY_BLOCKS || 12),
     managerAbi: require("../packages/abis/ProjectDynoRaffleManager.json").abi, vaultAbi: require("../packages/abis/ProjectDynoBuybackVault.json").abi });
   // Ronin RPC providers may cap eth_getLogs ranges below the indexer's
   // generic 1,000-block maximum. Keep the production default conservative.
   const indexBatchSize = Number(process.env.DYNO_INDEX_BATCH || 200);
   if (!Number.isSafeInteger(indexBatchSize) || indexBatchSize < 1 || indexBatchSize > 1000) throw new Error("DYNO_INDEX_BATCH must be an integer from 1 to 1000");
-  const runner = startIndexer(indexer, { batchSize: indexBatchSize });
+  const indexIntervalMs = boundedInterval("DYNO_INDEX_INTERVAL_MS", 15000, 1000);
+  const indexCatchUpIntervalMs = boundedInterval("DYNO_INDEX_CATCHUP_INTERVAL_MS", indexIntervalMs, 1000);
+  const runner = startIndexer(indexer, { batchSize: indexBatchSize, intervalMs: indexIntervalMs, catchUpIntervalMs: indexCatchUpIntervalMs });
   app.get("/api/dyno/indexer-health", (_req, res) => res.status(runner.status.ok ? 200 : 503).json(runner.status));
 }
 app.use("/api/gift-boxes", createGiftBoxQuoteRouter({ rpcRequest: statsRpcRequest }));
@@ -141,7 +152,7 @@ app.use((req, res) => {
   upstream.on("error", error => { if (res.headersSent) return res.end(); res.status(502).json({ error: "SITE_STARTING", message: String(error.message || error).slice(0, 200) }); });
   req.pipe(upstream);
 });
-const child = fork(path.join(__dirname, "server-proxy.js"), [], { env: { ...process.env, PORT: String(proxyPort), INTERNAL_SITE_PORT: String(proxyPort + 1), COIN_RPC_MIN_INTERVAL_MS: process.env.COIN_RPC_MIN_INTERVAL_MS || "100", RPC_MIN_INTERVAL_MS: process.env.RPC_MIN_INTERVAL_MS || "250", HOLDER_STATE_FILE: holderStateFile }, stdio: "inherit" });
+const child = fork(path.join(__dirname, "server-proxy.js"), [], { env: { ...process.env, PORT: String(proxyPort), INTERNAL_SITE_PORT: String(proxyPort + 1), COIN_RPC_MIN_INTERVAL_MS: process.env.COIN_RPC_MIN_INTERVAL_MS || "500", RPC_MIN_INTERVAL_MS: process.env.RPC_MIN_INTERVAL_MS || "500", HOLDER_STATE_FILE: holderStateFile }, stdio: "inherit" });
 const server = app.listen(publicPort, () => {
   console.log(`MATT combined server listening on ${publicPort}; RPC/site proxy on ${proxyPort}.`);
   console.log(holderStateFile ? `Persistent holder checkpoint: ${holderStateFile}` : "Persistent holder checkpoint: no Render disk detected; using ephemeral storage.");
