@@ -18,7 +18,7 @@ async function main() {
       const target = path.join(candidate, file);
       fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(root, file), target);
     }
-    for (const file of ["package.json", "package-lock.json", "scripts/dyno/validate-manifest.js"]) copy(file);
+    for (const file of ["package.json", "package-lock.json", "scripts/dyno/validate-manifest.js", "scripts/dyno/terms-approval.js"]) copy(file);
     // Only committed website source paths plus explicitly scoped DYNO modules.
     // No .env, database, artifacts, private evidence, or unrelated scripts.
     const tracked = execFileSync("git", ["ls-files", "website"], { cwd: root }).toString().trim().split(/\r?\n/);
