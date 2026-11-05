@@ -11,9 +11,9 @@ const PUBLIC_RONIN_RPCS = [
 function rpcUrls(env, manifest) {
   const candidates = [
     env.DYNO_API_RPC_URL,
+    ...(manifest.chainId === 2020 && env.DYNO_PUBLIC_RPC_FALLBACK_DISABLED !== "true" ? PUBLIC_RONIN_RPCS : []),
     env.DYNO_RPC_URL,
     env[manifest.rpcUrlEnv],
-    ...(manifest.chainId === 2020 && env.DYNO_PUBLIC_RPC_FALLBACK_DISABLED !== "true" ? PUBLIC_RONIN_RPCS : []),
   ];
   return [...new Set(candidates.map(value => String(value || "").trim()).filter(Boolean))];
 }
