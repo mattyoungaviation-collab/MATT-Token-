@@ -95,11 +95,14 @@ app.use("/api/dyno", dynoRuntime.enabled
   : dynoRuntime.readOnly ? createReadOnlyDynoRouter({ manifest: dynoRuntime.manifest }) : createDisabledDynoRouter(dynoStore));
 if (process.env.DYNO_INDEXER_ENABLED === "true") {
   const manifest = dynoRuntime.manifest;
-  const indexerRpcUrl = process.env.DYNO_INDEXER_RPC_URL || process.env.DYNO_RPC_URL || process.env[manifest.rpcUrlEnv];
-  if (manifest.mock || !indexerRpcUrl) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
+  if (manifest.mock) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
   const { DynoIndexer } = require("../services/dyno-indexer/indexer");
   const { startIndexer } = require("../services/dyno-indexer/runner");
-  const indexer = new DynoIndexer({ rpcUrl: indexerRpcUrl, store: dynoStore, chainId: manifest.chainId,
+  const { createDynoReadProvider } = require("../services/dyno-api/read-provider");
+  const indexerEnv = { ...process.env, DYNO_API_RPC_URL: process.env.DYNO_INDEXER_RPC_URL || process.env.DYNO_API_RPC_URL };
+  const indexerProvider = createDynoReadProvider({ env: indexerEnv, manifest });
+  if (!indexerProvider) throw new Error("DYNO indexer requires an approved nonmock manifest and its RPC");
+  const indexer = new DynoIndexer({ provider: indexerProvider, store: dynoStore, chainId: manifest.chainId,
     managerAddress: manifest.raffleProxy, vaultAddress: manifest.buybackProxy, startBlock: Number(process.env.DYNO_START_BLOCK || 0), finalityBlocks: Number(process.env.DYNO_FINALITY_BLOCKS || 12),
     managerAbi: require("../packages/abis/ProjectDynoRaffleManager.json").abi, vaultAbi: require("../packages/abis/ProjectDynoBuybackVault.json").abi });
   // Ronin RPC providers may cap eth_getLogs ranges below the indexer's

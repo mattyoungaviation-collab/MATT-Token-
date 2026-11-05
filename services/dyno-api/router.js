@@ -16,6 +16,7 @@ const { projectFinancials } = require("./financials");
 const { odds, projectPool } = require("./wallet-odds");
 const { readProtection, prepareProtection } = require("./protection");
 const { readTreasuryAt, prepareTreasuryAt } = require("./treasury");
+const { createDynoReadProvider } = require("./read-provider");
 
 function cookieMap(header = "") {
   const result = {};
@@ -42,7 +43,7 @@ function createDynoRouter({ getDiscordSession, manifestPath, manifest: providedM
   const oddsCache = new Map();
   if (manifest.environment === "production" && authStore.kind !== "sqlite-encrypted") throw new Error("Project DYNO production requires configured durable encrypted authentication storage");
   if (typeof authStore.consumeRateLimit !== "function") throw new Error("Project DYNO requires authentication rate limiting");
-  const provider = chainProvider || (!manifest.mock && env[manifest.rpcUrlEnv] ? new JsonRpcProvider(env[manifest.rpcUrlEnv], manifest.chainId, { staticNetwork: true }) : null);
+  const provider = chainProvider || (!manifest.mock ? createDynoReadProvider({ env, manifest }) : null);
   const manager = raffleManager || (provider ? new Contract(manifest.raffleProxy, require("../../packages/abis/ProjectDynoRaffleManager.json").abi, provider) : null);
   const vault = buybackVault || (provider ? new Contract(manifest.buybackProxy, require("../../packages/abis/ProjectDynoBuybackVault.json").abi, provider) : null);
   const nftProvider = !manifest.mock && env[manifest.nftRpcUrlEnv] ? new JsonRpcProvider(env[manifest.nftRpcUrlEnv]) : null;
