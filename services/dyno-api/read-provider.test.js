@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { PUBLIC_RONIN_RPCS, ReadFailoverProvider, rpcUrls, timeoutMs } = require("./read-provider");
+const { PUBLIC_RONIN_RPCS, ReadFailoverProvider, createDynoReadProvider, rpcUrls, timeoutMs } = require("./read-provider");
 
 test("Ronin read URLs prioritize the dedicated override and verified public providers", () => {
   const manifest = { chainId: 2020, rpcUrlEnv: "RONIN_RPC_URL" };
@@ -28,6 +28,24 @@ test("read provider moves to the next backend after a stalled RPC", async () => 
   const provider = new ReadFailoverProvider([stalled, healthy], 2020, { requestTimeoutMs: 10 });
   assert.equal(await provider._perform({ method: "getBlockNumber" }), 123);
   assert.equal(await provider.send("eth_chainId", []), "0x7e4");
+});
+
+test("DYNO backends disable JSON-RPC batching for parallel quota reads", () => {
+  const created = [];
+  const providerFactory = (url, chainId, options) => {
+    created.push({ url, chainId, options });
+    return { destroy() {} };
+  };
+  createDynoReadProvider({
+    env: { DYNO_API_RPC_URL: "https://api.example/dedicated", DYNO_PUBLIC_RPC_FALLBACK_DISABLED: "true" },
+    manifest: { chainId: 2020, rpcUrlEnv: "RONIN_RPC_URL" },
+    providerFactory,
+  });
+  assert.deepEqual(created, [{
+    url: "https://api.example/dedicated",
+    chainId: 2020,
+    options: { staticNetwork: true, batchMaxCount: 1 },
+  }]);
 });
 
 test("failover timeout is bounded", () => {

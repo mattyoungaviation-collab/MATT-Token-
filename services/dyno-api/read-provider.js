@@ -67,10 +67,14 @@ class ReadFailoverProvider extends AbstractProvider {
   }
 }
 
-function createDynoReadProvider({ env = process.env, manifest, providerFactory = (url, chainId) => new JsonRpcProvider(url, chainId, { staticNetwork: true }) }) {
+function createDynoReadProvider({ env = process.env, manifest, providerFactory = (url, chainId, options) => new JsonRpcProvider(url, chainId, options) }) {
   const urls = rpcUrls(env, manifest);
   if (!urls.length) return null;
-  const providers = urls.map(url => providerFactory(url, manifest.chainId));
+  // The quota read deliberately performs many pinned contract calls in parallel.
+  // Some otherwise healthy Ronin providers do not complete the resulting JSON-RPC
+  // array request, so keep each read independent and let failover operate per call.
+  const providerOptions = { staticNetwork: true, batchMaxCount: 1 };
+  const providers = urls.map(url => providerFactory(url, manifest.chainId, providerOptions));
   if (providers.length === 1) return providers[0];
   return new ReadFailoverProvider(providers, manifest.chainId, { requestTimeoutMs: timeoutMs(env) });
 }
